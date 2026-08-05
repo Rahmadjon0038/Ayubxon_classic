@@ -232,9 +232,9 @@ export default function ChatWindow({ conversation, onDeleted }: Props) {
                 handleSubmit(e);
               }
             }}
-            rows={3}
+            rows={1}
             placeholder="Xabar yozing..."
-            className="flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-3 text-sm leading-5 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            className="flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           <button
             type="submit"

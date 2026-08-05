@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, MessageCircleMore } from 'lucide-react';
@@ -25,6 +26,18 @@ export default function LeadDetailPage() {
   });
 
   const conversation = conversationQuery.data ?? null;
+
+  // Lead ochilganda Inbox'dagidek "oqilgan" deb belgilanadi — royxatdagi 1 soni yoqoladi.
+  useEffect(() => {
+    if (!conversation || conversation.unreadCount === 0) return;
+    api.post(`/conversations/${conversation.id}/read`).catch(() => {});
+    queryClient.setQueryData<ConversationListItem>(['conversation', conversationId], (old) =>
+      old ? { ...old, unreadCount: 0 } : old,
+    );
+    queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+      old?.map((c) => (c.id === conversation.id ? { ...c, unreadCount: 0 } : c)),
+    );
+  }, [conversation, conversationId, queryClient]);
 
   return (
     <div className="h-full overflow-hidden bg-gray-50 p-3">

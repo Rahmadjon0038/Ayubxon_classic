@@ -27,22 +27,24 @@ export default function SettingsPage() {
           {meQuery.isLoading ? (
             <p className="text-sm text-gray-400">Yuklanmoqda...</p>
           ) : (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               <dt className="text-gray-500">Email</dt>
-              <dd>{meQuery.data?.email}</dd>
+              <dd className="min-w-0 break-all">{meQuery.data?.email}</dd>
               <dt className="text-gray-500">Yaratilgan</dt>
-              <dd>{meQuery.data?.createdAt ? formatDateTime(meQuery.data.createdAt) : '—'}</dd>
+              <dd className="min-w-0 break-all">
+                {meQuery.data?.createdAt ? formatDateTime(meQuery.data.createdAt) : '—'}
+              </dd>
             </dl>
           )}
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold text-gray-700">Tizim</h2>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="text-gray-500">Backend API</dt>
-            <dd className="font-mono text-xs">{API_URL}</dd>
-            <dt className="text-gray-500">Webhook URL</dt>
-            <dd className="font-mono text-xs">{API_URL}/api/webhooks/instagram</dd>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="shrink-0 text-gray-500">Backend API</dt>
+            <dd className="min-w-0 break-all font-mono text-xs">{API_URL}</dd>
+            <dt className="shrink-0 text-gray-500">Webhook URL</dt>
+            <dd className="min-w-0 break-all font-mono text-xs">{API_URL}/api/webhooks/instagram</dd>
           </dl>
         </div>
       </div>
