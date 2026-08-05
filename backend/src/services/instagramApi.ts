@@ -18,13 +18,29 @@ export interface ContactProfile {
   profilePictureUrl?: string;
 }
 
+// Instagram DM'ga faqat mijoz oxirgi xabar yozganidan keyingi 24 soat ichida javob yozish mumkin
+// (Meta'ning "messaging window" qoidasi). Bu xato kodi/matni Meta tomonda foydalanuvchi tilига
+// qarab turlicha (masalan nemischa) qaytishi mumkin, shuning uchun subcode va matn boyicha aniqlaymiz.
+function isOutsideMessagingWindow(metaError: { code?: number; error_subcode?: number; message?: string; error_user_msg?: string }): boolean {
+  if (metaError.error_subcode === 2018278) return true;
+  const text = `${metaError.message ?? ''} ${metaError.error_user_msg ?? ''}`.toLowerCase();
+  return /outside.*(allowed|permitted).*window|außerhalb.*fenster/.test(text);
+}
+
 // Meta xato javobidan token chiqib ketmasligi uchun faqat error obyektini oqiymiz.
 function toInstagramError(err: unknown): InstagramApiError {
   if (err instanceof AxiosError) {
     const metaError = err.response?.data?.error as
-      | { message?: string; code?: number; error_user_msg?: string }
+      | { message?: string; code?: number; error_subcode?: number; error_user_msg?: string }
       | undefined;
     if (metaError) {
+      if (isOutsideMessagingWindow(metaError)) {
+        return new InstagramApiError(
+          "Bu mijozga endi javob yozib bo'lmaydi: Instagram qoidasiga ko'ra, faqat mijoz oxirgi xabar yozganidan keyingi 24 soat ichida javob yuborish mumkin. Mijoz sizga qayta yozganda javob yozish yana ochiladi.",
+          403,
+          metaError.code,
+        );
+      }
       const message = metaError.error_user_msg || metaError.message || 'Instagram API xatosi';
       const status = err.response?.status === 401 || metaError.code === 190 ? 401 : 502;
       return new InstagramApiError(`Instagram API: ${message}`, status, metaError.code);

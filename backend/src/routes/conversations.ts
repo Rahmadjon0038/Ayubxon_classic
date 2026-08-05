@@ -8,13 +8,11 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { env } from '../config/env';
 import { AppError } from '../lib/errors';
+import { UPLOAD_DIR } from '../lib/uploads';
 import { requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { sendAttachmentMessage, sendReaction, sendTextMessage } from '../services/instagramApi';
 import { getAccessToken, getConnectedAccount } from '../services/accountService';
-
-export const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Instagram Send API faqat rasm/video/audio qabul qiladi.
 const ALLOWED_MIME: Record<string, 'image' | 'video' | 'audio'> = {

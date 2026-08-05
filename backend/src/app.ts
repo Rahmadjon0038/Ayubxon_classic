@@ -3,9 +3,10 @@ import express, { Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { env, getAllowedOrigins } from './config/env';
+import { UPLOAD_DIR } from './lib/uploads';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
-import conversationRoutes, { UPLOAD_DIR } from './routes/conversations';
+import conversationRoutes from './routes/conversations';
 import instagramRoutes from './routes/instagram';
 import webhookRoutes from './routes/webhooks';
 

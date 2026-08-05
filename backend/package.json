@@ -13,7 +13,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
-    "create-admin": "tsx src/scripts/createAdmin.ts"
+    "create-admin": "tsx src/scripts/createAdmin.ts",
+    "backfill-avatars": "tsx src/scripts/backfillAvatars.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

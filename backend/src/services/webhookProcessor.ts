@@ -1,6 +1,7 @@
 import { Contact, Prisma, SenderType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
 import { fetchContactProfile } from './instagramApi';
 import { getAccessToken, getConnectedAccount } from './accountService';
 import { emitMessageUpdated, emitNewMessage } from './socketService';
@@ -170,19 +171,25 @@ async function processMessagingEvent(event: MessagingEvent): Promise<void> {
 
   // Kontaktni topish yoki yaratish.
   let contact = await prisma.contact.findUnique({ where: { instagramScopedId: contactScopedId } });
+  // Meta'ning profil rasm havolasi vaqtinchalik bolgani uchun, hali ozimizga
+  // yuklab olinmagan (/uploads bolmagan) rasmlar ham qayta yangilanadi.
   const needsProfileRefresh =
-    !contact || !contact.name || !contact.username || !contact.profilePictureUrl;
+    !contact || !contact.name || !contact.username || !isLocalUploadUrl(contact.profilePictureUrl);
 
   async function hydrateContactProfile(existingContact: Contact): Promise<Contact> {
     try {
       const profile = await fetchContactProfile(accessToken, contactScopedId);
       if (profile) {
+        const localAvatarUrl = profile.profilePictureUrl
+          ? await downloadContactAvatar(profile.profilePictureUrl)
+          : null;
         return await prisma.contact.update({
           where: { id: existingContact.id },
           data: {
             name: profile.name ?? existingContact.name,
             username: profile.username ?? existingContact.username,
-            profilePictureUrl: profile.profilePictureUrl ?? existingContact.profilePictureUrl,
+            profilePictureUrl:
+              localAvatarUrl ?? profile.profilePictureUrl ?? existingContact.profilePictureUrl,
           },
         });
       }
