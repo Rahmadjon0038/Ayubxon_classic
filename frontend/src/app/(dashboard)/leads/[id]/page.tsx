@@ -27,9 +27,9 @@ export default function LeadDetailPage() {
   const conversation = conversationQuery.data ?? null;
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-3">
-      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-3">
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+    <div className="h-full overflow-hidden bg-gray-50 p-3">
+      <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-3">
+        <div className="shrink-0 flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
           <Link
             href="/leads"
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition hover:text-brand-600"
@@ -77,7 +77,7 @@ export default function LeadDetailPage() {
         )}
 
         {conversation && (
-          <div className="min-h-[70vh] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <ChatWindow
               conversation={conversation}
               onDeleted={() => {
