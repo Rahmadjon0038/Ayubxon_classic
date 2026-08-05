@@ -21,7 +21,7 @@ interface Props {
 export default function ChatWindow({ conversation, onDeleted, backHref }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -35,9 +35,17 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
     },
   });
 
+  // scrollIntoView orniga konteynerning oziga scrollTop qoyiladi — bu chatga kirganda
+  // (yoki yangi xabar kelganda) doim eng pastga tushishini kafolatlaydi. rAF DOM
+  // (rasm/avatarlar bilan) toliq chizilgandan keyin ishga tushishi uchun ishlatiladi.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messagesQuery.data?.length, conversation.id]);
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messagesQuery.data, conversation.id]);
 
   // Matnga qarab textarea balandligi osadi (maksimal ~10 qator).
   const resizeTextarea = useCallback(() => {
@@ -219,7 +227,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-4">
         {messagesQuery.isLoading && (
           <p className="py-6 text-center text-sm text-gray-400">Yuklanmoqda...</p>
         )}
@@ -238,7 +246,6 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
             />
           ))}
         </div>
-        <div ref={bottomRef} />
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 bg-white px-4 py-3">
