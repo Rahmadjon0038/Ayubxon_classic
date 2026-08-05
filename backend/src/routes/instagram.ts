@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { downloadContactAvatar } from '../lib/avatar';
 import { encryptToken } from '../lib/crypto';
 import { AppError } from '../lib/errors';
 import { requireAuth } from '../middleware/auth';
@@ -37,11 +38,16 @@ router.post('/connect', validateBody(connectSchema), async (req, res, next) => {
     // Long-lived Instagram token odatda 60 kun amal qiladi.
     const tokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
 
+    // Meta'ning profil rasm havolasi vaqtinchalik — ozimizga yuklab olib doimiy saqlaymiz.
+    const localAvatarUrl = profile.profilePictureUrl
+      ? await downloadContactAvatar(profile.profilePictureUrl)
+      : null;
+
     const data = {
       instagramAccountId: profile.id,
       username: profile.username,
       name: profile.name ?? null,
-      profilePictureUrl: profile.profilePictureUrl ?? null,
+      profilePictureUrl: localAvatarUrl ?? profile.profilePictureUrl ?? null,
       accountType: profile.accountType ?? null,
       encryptedAccessToken: encryptToken(body.accessToken),
       verifyToken: body.verifyToken,
@@ -83,12 +89,15 @@ router.post('/test-connection', async (_req, res, next) => {
 
     const token = getAccessToken(account);
     const profile = await fetchMe(token);
+    const localAvatarUrl = profile.profilePictureUrl
+      ? await downloadContactAvatar(profile.profilePictureUrl)
+      : null;
     const updated = await prisma.instagramAccount.update({
       where: { id: account.id },
       data: {
         username: profile.username,
         name: profile.name ?? null,
-        profilePictureUrl: profile.profilePictureUrl ?? null,
+        profilePictureUrl: localAvatarUrl ?? profile.profilePictureUrl ?? null,
         accountType: profile.accountType ?? null,
         isConnected: true,
       },
