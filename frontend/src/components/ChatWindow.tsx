@@ -2,7 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Paperclip, SendHorizontal, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Loader2, Paperclip, SendHorizontal, Trash2 } from 'lucide-react';
 import Avatar from './Avatar';
 import MessageBubble from './MessageBubble';
 import { api, getErrorMessage } from '@/lib/api';
@@ -12,9 +13,11 @@ import { ConversationListItem, Message } from '@/lib/types';
 interface Props {
   conversation: ConversationListItem;
   onDeleted?: () => void;
+  // Berilsa, header boshida orqaga tugmasi chiqadi (masalan Leads sahifasidan ochilganda).
+  backHref?: string;
 }
 
-export default function ChatWindow({ conversation, onDeleted }: Props) {
+export default function ChatWindow({ conversation, onDeleted, backHref }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -149,6 +152,15 @@ export default function ChatWindow({ conversation, onDeleted }: Props) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
+        {backHref && (
+          <Link
+            href={backHref}
+            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+            aria-label="Orqaga"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+        )}
         <Avatar src={conversation.contact.profilePictureUrl} name={name} size={38} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{name}</p>
