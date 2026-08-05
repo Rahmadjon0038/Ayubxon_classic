@@ -8,7 +8,8 @@ import Avatar from './Avatar';
 import MessageBubble from './MessageBubble';
 import { api, getErrorMessage } from '@/lib/api';
 import { contactDisplayName } from '@/lib/format';
-import { ConversationListItem, Message } from '@/lib/types';
+import { getSocket } from '@/lib/socket';
+import { ConversationListItem, Message, MessageUpdatedEvent, NewMessageEvent } from '@/lib/types';
 
 interface Props {
   conversation: ConversationListItem;
@@ -58,6 +59,41 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
     });
     queryClient.invalidateQueries({ queryKey: ['conversations'] });
   };
+
+  // Ochiq chat qaysi sahifada bolishidan qatiy nazar (Inbox yoki Leads) yangi xabar
+  // va reaksiyalar Socket.IO orqali darhol korinishi uchun. Sahifani qayta ochish/yangilash shart emas.
+  useEffect(() => {
+    const socket = getSocket();
+
+    const onNewMessage = (event: NewMessageEvent) => {
+      if (event.conversationId !== conversation.id) return;
+      appendMessage(event.message);
+      if (event.message.senderType === 'CONTACT') {
+        api.post(`/conversations/${conversation.id}/read`).catch(() => {});
+        queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+          old?.map((c) => (c.id === conversation.id ? { ...c, unreadCount: 0 } : c)),
+        );
+        queryClient.setQueryData<ConversationListItem>(['conversation', conversation.id], (old) =>
+          old ? { ...old, unreadCount: 0 } : old,
+        );
+      }
+    };
+
+    const onMessageUpdated = (event: MessageUpdatedEvent) => {
+      if (event.conversationId !== conversation.id) return;
+      queryClient.setQueryData<Message[]>(['messages', conversation.id], (old) =>
+        old?.map((m) => (m.id === event.message.id ? event.message : m)),
+      );
+    };
+
+    socket.on('new_message', onNewMessage);
+    socket.on('message_updated', onMessageUpdated);
+    return () => {
+      socket.off('new_message', onNewMessage);
+      socket.off('message_updated', onMessageUpdated);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id, queryClient]);
 
   const sendMutation = useMutation({
     mutationFn: async (messageText: string) => {
