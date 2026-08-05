@@ -8,6 +8,7 @@ import {
   Loader2,
   MessageCircleMore,
   Search,
+  Sparkles,
   Users,
   XCircle,
 } from 'lucide-react';
@@ -24,7 +25,6 @@ const bucketConfig: Record<
   BoardBucketId,
   {
     title: string;
-    subtitle: string;
     badgeClass: string;
     titleClass: string;
     accentClass: string;
@@ -32,28 +32,24 @@ const bucketConfig: Record<
 > = {
   new: {
     title: 'Yangi',
-    subtitle: 'Yangi yozganlar',
     badgeClass: 'bg-gray-100 text-gray-700',
     titleClass: 'text-violet-600',
     accentClass: 'bg-violet-500',
   },
   solved: {
     title: "Hal bo'lganlar",
-    subtitle: 'Gaplashilganlar',
     badgeClass: 'bg-gray-100 text-gray-700',
     titleClass: 'text-emerald-600',
     accentClass: 'bg-emerald-500',
   },
   pending: {
     title: "Hal bo'lmaganlar",
-    subtitle: 'Hali yakunlanmaganlar',
     badgeClass: 'bg-gray-100 text-gray-700',
     titleClass: 'text-amber-600',
     accentClass: 'bg-amber-500',
   },
   rejected: {
     title: 'Rad etganlar',
-    subtitle: 'Rad etilganlar',
     badgeClass: 'bg-gray-100 text-gray-700',
     titleClass: 'text-rose-600',
     accentClass: 'bg-rose-500',
@@ -235,51 +231,36 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-3">
-      <div className="w-full space-y-4">
-        <div className="space-y-1">
-          <h1 className="text-lg font-semibold">Mijozlar boshqaruvi</h1>
-          <p className="text-sm text-gray-500">
-            Instagram Direct orqali yozgan mijozlarni boshqaring.
-          </p>
-        </div>
+    <div className="h-full overflow-y-auto bg-gray-50 p-2.5">
+      <div className="w-full space-y-2.5">
+        <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-sm md:flex-row md:items-center md:justify-between">
+          <label className="relative block flex-1 md:max-w-xs">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Mijozlarni qidirish..."
+              className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-xs outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            />
+          </label>
 
-        <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="flex-1">
-            <label className="relative block max-w-lg">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Mijozlarni qidirish..."
-                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              />
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5">
-              Drag & drop orqali holat o'zgaradi
-            </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatChip label="Jami" value={stats.total} icon={<Users size={12} />} />
+            <StatChip label="Yangi" value={stats.newCount} icon={<Sparkles size={12} />} accent="text-violet-600" />
+            <StatChip label="Hal bo'lgan" value={stats.solvedCount} icon={<CheckCircle2 size={12} />} accent="text-emerald-600" />
+            <StatChip label="Hal bo'lmagan" value={stats.pendingCount} icon={<CircleDashed size={12} />} accent="text-amber-600" />
+            <StatChip label="Rad etgan" value={stats.rejectedCount} icon={<XCircle size={12} />} accent="text-rose-600" />
           </div>
         </div>
 
         {conversationsQuery.isError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             {getErrorMessage(conversationsQuery.error)}
           </div>
         )}
 
-        <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-          <MetricCard label="Jami" value={stats.total} hint="Ko'rsatilgan mijozlar" icon={<Users size={18} />} />
-          <MetricCard label="Yangi" value={stats.newCount} hint="Yaqinda yozganlar" icon={<SparklesIcon />} />
-          <MetricCard label="Hal bo'lgan" value={stats.solvedCount} hint="Gaplashilganlar" icon={<CheckCircle2 size={18} />} />
-          <MetricCard label="Hal bo'lmagan" value={stats.pendingCount} hint="Yakunlanmaganlar" icon={<CircleDashed size={18} />} />
-          <MetricCard label="Rad etgan" value={stats.rejectedCount} hint="Yopilganlar" icon={<XCircle size={18} />} />
-        </section>
-
         <section className="overflow-x-auto pb-1">
-          <div className="grid min-w-[1180px] gap-3 xl:grid-cols-4">
+          <div className="grid min-w-[1080px] gap-2 xl:grid-cols-4">
             {(['new', 'solved', 'pending', 'rejected'] as BoardBucketId[]).map((bucketId) => {
               const config = bucketConfig[bucketId];
               const items = buckets[bucketId];
@@ -292,24 +273,23 @@ export default function LeadsPage() {
                     e.preventDefault();
                     if (draggedId) handleDrop(draggedId, bucketId);
                   }}
-                  className="flex min-h-[620px] flex-col rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+                  className="flex min-h-[560px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm"
                 >
-                  <div className="mb-3 flex items-start justify-between gap-2">
-                    <div>
-                      <div className={`mb-2 h-1 w-10 rounded-full ${config.accentClass}`} />
-                      <h2 className={`text-base font-semibold ${config.titleClass}`}>{config.title}</h2>
-                      <p className="mt-1 text-xs text-gray-500">{config.subtitle}</p>
+                  <div className="mb-1.5 flex items-center justify-between gap-2 px-1 pt-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`h-1.5 w-1.5 rounded-full ${config.accentClass}`} />
+                      <h2 className={`text-xs font-semibold ${config.titleClass}`}>{config.title}</h2>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${config.badgeClass}`}>
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${config.badgeClass}`}>
                       {items.length}
                     </span>
                   </div>
 
-                  <div className="flex flex-1 flex-col gap-3">
+                  <div className="flex flex-1 flex-col gap-1.5">
                     {items.length === 0 && (
-                      <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-gray-200 px-3 py-8 text-center text-sm text-gray-400">
-                        <MessageCircleMore size={18} className="mr-2" />
-                        Bu ustunda hozircha mijoz yo'q
+                      <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-gray-200 px-3 py-6 text-center text-xs text-gray-400">
+                        <MessageCircleMore size={15} className="mr-1.5" />
+                        Bo'sh
                       </div>
                     )}
 
@@ -325,35 +305,35 @@ export default function LeadsPage() {
                           onDragStart={() => setDraggedId(conversation.id)}
                           onDragEnd={() => setDraggedId(null)}
                           onClick={() => router.push(`/leads/${conversation.id}`)}
-                          className={`cursor-pointer rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition hover:shadow-md ${dragClass}`}
+                          className={`cursor-pointer rounded-md border border-gray-200 bg-white p-2 transition hover:border-gray-300 hover:shadow-sm ${dragClass}`}
                         >
-                          <div className="flex items-start gap-3">
-                            <Avatar src={conversation.contact.profilePictureUrl} name={name} size={44} />
+                          <div className="flex items-start gap-2">
+                            <Avatar src={conversation.contact.profilePictureUrl} name={name} size={34} />
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start justify-between gap-1.5">
                                 <div className="min-w-0">
-                                  <p className="truncate text-sm font-semibold text-gray-900">{name}</p>
+                                  <p className="truncate text-[13px] font-semibold text-gray-900">{name}</p>
                                   {conversation.contact.username && (
-                                    <p className="truncate text-xs text-gray-500">
+                                    <p className="truncate text-[11px] text-gray-500">
                                       @{conversation.contact.username}
                                     </p>
                                   )}
                                 </div>
 
                                 {conversation.unreadCount > 0 && (
-                                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${bucketConfig[bucket].badgeClass}`}>
+                                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${bucketConfig[bucket].badgeClass}`}>
                                     {conversation.unreadCount}
                                   </span>
                                 )}
                               </div>
 
-                              <p className="mt-2 max-h-9 overflow-hidden text-sm text-gray-600">
+                              <p className="mt-1 max-h-8 overflow-hidden text-xs text-gray-600">
                                 {lastMessagePreview(conversation)}
                               </p>
 
-                              <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-400">
+                              <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-gray-400">
                                 <span>{formatRelativeTime(conversation.lastMessageAt)}</span>
-                                <span className="rounded-full border border-gray-200 px-2 py-0.5 text-gray-500">
+                                <span className="rounded-full border border-gray-200 px-1.5 py-0.5 text-gray-500">
                                   {conversation.status === 'OPEN' ? 'Ochiq' : 'Yopiq'}
                                 </span>
                               </div>
@@ -370,19 +350,19 @@ export default function LeadsPage() {
         </section>
 
         {conversationsQuery.isLoading && (
-          <div className="flex min-h-[220px] items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 shadow-sm">
-            <Loader2 className="mr-2 animate-spin" size={18} />
+          <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-gray-200 bg-white text-sm text-gray-400 shadow-sm">
+            <Loader2 className="mr-2 animate-spin" size={16} />
             Yuklanmoqda...
           </div>
         )}
 
         {!conversationsQuery.isLoading && visibleConversations.length === 0 && (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-white px-6 py-12 text-center text-gray-500 shadow-sm">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-gray-400">
-              <MessageCircleMore size={22} />
+          <div className="rounded-lg border border-dashed border-gray-200 bg-white px-6 py-10 text-center text-gray-500 shadow-sm">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-400">
+              <MessageCircleMore size={18} />
             </div>
-            <h3 className="text-base font-semibold text-gray-900">Natija topilmadi</h3>
-            <p className="mt-1 text-sm text-gray-500">Qidiruvga mos mijoz topilmadi.</p>
+            <h3 className="text-sm font-semibold text-gray-900">Natija topilmadi</h3>
+            <p className="mt-1 text-xs text-gray-500">Qidiruvga mos mijoz topilmadi.</p>
           </div>
         )}
       </div>
@@ -390,33 +370,22 @@ export default function LeadsPage() {
   );
 }
 
-function MetricCard({
+function StatChip({
   label,
   value,
-  hint,
   icon,
+  accent,
 }: {
   label: string;
   value: number;
-  hint: string;
   icon: React.ReactNode;
+  accent?: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{label}</p>
-          <div className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{value}</div>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
-          {icon}
-        </div>
-      </div>
-      <p className="mt-3 text-xs text-gray-400">{hint}</p>
+    <div className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs">
+      <span className={accent ?? 'text-gray-400'}>{icon}</span>
+      <span className="font-semibold text-gray-900">{value}</span>
+      <span className="text-gray-500">{label}</span>
     </div>
   );
-}
-
-function SparklesIcon() {
-  return <span className="text-lg leading-none text-gray-700">✦</span>;
 }

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { SenderType } from '@prisma/client';
+import { Prisma, SenderType } from '@prisma/client';
 import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
@@ -52,6 +52,39 @@ const conversationSelect = {
   contact: true,
   messages: { orderBy: { sentAt: 'desc' }, take: 1 },
 } as const;
+
+// Instagram Send API muvaffaqiyatli javob qaytargach, xabarni SENT deb belgilaydi.
+// Meta bizga yuborilgan xabarni darhol "echo" webhook sifatida ham qaytaradi — u ayrim
+// hollarda shu instagramMessageId bilan yozuvni bizdan oldin yaratib ulguradi (P2002).
+// Bu xato emas: xabar allaqachon muvaffaqiyatli yuborilgan va saqlangan, shuning uchun
+// ozimizning bosh (pending) qatorimizni tozalab, webhook yaratgan haqiqiy yozuvni qaytaramiz.
+async function finalizeSentMessage(
+  pendingId: string,
+  conversationId: string,
+  instagramMessageId: string,
+  sentAt: Date,
+) {
+  try {
+    const [message] = await Promise.all([
+      prisma.message.update({
+        where: { id: pendingId },
+        data: { status: 'SENT', instagramMessageId },
+      }),
+      prisma.conversation.update({
+        where: { id: conversationId },
+        data: { lastMessageAt: sentAt },
+      }),
+    ]);
+    return message;
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      await prisma.message.delete({ where: { id: pendingId } }).catch(() => {});
+      const existing = await prisma.message.findUnique({ where: { instagramMessageId } });
+      if (existing) return existing;
+    }
+    throw err;
+  }
+}
 
 function getLocalUploadPath(attachmentUrl: string): string | null {
   try {
@@ -244,31 +277,22 @@ router.post('/:id/messages', validateBody(sendMessageSchema), async (req, res, n
       },
     });
 
+    let result: { messageId: string };
     try {
-      const result = await sendTextMessage(
+      result = await sendTextMessage(
         getAccessToken(account),
         conversation.contact.instagramScopedId,
         text,
       );
-
-      const [message] = await Promise.all([
-        prisma.message.update({
-          where: { id: pending.id },
-          data: { status: 'SENT', instagramMessageId: result.messageId },
-        }),
-        prisma.conversation.update({
-          where: { id: conversation.id },
-          data: { lastMessageAt: pending.sentAt },
-        }),
-      ]);
-
-      return res.status(201).json({ message });
     } catch (sendErr) {
       await prisma.message
         .update({ where: { id: pending.id }, data: { status: 'FAILED' } })
         .catch(() => {});
       throw sendErr;
     }
+
+    const message = await finalizeSentMessage(pending.id, conversation.id, result.messageId, pending.sentAt);
+    return res.status(201).json({ message });
   } catch (err) {
     return next(err);
   }
@@ -307,32 +331,23 @@ router.post('/:id/attachments', upload.single('file'), async (req, res, next) =>
       },
     });
 
+    let result: { messageId: string };
     try {
-      const result = await sendAttachmentMessage(
+      result = await sendAttachmentMessage(
         getAccessToken(account),
         conversation.contact.instagramScopedId,
         attachmentType,
         publicUrl,
       );
-
-      const [message] = await Promise.all([
-        prisma.message.update({
-          where: { id: pending.id },
-          data: { status: 'SENT', instagramMessageId: result.messageId },
-        }),
-        prisma.conversation.update({
-          where: { id: conversation.id },
-          data: { lastMessageAt: pending.sentAt },
-        }),
-      ]);
-
-      return res.status(201).json({ message });
     } catch (sendErr) {
       await prisma.message
         .update({ where: { id: pending.id }, data: { status: 'FAILED' } })
         .catch(() => {});
       throw sendErr;
     }
+
+    const message = await finalizeSentMessage(pending.id, conversation.id, result.messageId, pending.sentAt);
+    return res.status(201).json({ message });
   } catch (err) {
     return next(err);
   }
