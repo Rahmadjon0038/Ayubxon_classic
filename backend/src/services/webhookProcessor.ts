@@ -2,7 +2,7 @@ import { Contact, InstagramAccount, Prisma, SenderType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
-import { generateAiReply } from './aiService';
+import { ChatTurn, generateAiReply } from './aiService';
 import { fetchContactProfile, sendTextMessage } from './instagramApi';
 import {
   getAccessToken,
@@ -298,7 +298,6 @@ async function processMessagingEvent(
       accessToken,
       contactIgsid: contactScopedId,
       conversationId: conversation.id,
-      userMessageText: message.text,
     });
   }
 }
@@ -308,18 +307,34 @@ interface MaybeSendAiReplyParams {
   accessToken: string;
   contactIgsid: string;
   conversationId: string;
-  userMessageText: string;
 }
 
-// AI yoqilgan va markaz sozlamalari mavjud bolsa, dinamik system prompt asosida javob
-// generatsiya qilib, Instagram Send API orqali yuboradi va suhbatga admin xabari sifatida
-// yozadi. Xato yoki sozlama yoqligida jim otkazib yuboriladi — mijoz inson agentga qoladi.
+// Suhbatdagi oxirgi xabarlarni (matnli bolganlarini) OpenAI formatiga otkazadi — shu orqali
+// AI faqat joriy xabarni emas, butun suhbat kontekstini "eslab" javob beradi. Masalan
+// "Qaysi filial yaqin?" degan savoldan keyin mijoz shunchaki "Davlatobod" deb yozsa ham,
+// AI bu nimaga javob ekanini tarixdan tushunadi.
+async function getConversationHistory(conversationId: string): Promise<ChatTurn[]> {
+  const messages = await prisma.message.findMany({
+    where: { conversationId, text: { not: null } },
+    orderBy: { sentAt: 'desc' },
+    take: 12,
+  });
+  return messages
+    .reverse()
+    .map((m) => ({
+      role: m.senderType === SenderType.CONTACT ? ('user' as const) : ('assistant' as const),
+      content: m.text!,
+    }));
+}
+
+// AI yoqilgan va markaz sozlamalari mavjud bolsa, suhbat tarixi asosida javob generatsiya
+// qilib, Instagram Send API orqali yuboradi va suhbatga admin xabari sifatida yozadi. Xato
+// yoki sozlama yoqligida jim otkazib yuboriladi — mijoz inson agentga qoladi.
 async function maybeSendAiReply({
   account,
   accessToken,
   contactIgsid,
   conversationId,
-  userMessageText,
 }: MaybeSendAiReplyParams): Promise<void> {
   if (!account.aiEnabled) return;
 
@@ -333,7 +348,8 @@ async function maybeSendAiReply({
     return;
   }
 
-  const replyText = await generateAiReply(settings, userMessageText);
+  const history = await getConversationHistory(conversationId);
+  const replyText = await generateAiReply(settings, history);
   if (!replyText) return;
 
   try {

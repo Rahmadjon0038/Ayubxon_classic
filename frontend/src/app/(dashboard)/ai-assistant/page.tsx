@@ -61,10 +61,7 @@ export default function AiAssistantPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.put<SettingsResponse>('/academy-settings', {
-        ...form,
-        aiEnabled,
-      });
+      const { data } = await api.put<SettingsResponse>('/academy-settings', form);
       return data;
     },
     onSuccess: (data) => {
@@ -75,6 +72,31 @@ export default function AiAssistantPage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     saveMutation.mutate();
+  };
+
+  // Tumbler bosilgan zahoti serverga saqlanadi — asosiy formadan mustaqil,
+  // shuning uchun markaz ma'lumotlari hali to'ldirilmagan bo'lsa ham ishlaydi.
+  const toggleMutation = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { data } = await api.patch<{ aiEnabled: boolean }>('/academy-settings/ai-toggle', {
+        aiEnabled: next,
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      setAiEnabled(data.aiEnabled);
+      queryClient.setQueryData<SettingsResponse | undefined>(['academy-settings'], (old) =>
+        old ? { ...old, aiEnabled: data.aiEnabled } : old,
+      );
+    },
+  });
+
+  const handleToggle = () => {
+    const next = !aiEnabled;
+    setAiEnabled(next); // optimistik yangilanish — tugma darhol siljiydi
+    toggleMutation.mutate(next, {
+      onError: () => setAiEnabled(!next), // server rad etsa eski holatga qaytariladi
+    });
   };
 
   const inputClass =
@@ -102,22 +124,30 @@ export default function AiAssistantPage() {
               bo&apos;lsa, xabarlar faqat inbox&apos;da ko&apos;rinadi va admin qo&apos;lda javob yozadi.
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={aiEnabled}
-            onClick={() => setAiEnabled((v) => !v)}
-            disabled={settingsQuery.isLoading}
-            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
-              aiEnabled ? 'bg-brand-600' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                aiEnabled ? 'translate-x-6' : 'translate-x-1'
+          <div className="flex shrink-0 items-center gap-2">
+            {toggleMutation.isPending && (
+              <span className="text-xs text-gray-400">Saqlanmoqda...</span>
+            )}
+            {toggleMutation.isError && (
+              <span className="text-xs text-red-500">{getErrorMessage(toggleMutation.error)}</span>
+            )}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={aiEnabled}
+              onClick={handleToggle}
+              disabled={settingsQuery.isLoading || toggleMutation.isPending}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
+                aiEnabled ? 'bg-brand-600' : 'bg-gray-300'
               }`}
-            />
-          </button>
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                  aiEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {settingsQuery.isLoading && (
