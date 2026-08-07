@@ -25,11 +25,31 @@ model InstagramAccount {
   encryptedAccessToken String?
   verifyToken          String
   isConnected          Boolean   @default(true)
+  // AI assistent shu akkaunt uchun kelgan DM'larga avtomatik javob yozadimi.
+  aiEnabled            Boolean   @default(false)
   tokenExpiresAt       DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  conversations Conversation[]
+  conversations   Conversation[]
+  academySettings AcademySettings?
+}
+
+// Har bir Instagram biznes akkaunti (o'quv markazi) uchun AI'ga o'rgatiladigan
+// dinamik ma'lumotlar — kurslar, narxlar, manzil va h.k. Webhook shu jadvalni
+// instagramAccountId orqali topib, AI system promptini shu asosda quradi.
+model AcademySettings {
+  id                 String   @id @default(cuid())
+  instagramAccountId String   @unique
+  academyName        String
+  coursesAndPrices   String
+  address            String
+  phoneNumbers       String
+  promotions         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
 }
 
 model Contact {

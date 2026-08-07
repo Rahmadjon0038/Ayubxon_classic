@@ -18,6 +18,18 @@ export interface InstagramAccount {
   updatedAt: string;
 }
 
+export interface AcademySettings {
+  id: string;
+  instagramAccountId: string;
+  academyName: string;
+  coursesAndPrices: string;
+  address: string;
+  phoneNumbers: string;
+  promotions: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Contact {
   id: string;
   instagramScopedId: string;

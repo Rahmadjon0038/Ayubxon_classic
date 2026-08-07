@@ -14,6 +14,17 @@ export async function getConnectedAccount(): Promise<InstagramAccount | null> {
   return account;
 }
 
+// Webhook payloadidagi haqiqiy Instagram biznes akkaunt ID (entry.id) orqali topadi.
+// Hozircha bitta akkaunt bo'lsa ham, bir nechta akkaunt qo'shilganda shu funksiya
+// har bir akkauntni to'g'ri ajratib beradi.
+export async function getConnectedAccountByInstagramId(
+  instagramAccountId: string,
+): Promise<InstagramAccount | null> {
+  const account = await prisma.instagramAccount.findUnique({ where: { instagramAccountId } });
+  if (!account || !account.isConnected || !account.encryptedAccessToken) return null;
+  return account;
+}
+
 export function getAccessToken(account: InstagramAccount): string {
   if (!account.encryptedAccessToken) {
     throw new AppError('Instagram akkaunt uchun access token saqlanmagan', 400);

@@ -1,9 +1,14 @@
-import { Contact, Prisma, SenderType } from '@prisma/client';
+import { Contact, InstagramAccount, Prisma, SenderType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
-import { fetchContactProfile } from './instagramApi';
-import { getAccessToken, getConnectedAccount } from './accountService';
+import { generateAiReply } from './aiService';
+import { fetchContactProfile, sendTextMessage } from './instagramApi';
+import {
+  getAccessToken,
+  getConnectedAccount,
+  getConnectedAccountByInstagramId,
+} from './accountService';
 import { emitMessageUpdated, emitNewMessage } from './socketService';
 
 // Instagram webhook payloadining bizga kerakli qismi.
@@ -92,7 +97,7 @@ export async function processWebhookPayload(rawPayload: unknown): Promise<void> 
 
     for (const event of events) {
       try {
-        await processMessagingEvent(event);
+        await processMessagingEvent(event, entry.id);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[webhook] Eventni qayta ishlashda xato: ${message}`);
@@ -126,7 +131,10 @@ async function processReactionEvent(event: MessagingEvent): Promise<void> {
   emitMessageUpdated({ conversationId: message.conversationId, message: updated });
 }
 
-async function processMessagingEvent(event: MessagingEvent): Promise<void> {
+async function processMessagingEvent(
+  event: MessagingEvent,
+  entryBusinessId?: string,
+): Promise<void> {
   if (event.reaction?.mid) {
     return processReactionEvent(event);
   }
@@ -162,7 +170,12 @@ async function processMessagingEvent(event: MessagingEvent): Promise<void> {
     return;
   }
 
-  const account = await getConnectedAccount();
+  // Webhook entry.id — xabarni qabul qilgan haqiqiy biznes akkaunt IGSID'i. Avval shu
+  // orqali aniq akkauntni topamiz; topilmasa (masalan Dashboard test payloadida fake ID
+  // kelsa) yagona ulangan akkauntga qaytamiz — bitta-akkauntli MVP rejimi uchun.
+  const account =
+    (entryBusinessId ? await getConnectedAccountByInstagramId(entryBusinessId) : null) ??
+    (await getConnectedAccount());
   if (!account) {
     console.warn('[webhook] Ulangan Instagram akkaunt yoq, xabar saqlanmadi');
     return;
@@ -277,4 +290,88 @@ async function processMessagingEvent(event: MessagingEvent): Promise<void> {
       contact: updatedConversation.contact,
     },
   });
+
+  // Faqat kontaktdan kelgan (echo emas) matnli xabarlarga AI javob berishga harakat qilinadi.
+  if (!isEcho && message.text) {
+    await maybeSendAiReply({
+      account,
+      accessToken,
+      contactIgsid: contactScopedId,
+      conversationId: conversation.id,
+      userMessageText: message.text,
+    });
+  }
+}
+
+interface MaybeSendAiReplyParams {
+  account: InstagramAccount;
+  accessToken: string;
+  contactIgsid: string;
+  conversationId: string;
+  userMessageText: string;
+}
+
+// AI yoqilgan va markaz sozlamalari mavjud bolsa, dinamik system prompt asosida javob
+// generatsiya qilib, Instagram Send API orqali yuboradi va suhbatga admin xabari sifatida
+// yozadi. Xato yoki sozlama yoqligida jim otkazib yuboriladi — mijoz inson agentga qoladi.
+async function maybeSendAiReply({
+  account,
+  accessToken,
+  contactIgsid,
+  conversationId,
+  userMessageText,
+}: MaybeSendAiReplyParams): Promise<void> {
+  if (!account.aiEnabled) return;
+
+  const settings = await prisma.academySettings.findUnique({
+    where: { instagramAccountId: account.id },
+  });
+  if (!settings) {
+    console.log(
+      `[webhook] AI yoqilgan, lekin "${account.username}" uchun markaz sozlamalari topilmadi — inson javobiga qoldirildi`,
+    );
+    return;
+  }
+
+  const replyText = await generateAiReply(settings, userMessageText);
+  if (!replyText) return;
+
+  try {
+    const { messageId } = await sendTextMessage(accessToken, contactIgsid, replyText);
+    const aiMessage = await prisma.message.create({
+      data: {
+        instagramMessageId: messageId,
+        conversationId,
+        senderType: SenderType.ADMIN,
+        text: replyText,
+        status: 'SENT',
+        sentAt: new Date(),
+      },
+    });
+
+    const updatedConversation = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: aiMessage.sentAt },
+      include: { contact: true },
+    });
+
+    emitNewMessage({
+      conversationId,
+      message: aiMessage,
+      conversation: {
+        id: updatedConversation.id,
+        unreadCount: updatedConversation.unreadCount,
+        lastMessageAt: updatedConversation.lastMessageAt,
+        contact: updatedConversation.contact,
+      },
+    });
+
+    console.log(`[webhook] AI javobi yuborildi (conversation=${conversationId})`);
+  } catch (err) {
+    // Instagram Send API xatosi (masalan 24 soatlik oyna yopilgan) AI javobini yuborishni
+    // toxtatadi, lekin webhook oqimini buzmaydi.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return;
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[webhook] AI javobini yuborishda xato: ${message}`);
+  }
 }

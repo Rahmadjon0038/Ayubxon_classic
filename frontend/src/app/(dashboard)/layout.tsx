@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
+  Bot,
   Camera,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +21,7 @@ const navItems = [
   { href: '/leads', label: 'Lidlar', Icon: KanbanSquare },
   { href: '/inbox', label: 'Inbox', Icon: Inbox },
   { href: '/instagram', label: 'Instagram akkaunt', Icon: Camera },
+  { href: '/ai-assistant', label: 'AI Assistent', Icon: Bot },
   { href: '/settings', label: 'Sozlamalar', Icon: Settings },
 ];
 

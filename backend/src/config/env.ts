@@ -26,6 +26,9 @@ const envSchema = z.object({
   INSTAGRAM_ACCESS_TOKEN: z.string().optional(),
   INSTAGRAM_ACCOUNT_ID: z.string().optional(),
   INSTAGRAM_VERIFY_TOKEN: z.string().optional(),
+
+  // Berilmasa, AI auto-reply o'chiq holatda ishlaydi (fallback: inson javob yozadi).
+  OPENAI_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

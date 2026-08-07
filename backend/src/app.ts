@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { env, getAllowedOrigins } from './config/env';
 import { UPLOAD_DIR } from './lib/uploads';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import academySettingsRoutes from './routes/academySettings';
 import authRoutes from './routes/auth';
 import conversationRoutes from './routes/conversations';
 import instagramRoutes from './routes/instagram';
@@ -64,6 +65,7 @@ export function createApp() {
   app.use('/api/instagram', instagramRoutes);
   app.use('/api/webhooks', webhookRoutes);
   app.use('/api/conversations', conversationRoutes);
+  app.use('/api/academy-settings', academySettingsRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
