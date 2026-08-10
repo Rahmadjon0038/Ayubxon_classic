@@ -9,13 +9,29 @@ import ConversationList from '@/components/ConversationList';
 import { useLocale } from '@/components/LocaleProvider';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import { ConversationListItem, Message, MessageUpdatedEvent, NewMessageEvent } from '@/lib/types';
+import {
+  ConversationListItem,
+  InstagramAccount,
+  Message,
+  MessageUpdatedEvent,
+  NewMessageEvent,
+} from '@/lib/types';
 
 export default function InboxPage() {
   const { t } = useLocale();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const accountQuery = useQuery({
+    queryKey: ['instagram-account'],
+    queryFn: async () => {
+      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
+      return data.account;
+    },
+  });
+
+  const accountKey = accountQuery.data?.id ?? 'none';
 
   const conversationsQuery = useQuery({
     queryKey: ['conversations'],
@@ -26,6 +42,12 @@ export default function InboxPage() {
     // Socket uzilib qolgan holatlar uchun zaxira yangilanish.
     refetchInterval: 30_000,
   });
+
+  useEffect(() => {
+    setSelectedId(null);
+    queryClient.removeQueries({ queryKey: ['messages'] });
+    queryClient.invalidateQueries({ queryKey: ['conversations'] });
+  }, [accountKey]);
 
   // Socket.IO: yangi xabar kelganda ochiq suhbat va royxatni yangilaydi.
   useEffect(() => {

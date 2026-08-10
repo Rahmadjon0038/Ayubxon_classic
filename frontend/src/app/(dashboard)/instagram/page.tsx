@@ -26,7 +26,11 @@ export default function InstagramPage() {
     },
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['instagram-account'] });
+  const refreshAfterAccountChange = () => {
+    queryClient.invalidateQueries({ queryKey: ['instagram-account'] });
+    queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    queryClient.removeQueries({ queryKey: ['messages'] });
+  };
 
   const connectMutation = useMutation({
     mutationFn: async () => {
@@ -41,18 +45,18 @@ export default function InstagramPage() {
     onSuccess: () => {
       // Token faqat yuborish paytida xotirada boladi, formadan darhol tozalanadi.
       setForm({ instagramAccountId: '', username: '', accessToken: '', verifyToken: '' });
-      invalidate();
+      refreshAfterAccountChange();
     },
   });
 
   const testMutation = useMutation({
     mutationFn: async () => (await api.post('/instagram/test-connection')).data,
-    onSuccess: invalidate,
+    onSuccess: refreshAfterAccountChange,
   });
 
   const disconnectMutation = useMutation({
     mutationFn: async () => (await api.post('/instagram/disconnect')).data,
-    onSuccess: invalidate,
+    onSuccess: refreshAfterAccountChange,
   });
 
   const handleSubmit = (e: FormEvent) => {

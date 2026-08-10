@@ -80,6 +80,42 @@ const webhookPayloadSchema = z
 
 type MessagingEvent = z.infer<typeof messagingEventSchema>;
 
+async function resolveWebhookAccount(
+  event: MessagingEvent,
+  entryBusinessId?: string,
+): Promise<InstagramAccount | null> {
+  const candidateIds = new Set<string>();
+
+  if (entryBusinessId) candidateIds.add(entryBusinessId);
+
+  const message = event.message;
+  if (message) {
+    const isEcho = Boolean(message.is_echo);
+    const businessId = isEcho ? event.sender?.id : event.recipient?.id;
+    if (businessId) candidateIds.add(businessId);
+
+    // Meta payloadlarida sender/recipient ba'zan kutilmagan tartibda kelishi mumkin.
+    // Shu sabab ehtiyot chorasi sifatida ikkinchi tomonni ham tekshiramiz.
+    const fallbackId = isEcho ? event.recipient?.id : event.sender?.id;
+    if (fallbackId) candidateIds.add(fallbackId);
+  } else {
+    if (event.sender?.id) candidateIds.add(event.sender.id);
+    if (event.recipient?.id) candidateIds.add(event.recipient.id);
+  }
+
+  for (const instagramAccountId of candidateIds) {
+    const account = await getConnectedAccountByInstagramId(instagramAccountId);
+    if (account) return account;
+  }
+
+  // ID'lar kelmagan yoki test payload bo'lgan holatda eski MVP fallback.
+  if (candidateIds.size === 0) {
+    return getConnectedAccount();
+  }
+
+  return null;
+}
+
 export async function processWebhookPayload(rawPayload: unknown): Promise<void> {
   const parsed = webhookPayloadSchema.safeParse(rawPayload);
   if (!parsed.success) {
@@ -176,14 +212,12 @@ async function processMessagingEvent(
     return;
   }
 
-  // Webhook entry.id — xabarni qabul qilgan haqiqiy biznes akkaunt IGSID'i. Avval shu
-  // orqali aniq akkauntni topamiz; topilmasa (masalan Dashboard test payloadida fake ID
-  // kelsa) yagona ulangan akkauntga qaytamiz — bitta-akkauntli MVP rejimi uchun.
-  const account =
-    (entryBusinessId ? await getConnectedAccountByInstagramId(entryBusinessId) : null) ??
-    (await getConnectedAccount());
+  // Akkauntni real webhook payload'dagi business/account ID orqali topamiz.
+  // Bu bir nechta akkaunt bilan ishlaganda xabarlarning noto'g'ri conversation'ga
+  // tushib qolish xavfini kamaytiradi.
+  const account = await resolveWebhookAccount(event, entryBusinessId);
   if (!account) {
-    console.warn('[webhook] Ulangan Instagram akkaunt yoq, xabar saqlanmadi');
+    console.warn('[webhook] Mos Instagram akkaunti topilmadi, xabar saqlanmadi');
     return;
   }
   const accessToken = getAccessToken(account);
