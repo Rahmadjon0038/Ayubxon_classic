@@ -19,7 +19,7 @@ import { useLocale } from '@/components/LocaleProvider';
 import { api, getErrorMessage } from '@/lib/api';
 import { contactDisplayName, formatRelativeTime } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
-import { ConversationListItem } from '@/lib/types';
+import { ConversationListItem, InstagramAccount } from '@/lib/types';
 
 type BoardBucketId = 'new' | 'solved' | 'pending' | 'rejected';
 
@@ -89,8 +89,17 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('');
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
+  const accountQuery = useQuery({
+    queryKey: ['instagram-account'],
+    queryFn: async () => {
+      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
+      return data.account;
+    },
+  });
+  const accountKey = accountQuery.data?.id ?? 'none';
+
   const conversationsQuery = useQuery({
-    queryKey: ['conversations'],
+    queryKey: ['conversations', accountKey],
     queryFn: async () => {
       const { data } = await api.get<{ conversations: ConversationListItem[] }>('/conversations');
       return data.conversations;
@@ -126,19 +135,19 @@ export default function LeadsPage() {
     },
     onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: ['conversations'] });
-      const previous = queryClient.getQueryData<ConversationListItem[]>(['conversations']);
-      queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+      const previous = queryClient.getQueryData<ConversationListItem[]>(['conversations', accountKey]);
+      queryClient.setQueryData<ConversationListItem[]>(['conversations', accountKey], (old) =>
         old?.map((item) => (item.id === id ? { ...item, ...patch } : item)),
       );
       return { previous };
     },
     onError: (_error, _vars, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['conversations'], context.previous);
+        queryClient.setQueryData(['conversations', accountKey], context.previous);
       }
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+      queryClient.setQueryData<ConversationListItem[]>(['conversations', accountKey], (old) =>
         old?.map((item) => (item.id === updated.id ? updated : item)),
       );
     },

@@ -10,7 +10,13 @@ import MessageBubble from './MessageBubble';
 import { api, getErrorMessage } from '@/lib/api';
 import { contactDisplayName } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
-import { ConversationListItem, Message, MessageUpdatedEvent, NewMessageEvent } from '@/lib/types';
+import {
+  ConversationListItem,
+  InstagramAccount,
+  Message,
+  MessageUpdatedEvent,
+  NewMessageEvent,
+} from '@/lib/types';
 
 interface Props {
   conversation: ConversationListItem;
@@ -30,8 +36,17 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const accountQuery = useQuery({
+    queryKey: ['instagram-account'],
+    queryFn: async () => {
+      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
+      return data.account;
+    },
+  });
+  const accountKey = accountQuery.data?.id ?? 'none';
+
   const messagesQuery = useQuery({
-    queryKey: ['messages', conversation.id],
+    queryKey: ['messages', accountKey, conversation.id],
     queryFn: async () => {
       const { data } = await api.get<{ messages: Message[] }>(
         `/conversations/${conversation.id}/messages`,
@@ -65,7 +80,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
   }, [text, resizeTextarea]);
 
   const appendMessage = (message: Message) => {
-    queryClient.setQueryData<Message[]>(['messages', conversation.id], (old) => {
+    queryClient.setQueryData<Message[]>(['messages', accountKey, conversation.id], (old) => {
       if (!old) return [message];
       if (old.some((m) => m.id === message.id)) return old;
       return [...old, message];
@@ -83,10 +98,10 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
       appendMessage(event.message);
       if (event.message.senderType === 'CONTACT') {
         api.post(`/conversations/${conversation.id}/read`).catch(() => {});
-        queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+        queryClient.setQueryData<ConversationListItem[]>(['conversations', accountKey], (old) =>
           old?.map((c) => (c.id === conversation.id ? { ...c, unreadCount: 0 } : c)),
         );
-        queryClient.setQueryData<ConversationListItem>(['conversation', conversation.id], (old) =>
+        queryClient.setQueryData<ConversationListItem>(['conversation', accountKey, conversation.id], (old) =>
           old ? { ...old, unreadCount: 0 } : old,
         );
       }
@@ -94,7 +109,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
 
     const onMessageUpdated = (event: MessageUpdatedEvent) => {
       if (event.conversationId !== conversation.id) return;
-      queryClient.setQueryData<Message[]>(['messages', conversation.id], (old) =>
+      queryClient.setQueryData<Message[]>(['messages', accountKey, conversation.id], (old) =>
         old?.map((m) => (m.id === event.message.id ? event.message : m)),
       );
     };
@@ -162,10 +177,10 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
       return data.conversation;
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+      queryClient.setQueryData<ConversationListItem[]>(['conversations', accountKey], (old) =>
         old?.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
       );
-      queryClient.setQueryData<ConversationListItem>(['conversation', conversation.id], (old) =>
+      queryClient.setQueryData<ConversationListItem>(['conversation', accountKey, conversation.id], (old) =>
         old ? { ...old, ...updated } : old,
       );
     },
@@ -178,7 +193,9 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['conversations'] }),
-        queryClient.removeQueries({ queryKey: ['messages', conversation.id] }),
+        queryClient.removeQueries({ queryKey: ['conversation', accountKey, conversation.id] }),
+        queryClient.removeQueries({ queryKey: ['messages', accountKey, conversation.id] }),
+        queryClient.removeQueries({ queryKey: ['messages'] }),
       ]);
       onDeleted?.();
     },

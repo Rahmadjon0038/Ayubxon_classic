@@ -54,6 +54,20 @@ const conversationSelect = {
   messages: { orderBy: { sentAt: 'desc' }, take: 1 },
 } as const;
 
+async function getCurrentConversationOrThrow(conversationId: string) {
+  const account = await getConnectedAccount();
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { contact: true },
+  });
+
+  if (!conversation || !account || conversation.instagramAccountId !== account.id) {
+    throw new AppError('Suhbat topilmadi', 404);
+  }
+
+  return { account, conversation };
+}
+
 // Instagram Send API muvaffaqiyatli javob qaytargach, xabarni SENT deb belgilaydi.
 // Meta bizga yuborilgan xabarni darhol "echo" webhook sifatida ham qaytaradi — u ayrim
 // hollarda shu instagramMessageId bilan yozuvni bizdan oldin yaratib ulguradi (P2002).
@@ -249,6 +263,15 @@ router.delete('/:id', async (req, res, next) => {
       .map(getLocalUploadPath)
       .filter((value): value is string => Boolean(value));
 
+    // Chat o'chirilganda bu contact uchun pin ko'rinmasligi kerak.
+    // Agar contact boshqa suhbatlarda ham ishlatilsa, kamida telefon raqamini tozalaymiz.
+    await prisma.contact.update({
+      where: { id: conversation.contact.id },
+      data: {
+        phoneNumber: null,
+      },
+    });
+
     await prisma.conversation.delete({
       where: { id: conversation.id },
     });
@@ -301,16 +324,7 @@ router.post('/:id/messages', validateBody(sendMessageSchema), async (req, res, n
   try {
     const { text } = req.body as z.infer<typeof sendMessageSchema>;
 
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: req.params.id },
-      include: { contact: true },
-    });
-    if (!conversation) throw new AppError('Suhbat topilmadi', 404);
-
-    const account = await getConnectedAccount();
-    if (!account) {
-      throw new AppError('Instagram akkaunt ulanmagan. Avval akkauntni ulang', 400);
-    }
+    const { account, conversation } = await getCurrentConversationOrThrow(req.params.id);
 
     // Admin shu suhbatga qo'lda yozayotgan bo'lsa, navbatda kutayotgan (hali yuborilmagan)
     // AI javobi bekor qilinadi — ikkalasi ustma-ust kelib ketmasligi uchun.
@@ -354,14 +368,7 @@ router.post('/:id/attachments', upload.single('file'), async (req, res, next) =>
     const file = req.file;
     if (!file) throw new AppError('Fayl yuborilmadi', 400);
 
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: req.params.id },
-      include: { contact: true },
-    });
-    if (!conversation) throw new AppError('Suhbat topilmadi', 404);
-
-    const account = await getConnectedAccount();
-    if (!account) throw new AppError('Instagram akkaunt ulanmagan. Avval akkauntni ulang', 400);
+    const { account, conversation } = await getCurrentConversationOrThrow(req.params.id);
 
     // Meta faylni shu URL orqali yuklab oladi — BACKEND_URL internetdan ochiq bolishi shart.
     if (!env.BACKEND_URL) {
@@ -428,6 +435,9 @@ router.post('/:id/messages/:messageId/react', validateBody(reactSchema), async (
 
     const account = await getConnectedAccount();
     if (!account) throw new AppError('Instagram akkaunt ulanmagan', 400);
+    if (message.conversation.instagramAccountId !== account.id) {
+      throw new AppError('Suhbat topilmadi', 404);
+    }
 
     await sendReaction(
       getAccessToken(account),
@@ -449,11 +459,7 @@ router.post('/:id/messages/:messageId/react', validateBody(reactSchema), async (
 
 router.post('/:id/read', async (req, res, next) => {
   try {
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: req.params.id },
-      select: { id: true },
-    });
-    if (!conversation) throw new AppError('Suhbat topilmadi', 404);
+    const { conversation } = await getCurrentConversationOrThrow(req.params.id);
 
     const updated = await prisma.conversation.update({
       where: { id: conversation.id },

@@ -8,7 +8,7 @@ import { Loader2, MessageCircleMore } from 'lucide-react';
 import ChatWindow from '@/components/ChatWindow';
 import { useLocale } from '@/components/LocaleProvider';
 import { api, getErrorMessage } from '@/lib/api';
-import { ConversationListItem } from '@/lib/types';
+import { ConversationListItem, InstagramAccount } from '@/lib/types';
 
 export default function LeadDetailPage() {
   const router = useRouter();
@@ -17,8 +17,17 @@ export default function LeadDetailPage() {
   const queryClient = useQueryClient();
   const conversationId = params.id;
 
+  const accountQuery = useQuery({
+    queryKey: ['instagram-account'],
+    queryFn: async () => {
+      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
+      return data.account;
+    },
+  });
+  const accountKey = accountQuery.data?.id ?? 'none';
+
   const conversationQuery = useQuery({
-    queryKey: ['conversation', conversationId],
+    queryKey: ['conversation', accountKey, conversationId],
     queryFn: async () => {
       const { data } = await api.get<{ conversation: ConversationListItem }>(`/conversations/${conversationId}`);
       return data.conversation;
@@ -32,13 +41,13 @@ export default function LeadDetailPage() {
   useEffect(() => {
     if (!conversation || conversation.unreadCount === 0) return;
     api.post(`/conversations/${conversation.id}/read`).catch(() => {});
-    queryClient.setQueryData<ConversationListItem>(['conversation', conversationId], (old) =>
+    queryClient.setQueryData<ConversationListItem>(['conversation', accountKey, conversationId], (old) =>
       old ? { ...old, unreadCount: 0 } : old,
     );
-    queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+    queryClient.setQueryData<ConversationListItem[]>(['conversations', accountKey], (old) =>
       old?.map((c) => (c.id === conversation.id ? { ...c, unreadCount: 0 } : c)),
     );
-  }, [conversation, conversationId, queryClient]);
+  }, [accountKey, conversation, conversationId, queryClient]);
 
   return (
     <div className="h-full overflow-hidden bg-gray-50 dark:bg-gray-950">
@@ -74,6 +83,9 @@ export default function LeadDetailPage() {
           backHref="/leads"
           onDeleted={() => {
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            queryClient.removeQueries({ queryKey: ['conversation', accountKey, conversationId] });
+            queryClient.removeQueries({ queryKey: ['messages', conversationId] });
+            queryClient.removeQueries({ queryKey: ['messages'] });
             router.push('/leads');
           }}
         />

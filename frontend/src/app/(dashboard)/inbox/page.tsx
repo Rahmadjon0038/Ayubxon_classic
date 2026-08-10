@@ -34,7 +34,7 @@ export default function InboxPage() {
   const accountKey = accountQuery.data?.id ?? 'none';
 
   const conversationsQuery = useQuery({
-    queryKey: ['conversations'],
+    queryKey: ['conversations', accountKey],
     queryFn: async () => {
       const { data } = await api.get<{ conversations: ConversationListItem[] }>('/conversations');
       return data.conversations;
@@ -64,8 +64,8 @@ export default function InboxPage() {
         api
           .post(`/conversations/${event.conversationId}/read`)
           .catch(() => {})
-          .finally(() => queryClient.invalidateQueries({ queryKey: ['conversations'] }));
-        queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+        .finally(() => queryClient.invalidateQueries({ queryKey: ['conversations'] }));
+        queryClient.setQueryData<ConversationListItem[]>(['conversations', accountKey], (old) =>
           old?.map((c) =>
             c.id === event.conversationId
               ? { ...c, unreadCount: 0, lastMessage: event.message, lastMessageAt: event.message.sentAt }
@@ -102,7 +102,7 @@ export default function InboxPage() {
   const handleSelect = (id: string) => {
     setSelectedId(id);
     api.post(`/conversations/${id}/read`).catch(() => {});
-    queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+    queryClient.setQueryData<ConversationListItem[]>(['conversations', accountKey], (old) =>
       old?.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)),
     );
   };
