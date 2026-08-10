@@ -108,12 +108,11 @@ async function resolveWebhookAccount(
     if (account) return account;
   }
 
-  // ID'lar kelmagan yoki test payload bo'lgan holatda eski MVP fallback.
-  if (candidateIds.size === 0) {
-    return getConnectedAccount();
-  }
-
-  return null;
+  // MVP rejimida webhook ID'ni DB yozuvi bilan aniq moslashtira olmasak,
+  // bitta faol ulangan akkauntga qaytamiz. Bu connect paytida Meta qaytaradigan
+  // profil ID webhook entry.id bilan farqlanib qolgan holatlarda ham xabarlarni
+  // saqlab qoladi.
+  return getConnectedAccount();
 }
 
 export async function processWebhookPayload(rawPayload: unknown): Promise<void> {
