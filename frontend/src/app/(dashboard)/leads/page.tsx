@@ -37,13 +37,13 @@ const bucketConfig: Record<
     accentClass: 'bg-violet-500',
   },
   solved: {
-    title: "Hal bo'lganlar",
+    title: 'Qiziqish bildirganlar',
     badgeClass: 'bg-gray-100 text-gray-700',
     titleClass: 'text-emerald-600',
     accentClass: 'bg-emerald-500',
   },
   pending: {
-    title: "Hal bo'lmaganlar",
+    title: 'Qiziqish bildirmaganlar',
     badgeClass: 'bg-gray-100 text-gray-700',
     titleClass: 'text-amber-600',
     accentClass: 'bg-amber-500',
@@ -247,8 +247,8 @@ export default function LeadsPage() {
           <div className="flex flex-wrap items-center gap-1.5">
             <StatChip label="Jami" value={stats.total} icon={<Users size={12} />} />
             <StatChip label="Yangi" value={stats.newCount} icon={<Sparkles size={12} />} accent="text-violet-600" />
-            <StatChip label="Hal bo'lgan" value={stats.solvedCount} icon={<CheckCircle2 size={12} />} accent="text-emerald-600" />
-            <StatChip label="Hal bo'lmagan" value={stats.pendingCount} icon={<CircleDashed size={12} />} accent="text-amber-600" />
+            <StatChip label="Qiziqish bildirgan" value={stats.solvedCount} icon={<CheckCircle2 size={12} />} accent="text-emerald-600" />
+            <StatChip label="Qiziqish bildirmagan" value={stats.pendingCount} icon={<CircleDashed size={12} />} accent="text-amber-600" />
             <StatChip label="Rad etgan" value={stats.rejectedCount} icon={<XCircle size={12} />} accent="text-rose-600" />
           </div>
         </div>
