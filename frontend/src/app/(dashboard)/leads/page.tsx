@@ -7,6 +7,7 @@ import {
   CircleDashed,
   Loader2,
   MessageCircleMore,
+  Phone,
   Search,
   Sparkles,
   Users,
@@ -153,6 +154,7 @@ export default function LeadsPage() {
           contactDisplayName(item.contact),
           item.contact.username ?? '',
           item.contact.name ?? '',
+          item.contact.phoneNumber ?? '',
           item.lastMessage?.text ?? '',
           item.lastMessage?.attachmentType ?? '',
           item.leadTemperature,
@@ -329,6 +331,13 @@ export default function LeadsPage() {
                               <p className="mt-1 max-h-8 overflow-hidden text-xs text-gray-600">
                                 {lastMessagePreview(conversation)}
                               </p>
+
+                              {conversation.contact.phoneNumber && (
+                                <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                                  <Phone size={11} className="shrink-0" />
+                                  {conversation.contact.phoneNumber}
+                                </p>
+                              )}
 
                               <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-gray-400">
                                 <span>{formatRelativeTime(conversation.lastMessageAt)}</span>

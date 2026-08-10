@@ -529,6 +529,17 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
     const analysisHistory = await getConversationHistory(conversationId, 20);
     const analysis = await analyzeConversation(analysisHistory);
 
+    // AI suhbatdan telefon raqamini aniqlagan bo'lsa, kontakt yozuviga saqlaymiz — shu orqali
+    // lidlar ro'yxatida va chat ichida "pin" sifatida ko'rsatiladi.
+    if (analysis?.phoneNumber) {
+      await prisma.contact
+        .update({
+          where: { instagramScopedId: contactIgsid },
+          data: { phoneNumber: analysis.phoneNumber },
+        })
+        .catch(() => {});
+    }
+
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversationId },
       data: {
@@ -559,7 +570,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
     console.log(
       `[webhook] AI javobi yuborildi (conversation=${conversationId})` +
         (analysis
-          ? ` — tahlil: temperatura=${analysis.leadTemperature}, gaplashish=${analysis.talkStatus}, kurs=${analysis.courseDecision}, handover=${analysis.handoverRequested}`
+          ? ` — tahlil: temperatura=${analysis.leadTemperature}, gaplashish=${analysis.talkStatus}, kurs=${analysis.courseDecision}, handover=${analysis.handoverRequested}, telefon=${analysis.phoneNumber ?? '-'}`
           : ' — tahlil otkazib yuborildi'),
     );
   } catch (err) {

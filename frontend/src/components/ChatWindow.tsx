@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Paperclip, SendHorizontal, Trash2, UserRound } from 'lucide-react';
+import { ArrowLeft, Loader2, Paperclip, Phone, Pin, SendHorizontal, Trash2, UserRound } from 'lucide-react';
 import Avatar from './Avatar';
 import MessageBubble from './MessageBubble';
 import { api, getErrorMessage } from '@/lib/api';
@@ -259,6 +259,19 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
           )}
         </button>
       </div>
+
+      {/* Telegram'dagi "pin xabar" kabi — mijoz qoldirgan telefon raqami doim tepada, ko'zga
+          tashlanib turadi (chatni pastga skroll qilib qidirish shart emas). */}
+      {conversation.contact.phoneNumber && (
+        <a
+          href={`tel:${conversation.contact.phoneNumber}`}
+          className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 sm:px-4"
+        >
+          <Pin size={13} className="shrink-0" />
+          <Phone size={13} className="shrink-0" />
+          <span className="truncate">{conversation.contact.phoneNumber}</span>
+        </a>
+      )}
 
       {conversation.aiPaused && (
         <div className="flex flex-col items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">

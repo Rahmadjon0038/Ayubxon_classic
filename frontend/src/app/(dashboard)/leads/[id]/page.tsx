@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, MessageCircleMore } from 'lucide-react';
 import ChatWindow from '@/components/ChatWindow';
-import LeadStatusControls from '@/components/LeadStatusControls';
 import { api, getErrorMessage } from '@/lib/api';
 import { ConversationListItem } from '@/lib/types';
 
@@ -39,34 +38,8 @@ export default function LeadDetailPage() {
     );
   }, [conversation, conversationId, queryClient]);
 
-  // Kanban taxtasidagi drag-and-drop teginish (touch) ekranlarda ishonchli ishlamaydi, shuning
-  // uchun lead statusini shu yerdan ham (drag qilmasdan) o'zgartirish imkoni beriladi.
-  const statusMutation = useMutation({
-    mutationFn: async ({
-      field,
-      value,
-    }: {
-      field: 'leadTemperature' | 'talkStatus' | 'courseDecision' | 'status';
-      value: string;
-    }) => {
-      const { data } = await api.patch<{ conversation: ConversationListItem }>(
-        `/conversations/${conversationId}/status`,
-        { [field]: value },
-      );
-      return data.conversation;
-    },
-    onSuccess: (updated) => {
-      queryClient.setQueryData<ConversationListItem>(['conversation', conversationId], (old) =>
-        old ? { ...old, ...updated } : old,
-      );
-      queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
-        old?.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
-      );
-    },
-  });
-
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-gray-50">
+    <div className="h-full overflow-hidden bg-gray-50">
       {conversationQuery.isLoading && (
         <div className="flex h-full items-center justify-center text-gray-400">
           <Loader2 className="mr-2 animate-spin" size={18} />
@@ -94,26 +67,14 @@ export default function LeadDetailPage() {
       )}
 
       {conversation && (
-        <>
-          <div className="shrink-0 overflow-x-auto border-b border-gray-200 bg-white px-3 py-2.5 sm:px-5">
-            <LeadStatusControls
-              conversation={conversation}
-              disabled={statusMutation.isPending}
-              compact
-              onChange={(field, value) => statusMutation.mutate({ field, value })}
-            />
-          </div>
-          <div className="min-h-0 flex-1">
-            <ChatWindow
-              conversation={conversation}
-              backHref="/leads"
-              onDeleted={() => {
-                queryClient.invalidateQueries({ queryKey: ['conversations'] });
-                router.push('/leads');
-              }}
-            />
-          </div>
-        </>
+        <ChatWindow
+          conversation={conversation}
+          backHref="/leads"
+          onDeleted={() => {
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            router.push('/leads');
+          }}
+        />
       )}
     </div>
   );

@@ -58,6 +58,9 @@ model Contact {
   username          String?
   name              String?
   profilePictureUrl String?
+  // Suhbat davomida AI (yoki admin) tomonidan aniqlangan aloqa raqami — ro'yxatdan
+  // o'tish/kursga yozilish uchun mijoz qoldirgan telefon.
+  phoneNumber       String?
   lastMessageAt     DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

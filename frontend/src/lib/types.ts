@@ -36,6 +36,8 @@ export interface Contact {
   username: string | null;
   name: string | null;
   profilePictureUrl: string | null;
+  // AI suhbatdan aniqlab olgan aloqa raqami (mijoz o'zi qoldirgan bo'lsa).
+  phoneNumber: string | null;
   lastMessageAt: string | null;
 }
 

@@ -212,6 +212,7 @@ export interface ConversationAnalysis {
   talkStatus: 'TALKED' | 'NOT_TALKED';
   courseDecision: 'WILL_WRITE' | 'WILL_NOT_WRITE';
   handoverRequested: boolean;
+  phoneNumber: string | null;
 }
 
 const analysisSchema = z.object({
@@ -219,6 +220,7 @@ const analysisSchema = z.object({
   talkStatus: z.enum(['TALKED', 'NOT_TALKED']),
   courseDecision: z.enum(['WILL_WRITE', 'WILL_NOT_WRITE']),
   handoverRequested: z.boolean(),
+  phoneNumber: z.string().nullable(),
 });
 
 // Tezkor, OpenAI'siz aniqlash: mijozning ENG OXIRGI xabarida operator/inson so'ralganini
@@ -249,11 +251,11 @@ export function pickHandoverAcknowledgement(): string {
 const ANALYSIS_SYSTEM_PROMPT = `
 Siz "InboxCRM" tizimi uchun ishlaydigan suhbat tahlilchisisiz. Sizga Instagram DM orqali
 o'quv markazi va mijoz o'rtasidagi suhbat tarixi beriladi ("Mijoz:" — kontakt, "Admin:" — markaz
-tomonidan yozilgan javob, inson yoki AI farqi yo'q). Vazifangiz — shu suhbatni to'rtta mezon
+tomonidan yozilgan javob, inson yoki AI farqi yo'q). Vazifangiz — shu suhbatni beshta mezon
 bo'yicha tasniflab, FAQAT quyidagi JSON formatida javob berish (boshqa hech qanday matn, izoh
 yoki markdown qo'shmang):
 
-{"leadTemperature": "HOT" | "WARM" | "COLD", "talkStatus": "TALKED" | "NOT_TALKED", "courseDecision": "WILL_WRITE" | "WILL_NOT_WRITE", "handoverRequested": true | false}
+{"leadTemperature": "HOT" | "WARM" | "COLD", "talkStatus": "TALKED" | "NOT_TALKED", "courseDecision": "WILL_WRITE" | "WILL_NOT_WRITE", "handoverRequested": true | false, "phoneNumber": string | null}
 
 Mezonlar:
 
@@ -286,9 +288,17 @@ Mezonlar:
    - false: bunday aniq so'rov bo'lmasa — mijoz AI javobidan norozi bo'lsa yoki tushunmagan
      bo'lsa ham, agar ANIQ inson/operator so'ramagan bo'lsa, false qaytaring.
 
+5. phoneNumber (mijozning aloqa telefon raqami):
+   - Agar mijoz suhbat davomida O'ZINING telefon raqamini yozgan bo'lsa (masalan ro'yxatdan
+     o'tish/kursga yozilish uchun qoldirgan bo'lsa), shu raqamni xalqaro formatga yaqinlashtirib
+     ("+998901234567" kabi, bo'sh joy/tire olib tashlab) qaytaring.
+   - Agar suhbatda bir nechta raqam bo'lsa, ENG OXIRGI marta mijoz o'zi yozgan raqamni oling.
+   - Agar mijoz raqam yozmagan bo'lsa, yoki gap boshqa birovning raqami haqida bo'lsa (masalan
+     "do'stimning raqami"), null qaytaring — taxmin qilib to'qimang.
+
 Faqat suhbat tarixidagi haqiqiy dalillarga tayaning, taxmin qilib to'qib chiqarmang. Suhbat juda
 qisqa yoki noaniq bo'lsa, xavfsiz standart qiymatlardan foydalaning: leadTemperature="WARM",
-talkStatus mos holatga qarab, courseDecision="WILL_WRITE", handoverRequested=false.
+talkStatus mos holatga qarab, courseDecision="WILL_WRITE", handoverRequested=false, phoneNumber=null.
 `.trim();
 
 function formatHistoryForAnalysis(history: ChatTurn[]): string {
