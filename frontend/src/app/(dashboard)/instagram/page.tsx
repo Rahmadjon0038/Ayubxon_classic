@@ -3,11 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import Avatar from '@/components/Avatar';
+import { useLocale } from '@/components/LocaleProvider';
 import { api, getErrorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { InstagramAccount } from '@/lib/types';
 
 export default function InstagramPage() {
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     instagramAccountId: '',
@@ -60,28 +62,26 @@ export default function InstagramPage() {
 
   const account = accountQuery.data;
   const inputClass =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
+    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-500/20';
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-lg font-semibold">Instagram akkaunt</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Professional (Business) akkauntni ulang va DM xabarlarini shu platformada boshqaring.
-          </p>
+          <h1 className="text-lg font-semibold dark:text-gray-100">{t('instagram.title')}</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('instagram.subtitle')}</p>
         </div>
 
         {/* Akkaunt holati */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">Akkaunt holati</h2>
+        <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">{t('instagram.accountStatus')}</h2>
 
-          {accountQuery.isLoading && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
+          {accountQuery.isLoading && <p className="text-sm text-gray-500 dark:text-gray-500">{t('common.loading')}</p>}
 
           {!accountQuery.isLoading && !account && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />
-              Akkaunt hali ulanmagan
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span className="h-2.5 w-2.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+              {t('instagram.notConnected')}
             </div>
           )}
 
@@ -94,14 +94,14 @@ export default function InstagramPage() {
                   size={56}
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-medium">@{account.username}</p>
-                  {account.name && <p className="truncate text-sm text-gray-500">{account.name}</p>}
+                  <p className="truncate font-medium dark:text-gray-100">@{account.username}</p>
+                  {account.name && <p className="truncate text-sm text-gray-600 dark:text-gray-400">{account.name}</p>}
                 </div>
                 <span
                   className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
                     account.isConnected
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-gray-100 text-gray-500'
+                      ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                   }`}
                 >
                   <span
@@ -109,19 +109,19 @@ export default function InstagramPage() {
                       account.isConnected ? 'bg-green-500' : 'bg-gray-400'
                     }`}
                   />
-                  {account.isConnected ? 'Ulangan' : 'Uzilgan'}
+                  {account.isConnected ? t('instagram.connected') : t('instagram.disconnected')}
                 </span>
               </div>
 
               <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
-                <dt className="text-gray-500">Account ID</dt>
-                <dd className="break-all font-mono text-xs">{account.instagramAccountId}</dd>
-                <dt className="text-gray-500">Akkaunt turi</dt>
-                <dd>{account.accountType || '—'}</dd>
-                <dt className="text-gray-500">Token</dt>
-                <dd>{account.hasToken ? 'Saqlangan (shifrlangan)' : 'Mavjud emas'}</dd>
-                <dt className="text-gray-500">Token muddati</dt>
-                <dd>
+                <dt className="text-gray-600 dark:text-gray-400">{t('instagram.accountId')}</dt>
+                <dd className="break-all font-mono text-xs dark:text-gray-200">{account.instagramAccountId}</dd>
+                <dt className="text-gray-600 dark:text-gray-400">{t('instagram.accountType')}</dt>
+                <dd className="dark:text-gray-200">{account.accountType || '—'}</dd>
+                <dt className="text-gray-600 dark:text-gray-400">{t('instagram.token')}</dt>
+                <dd className="dark:text-gray-200">{account.hasToken ? t('instagram.tokenStored') : t('instagram.tokenMissing')}</dd>
+                <dt className="text-gray-600 dark:text-gray-400">{t('instagram.tokenExpiry')}</dt>
+                <dd className="dark:text-gray-200">
                   {account.tokenExpiresAt ? `~${formatDateTime(account.tokenExpiresAt)}` : '—'}
                 </dd>
               </dl>
@@ -130,28 +130,28 @@ export default function InstagramPage() {
                 <button
                   onClick={() => testMutation.mutate()}
                   disabled={testMutation.isPending || !account.hasToken}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium transition hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
-                  {testMutation.isPending ? 'Tekshirilmoqda...' : 'Ulanishni tekshirish'}
+                  {testMutation.isPending ? t('instagram.testing') : t('instagram.testConnection')}
                 </button>
                 {account.isConnected && (
                   <button
                     onClick={() => disconnectMutation.mutate()}
                     disabled={disconnectMutation.isPending}
-                    className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                    className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
                   >
-                    Uzish
+                    {t('instagram.disconnect')}
                   </button>
                 )}
               </div>
 
               {testMutation.isSuccess && (
-                <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-                  Ulanish ishlayapti ✓
+                <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
+                  {t('instagram.testSuccess')}
                 </p>
               )}
               {testMutation.isError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
                   {getErrorMessage(testMutation.error)}
                 </p>
               )}
@@ -162,41 +162,38 @@ export default function InstagramPage() {
         {/* Ulash formasi */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5"
+          className="space-y-4 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900"
         >
           <div>
-            <h2 className="text-sm font-semibold text-gray-700">Akkauntni ulash</h2>
-            <p className="mt-1 text-xs text-gray-500">
-              Test bosqichida access token Meta Dashboard orqali qolda olinadi. Token backendda
-              shifrlangan holda saqlanadi va brauzerga qaytarilmaydi.
-            </p>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('instagram.connectFormTitle')}</h2>
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{t('instagram.connectFormDesc')}</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Instagram Account ID</label>
+            <label className="mb-1 block text-sm font-medium dark:text-gray-200">{t('instagram.instagramAccountId')}</label>
             <input
               type="text"
               value={form.instagramAccountId}
               onChange={(e) => setForm({ ...form, instagramAccountId: e.target.value })}
               className={inputClass}
-              placeholder="1784xxxxxxxxxxxxx (ixtiyoriy — API orqali aniqlanadi)"
+              placeholder={t('instagram.instagramAccountIdPlaceholder')}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Instagram Username</label>
+            <label className="mb-1 block text-sm font-medium dark:text-gray-200">{t('instagram.instagramUsername')}</label>
             <input
               type="text"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               className={inputClass}
-              placeholder="username (ixtiyoriy)"
+              placeholder={t('instagram.instagramUsernamePlaceholder')}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">
-              Access Token <span className="text-red-500">*</span>
+            <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+              {t('instagram.accessToken')} <span className="text-red-500">*</span>
             </label>
             <input
               type="password"
@@ -210,8 +207,8 @@ export default function InstagramPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">
-              Verify Token <span className="text-red-500">*</span>
+            <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+              {t('instagram.verifyToken')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -219,18 +216,18 @@ export default function InstagramPage() {
               value={form.verifyToken}
               onChange={(e) => setForm({ ...form, verifyToken: e.target.value })}
               className={inputClass}
-              placeholder="Meta Dashboardda kiritiladigan webhook verify token"
+              placeholder={t('instagram.verifyTokenPlaceholder')}
             />
           </div>
 
           {connectMutation.isError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
               {getErrorMessage(connectMutation.error)}
             </p>
           )}
           {connectMutation.isSuccess && (
-            <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-              Akkaunt muvaffaqiyatli ulandi ✓
+            <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
+              {t('instagram.connectSuccess')}
             </p>
           )}
 
@@ -239,7 +236,7 @@ export default function InstagramPage() {
             disabled={connectMutation.isPending}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
-            {connectMutation.isPending ? 'Tekshirilmoqda...' : 'Tekshirish va ulash'}
+            {connectMutation.isPending ? t('instagram.testing') : t('instagram.connectSubmit')}
           </button>
         </form>
       </div>

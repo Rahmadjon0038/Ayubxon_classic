@@ -27,9 +27,9 @@ const sections = [
 // Meta App Review uchun ochiq sahifa — login talab qilinmaydi.
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12 text-gray-800">
-      <h1 className="text-3xl font-bold">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-gray-500">Effective date: August 10, 2026</p>
+    <main className="mx-auto max-w-3xl px-6 py-12 text-gray-800 dark:text-gray-200">
+      <h1 className="text-3xl font-bold dark:text-gray-50">Privacy Policy</h1>
+      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Effective date: August 10, 2026</p>
 
       <p className="mt-6 leading-relaxed">
         Message Assistant (&quot;we&quot;, &quot;our&quot;, &quot;the app&quot;) is a customer
@@ -39,12 +39,12 @@ export default function PrivacyPage() {
         information we collect, how we use and protect it, and the choices you have.
       </p>
 
-      <nav className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
-        <p className="mb-2 font-semibold text-gray-600">On this page</p>
+      <nav className="mt-8 rounded-lg border border-gray-300 bg-gray-50 p-4 text-sm dark:border-gray-800 dark:bg-gray-900">
+        <p className="mb-2 font-semibold text-gray-600 dark:text-gray-300">On this page</p>
         <ol className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
           {sections.map((s) => (
             <li key={s.id}>
-              <a className="text-blue-600 underline-offset-2 hover:underline" href={`#${s.id}`}>
+              <a className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400" href={`#${s.id}`}>
                 {s.title}
               </a>
             </li>
@@ -146,7 +146,7 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-semibold">9. Data Deletion</h2>
           <p className="mt-2">
             You may request deletion of your data at any time by emailing{' '}
-            <a className="text-blue-600 underline" href={`mailto:${CONTACT_EMAIL}`}>
+            <a className="text-blue-600 underline dark:text-blue-400" href={`mailto:${CONTACT_EMAIL}`}>
               {CONTACT_EMAIL}
             </a>{' '}
             from the email address associated with your account. Upon a verified request, we will
@@ -203,7 +203,7 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-semibold">14. Contact</h2>
           <p className="mt-2">
             Questions about this Policy, or requests regarding your data, can be sent to{' '}
-            <a className="text-blue-600 underline" href={`mailto:${CONTACT_EMAIL}`}>
+            <a className="text-blue-600 underline dark:text-blue-400" href={`mailto:${CONTACT_EMAIL}`}>
               {CONTACT_EMAIL}
             </a>
             .

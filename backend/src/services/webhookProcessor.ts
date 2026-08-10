@@ -346,9 +346,10 @@ const pendingAiTimers = new Map<string, NodeJS.Timeout>();
 const HUMAN_LIKE_DELAY_MIN_MS = 4000;
 const HUMAN_LIKE_DELAY_MAX_MS = 5500;
 
-// Operator so'ralgach, agar admin javob yozmasa, AI 1 soatdan keyin shu suhbatda avtomatik
-// qayta yonadi — mijoz butunlay javobsiz qolib ketmasligi uchun.
-const AUTO_RESUME_AFTER_MS = 60 * 60 * 1000;
+// Operator so'ralgach, jonli operatorga javob berish uchun qisqa oyna beriladi (7 daqiqa).
+// Shu vaqt ichida admin qo'lda javob yozmasa, AI shu suhbatda avtomatik qayta yonadi — mijoz
+// uzoq vaqt javobsiz qolib ketmasligi uchun.
+const AUTO_RESUME_AFTER_MS = 7 * 60 * 1000;
 
 // Admin qo'lda xabar yozganda (routes/conversations.ts) yoki suhbatni qo'lda pauza qilganda,
 // o'sha paytda kutilayotgan (hali yuborilmagan) AI javobini bekor qilish uchun tashqariga ochiladi.

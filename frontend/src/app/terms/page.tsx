@@ -29,9 +29,9 @@ const sections = [
 // Meta App Review uchun ochiq sahifa — login talab qilinmaydi.
 export default function TermsPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12 text-gray-800">
-      <h1 className="text-3xl font-bold">Terms of Service</h1>
-      <p className="mt-2 text-sm text-gray-500">Effective date: August 10, 2026</p>
+    <main className="mx-auto max-w-3xl px-6 py-12 text-gray-800 dark:text-gray-200">
+      <h1 className="text-3xl font-bold dark:text-gray-50">Terms of Service</h1>
+      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Effective date: August 10, 2026</p>
 
       <p className="mt-6 leading-relaxed">
         These Terms of Service (&quot;Terms&quot;) govern your access to and use of Message
@@ -43,12 +43,12 @@ export default function TermsPage() {
         agree to be bound by these Terms. If you do not agree, do not use the Service.
       </p>
 
-      <nav className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
-        <p className="mb-2 font-semibold text-gray-600">On this page</p>
+      <nav className="mt-8 rounded-lg border border-gray-300 bg-gray-50 p-4 text-sm dark:border-gray-800 dark:bg-gray-900">
+        <p className="mb-2 font-semibold text-gray-600 dark:text-gray-300">On this page</p>
         <ol className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
           {sections.map((s) => (
             <li key={s.id}>
-              <a className="text-blue-600 underline-offset-2 hover:underline" href={`#${s.id}`}>
+              <a className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400" href={`#${s.id}`}>
                 {s.title}
               </a>
             </li>
@@ -76,7 +76,7 @@ export default function TermsPage() {
             to use the Service. You are responsible for maintaining the confidentiality of your
             login credentials and for all activity that occurs under your account. Notify us
             immediately at{' '}
-            <a className="text-blue-600 underline" href={`mailto:${CONTACT_EMAIL}`}>
+            <a className="text-blue-600 underline dark:text-blue-400" href={`mailto:${CONTACT_EMAIL}`}>
               {CONTACT_EMAIL}
             </a>{' '}
             if you suspect unauthorized use of your account.
@@ -228,7 +228,7 @@ export default function TermsPage() {
           <h2 className="text-xl font-semibold">16. Contact</h2>
           <p className="mt-2">
             Questions about these Terms can be sent to{' '}
-            <a className="text-blue-600 underline" href={`mailto:${CONTACT_EMAIL}`}>
+            <a className="text-blue-600 underline dark:text-blue-400" href={`mailto:${CONTACT_EMAIL}`}>
               {CONTACT_EMAIL}
             </a>
             .

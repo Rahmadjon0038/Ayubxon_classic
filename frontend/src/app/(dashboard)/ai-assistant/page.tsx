@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useState } from 'react';
+import { useLocale } from '@/components/LocaleProvider';
 import { api, getErrorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { AcademySettings } from '@/lib/types';
@@ -28,6 +29,7 @@ const emptyForm: FormState = {
 };
 
 export default function AiAssistantPage() {
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -100,36 +102,29 @@ export default function AiAssistantPage() {
   };
 
   const inputClass =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
+    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-500/20';
   const settings = settingsQuery.data?.settings;
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-lg font-semibold">AI Assistent</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Instagram DM&apos;larga avtomatik javob beruvchi AI shu ma&apos;lumotlarga tayanadi.
-            Kurslar, narxlar yoki manzil o&apos;zgarsa, shu yerda yangilang — AI keyingi
-            xabarlardan boshlab yangi ma&apos;lumotdan foydalanadi.
-          </p>
+          <h1 className="text-lg font-semibold dark:text-gray-100">{t('aiAssistant.title')}</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('aiAssistant.subtitle')}</p>
         </div>
 
         {/* AI yoqish/ochirish */}
-        <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex flex-col gap-3 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-gray-800 dark:bg-gray-900">
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-gray-700">AI avtomatik javob</h2>
-            <p className="mt-1 text-xs text-gray-500">
-              Yoqilgan bo&apos;lsa, kelgan har bir DM&apos;ga AI darhol javob yozadi. O&apos;chirilgan
-              bo&apos;lsa, xabarlar faqat inbox&apos;da ko&apos;rinadi va admin qo&apos;lda javob yozadi.
-            </p>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('aiAssistant.toggleTitle')}</h2>
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{t('aiAssistant.toggleDesc')}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {toggleMutation.isPending && (
-              <span className="text-xs text-gray-400">Saqlanmoqda...</span>
+              <span className="text-xs text-gray-500 dark:text-gray-500">{t('common.saving')}</span>
             )}
             {toggleMutation.isError && (
-              <span className="text-xs text-red-500">{getErrorMessage(toggleMutation.error)}</span>
+              <span className="text-xs text-red-500 dark:text-red-400">{getErrorMessage(toggleMutation.error)}</span>
             )}
             <button
               type="button"
@@ -138,7 +133,7 @@ export default function AiAssistantPage() {
               onClick={handleToggle}
               disabled={settingsQuery.isLoading || toggleMutation.isPending}
               className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
-                aiEnabled ? 'bg-brand-600' : 'bg-gray-300'
+                aiEnabled ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'
               }`}
             >
               <span
@@ -151,11 +146,11 @@ export default function AiAssistantPage() {
         </div>
 
         {settingsQuery.isLoading && (
-          <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">{t('common.loading')}</p>
         )}
 
         {settingsQuery.isError && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
             {getErrorMessage(settingsQuery.error)}
           </p>
         )}
@@ -163,20 +158,20 @@ export default function AiAssistantPage() {
         {!settingsQuery.isLoading && !settingsQuery.isError && (
           <form
             onSubmit={handleSubmit}
-            className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5"
+            className="space-y-4 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900"
           >
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <h2 className="text-sm font-semibold text-gray-700">Markaz ma&apos;lumotlari</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('aiAssistant.centerInfo')}</h2>
               {settings?.updatedAt && (
-                <span className="text-xs text-gray-400">
-                  Oxirgi yangilanish: {formatDateTime(settings.updatedAt)}
+                <span className="text-xs text-gray-500 dark:text-gray-500">
+                  {t('aiAssistant.lastUpdated')} {formatDateTime(settings.updatedAt)}
                 </span>
               )}
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Markaz nomi <span className="text-red-500">*</span>
+              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+                {t('aiAssistant.academyName')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -185,13 +180,13 @@ export default function AiAssistantPage() {
                 value={form.academyName}
                 onChange={(e) => setForm({ ...form, academyName: e.target.value })}
                 className={inputClass}
-                placeholder="Masalan: Star Education o'quv markazi"
+                placeholder={t('aiAssistant.academyNamePlaceholder')}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Kurslar va narxlar <span className="text-red-500">*</span>
+              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+                {t('aiAssistant.coursesAndPrices')} <span className="text-red-500">*</span>
               </label>
               <textarea
                 required
@@ -200,21 +195,14 @@ export default function AiAssistantPage() {
                 value={form.coursesAndPrices}
                 onChange={(e) => setForm({ ...form, coursesAndPrices: e.target.value })}
                 className={inputClass}
-                placeholder={
-                  '- Ingliz tili (Beginner - Advanced): 350,000 so\'m/oy\n' +
-                  '- Matematika (abituriyentlar uchun): 400,000 so\'m/oy\n' +
-                  'Dars jadvali: Dushanba/Chorshanba/Juma 18:00-20:00'
-                }
+                placeholder={t('aiAssistant.coursesPlaceholder')}
               />
-              <p className="mt-1 text-xs text-gray-400">
-                AI faqat shu ro&apos;yxatdagi kurslar haqida gapiradi — mavjud bo&apos;lmagan kursni
-                o&apos;ylab topmaydi.
-              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">{t('aiAssistant.coursesHint')}</p>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Manzil <span className="text-red-500">*</span>
+              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+                {t('aiAssistant.address')} <span className="text-red-500">*</span>
               </label>
               <textarea
                 required
@@ -223,13 +211,13 @@ export default function AiAssistantPage() {
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 className={inputClass}
-                placeholder="Toshkent sh., Chilonzor tumani, ..."
+                placeholder={t('aiAssistant.addressPlaceholder')}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Aloqa telefonlari <span className="text-red-500">*</span>
+              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+                {t('aiAssistant.phoneNumbers')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -238,30 +226,30 @@ export default function AiAssistantPage() {
                 value={form.phoneNumbers}
                 onChange={(e) => setForm({ ...form, phoneNumbers: e.target.value })}
                 className={inputClass}
-                placeholder="+998 90 123 45 67, +998 91 234 56 78"
+                placeholder={t('aiAssistant.phoneNumbersPlaceholder')}
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Aksiyalar va chegirmalar</label>
+              <label className="mb-1 block text-sm font-medium dark:text-gray-200">{t('aiAssistant.promotions')}</label>
               <textarea
                 rows={3}
                 maxLength={4000}
                 value={form.promotions}
                 onChange={(e) => setForm({ ...form, promotions: e.target.value })}
                 className={inputClass}
-                placeholder="Ixtiyoriy — masalan: Avgust oyida ro'yxatdan o'tganlarga 20% chegirma"
+                placeholder={t('aiAssistant.promotionsPlaceholder')}
               />
             </div>
 
             {saveMutation.isError && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
                 {getErrorMessage(saveMutation.error)}
               </p>
             )}
             {saveMutation.isSuccess && (
-              <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-                Saqlandi ✓ AI keyingi xabarlarda shu ma&apos;lumotdan foydalanadi.
+              <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
+                {t('aiAssistant.saveSuccess')}
               </p>
             )}
 
@@ -270,7 +258,7 @@ export default function AiAssistantPage() {
               disabled={saveMutation.isPending}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
             >
-              {saveMutation.isPending ? 'Saqlanmoqda...' : 'Saqlash'}
+              {saveMutation.isPending ? t('common.saving') : t('common.save')}
             </button>
           </form>
         )}

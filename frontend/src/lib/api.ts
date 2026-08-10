@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { getActiveLocale, translate } from './i18n';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.inboxcrm.uz';
 
@@ -45,11 +46,12 @@ api.interceptors.response.use(
 );
 
 export function getErrorMessage(err: unknown): string {
+  const locale = getActiveLocale();
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as { error?: string; details?: { message: string }[] } | undefined;
     if (data?.details?.length) return data.details.map((d) => d.message).join(', ');
     if (data?.error) return data.error;
-    if (err.code === 'ERR_NETWORK') return 'Server bilan boglanib bolmadi';
+    if (err.code === 'ERR_NETWORK') return translate(locale, 'errors.network');
   }
-  return 'Nomalum xato yuz berdi';
+  return translate(locale, 'errors.unknown');
 }

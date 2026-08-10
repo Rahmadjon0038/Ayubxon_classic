@@ -101,7 +101,16 @@ function getLocalUploadPath(attachmentUrl: string): string | null {
 
 router.get('/', async (_req, res, next) => {
   try {
+    // Faqat hozir ULANGAN Instagram akkauntning suhbatlari korsatiladi — aks holda boshqa
+    // (masalan avval ulangan, keyin almashtirilgan) akkauntning eski suhbatlari ham
+    // royxatga aralashib qolardi.
+    const account = await getConnectedAccount();
+    if (!account) {
+      return res.json({ conversations: [] });
+    }
+
     const conversations = await prisma.conversation.findMany({
+      where: { instagramAccountId: account.id },
       include: conversationSelect,
       orderBy: [{ lastMessageAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
@@ -128,11 +137,14 @@ router.get('/', async (_req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
+    const account = await getConnectedAccount();
     const conversation = await prisma.conversation.findUnique({
       where: { id: req.params.id },
       include: conversationSelect,
     });
-    if (!conversation) throw new AppError('Suhbat topilmadi', 404);
+    if (!conversation || !account || conversation.instagramAccountId !== account.id) {
+      throw new AppError('Suhbat topilmadi', 404);
+    }
     return res.json({
       conversation: {
         id: conversation.id,

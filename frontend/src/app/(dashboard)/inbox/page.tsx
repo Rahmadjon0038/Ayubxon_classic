@@ -6,11 +6,13 @@ import { useSearchParams } from 'next/navigation';
 import { MessagesSquare } from 'lucide-react';
 import ChatWindow from '@/components/ChatWindow';
 import ConversationList from '@/components/ConversationList';
+import { useLocale } from '@/components/LocaleProvider';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { ConversationListItem, Message, MessageUpdatedEvent, NewMessageEvent } from '@/lib/types';
 
 export default function InboxPage() {
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export default function InboxPage() {
       {/* Mobilda faqat bittasi korinadi: suhbat tanlanmagan bolsa royxat, tanlangan bolsa chat.
           md: dan boshlab ikkalasi doim yonma-yon turadi. */}
       <div
-        className={`w-full shrink-0 border-r border-gray-200 bg-white md:block md:w-80 ${
+        className={`w-full shrink-0 border-r border-gray-300 bg-white md:block md:w-80 dark:border-gray-800 dark:bg-gray-900 ${
           selectedId ? 'hidden md:block' : 'block'
         }`}
       >
@@ -101,7 +103,7 @@ export default function InboxPage() {
           onSelect={handleSelect}
         />
       </div>
-      <div className={`flex-1 bg-gray-50 ${selectedId ? 'block' : 'hidden md:block'}`}>
+      <div className={`flex-1 bg-gray-50 dark:bg-gray-950 ${selectedId ? 'block' : 'hidden md:block'}`}>
         {selected ? (
           <ChatWindow
             conversation={selected}
@@ -112,11 +114,11 @@ export default function InboxPage() {
             }}
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-500 dark:text-gray-500">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
               <MessagesSquare size={28} strokeWidth={1.5} />
             </div>
-            <p className="text-sm">Suhbatni tanlang</p>
+            <p className="text-sm">{t('inbox.selectConversation')}</p>
           </div>
         )}
       </div>

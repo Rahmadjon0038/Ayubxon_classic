@@ -156,6 +156,15 @@ Qoidalar:
     hazil aralash tarzda mavzuni markazga qaytaring (masalan "Bu qiziq savol 😄 lekin men
     faqat ${settings.academyName}ning kurslari va xizmatlari haqida gaplasha olaman. Sizni
     qaysi kurs qiziqtiradi?") — qo'pol yoki sovuq bo'lmang, lekin mavzudan chetga chiqmang.
+15. Agar mijozning ANIQ va markazga tegishli savoliga javob berish uchun sizga berilgan
+    ma'lumotlar yetarli bo'lmasa (masalan juda individual/maxsus holat, ma'lumotlar bazasida
+    yo'q narsa so'ralsa) — HECH QACHON taxmin qilib to'qib javob bermang va "tushunmadim" deb
+    ham qoldirmang. Buning o'rniga, operatorga ulanishni SAVOL/TAKLIF sifatida bering (majburlab
+    emas) — masalan "Bu savolga aniqroq javob berishi uchun sizni operatorimizga ulasammi?" yoki
+    shunga o'xshash tabiiy variant. Mijoz aniq rozilik bildirmaguncha ("ha", "mayli", "xop",
+    "ulang" kabi) o'zingizcha operatorga ulanganingizni aytmang — faqat taklif qiling va javobni
+    kuting. Mijoz keyingi xabarida rozilik bildirsa, shundagina "Albatta, hozir ulayman, biroz
+    kuting" kabi tasdiq bering.
 `.trim();
 }
 
@@ -229,7 +238,7 @@ const analysisSchema = z.object({
 // topshiradi. Nozikroq/bilvosita so'rovlarni esa analyzeConversation() (2-qatlam, AI orqali)
 // AI javob yozib bo'lgandan keyin ushlaydi — shuning uchun regex 100% qamrab olishi shart emas.
 const HANDOVER_REQUEST_PATTERN =
-  /operator|оператор|menejer|менеджер|administrator|odam\s*bilan|inson\s*bilan|jonli\s*(inson|odam|operator)|haqiqiy\s*(odam|inson)|human\s*(agent|support)?|real\s*person|live\s*agent|человек/i;
+  /operator|оператор|menejer|менеджер|administrator|(odam|inson)\s*(bilan|gaplash|gaplashtir|javob\s*ber|ulang|ulansin)|jonli\s*(inson|odam|operator)|haqiqiy\s*(odam|inson)|human\s*(agent|support)?|real\s*person|live\s*agent|человек/i;
 
 export function detectHandoverRequest(text: string): boolean {
   return HANDOVER_REQUEST_PATTERN.test(text);
@@ -281,12 +290,26 @@ Mezonlar:
    - WILL_WRITE: barcha boshqa hollar — hali rad javobi yo'q, qiziqish davom etmoqda yoki
      hali aniqlik yo'q.
 
-4. handoverRequested (mijoz aniq inson operator bilan gaplashishni so'raganmi):
-   - true: FAQAT mijoz ANIQ ravishda inson/operator/administrator bilan gaplashishni so'ragan
-     bo'lsa (masalan "odam bilan gaplashtiring", "operator kerak", "menejer bilan ulang",
-     "jonli operator bilan gaplashsam bo'ladimi").
-   - false: bunday aniq so'rov bo'lmasa — mijoz AI javobidan norozi bo'lsa yoki tushunmagan
-     bo'lsa ham, agar ANIQ inson/operator so'ramagan bo'lsa, false qaytaring.
+4. handoverRequested (mijoz operatorga ulanishga ANIQ rozilik bildirdimi):
+   true FAQAT quyidagi ikki holatdan BIRIGA to'liq mos kelsa qaytariladi:
+   a) Mijoz o'z xabarida so'zma-so'z va ANIQ inson/operator bilan gaplashishni TALAB qilgan
+      bo'lsa — masalan "odam bilan gaplashtiring", "operator kerak", "menejer bilan ulang",
+      "jonli operator bilan gaplashsam bo'ladimi", "haqiqiy odam javob bersin", "albatta odam
+      gaplashsin". Bu holatda darhol true (mijoz ochiq-oydin talab qilgan).
+   b) Suhbat tarixidagi ENG OXIRGI Admin/AI xabarida operatorga ulanish aniq SAVOL/TAKLIF
+      sifatida berilgan bo'lsa (masalan "operatorimizga ulasammi?", "sizni operatorga ulashim
+      mumkin, xohlaysizmi?") VA mijozning shundan keyingi javobi shu taklifga aniq roziliq
+      bo'lsa (masalan "ha", "mayli", "xop", "ulang", "bo'ladi", "albatta").
+   FALSE — QOLGAN BARCHA hollarda, HECH QANDAY ISTISNOSIZ:
+   - Mijoz kursni yoki narxni rad etsa, "menga mos kelmadi", "kerak emas", "o'ylab ko'raman"
+     kabi yozsa — bu ODDIY RAD JAVOBI, handoverRequested EMAS. false qaytaring.
+   - Mijoz AI javobidan norozi bo'lsa, savolini tushunmagan bo'lsangiz, yoki javob
+     berolmasangiz ham — agar mijoz (a) yoki (b) shartiga mos ANIQ so'z bilan javob bermagan
+     bo'lsa, false qaytaring. AI o'zi operatorga ulash TAKLIFINI bergani (rule 15) hali
+     handoverRequested=true degani EMAS — faqat mijoz shu taklifga rozi bo'lgandagina (b) band
+     ishga tushadi.
+   - Faqat "administrator", "menejer" so'zi biror kontekstda (masalan AI javobida) o'tgani
+     handoverRequested=true qilmaydi — bu FAQAT mijozning O'Z xabariga tegishli mezon.
 
 5. phoneNumber (mijozning aloqa telefon raqami):
    - Agar mijoz suhbat davomida O'ZINING telefon raqamini yozgan bo'lsa (masalan ro'yxatdan

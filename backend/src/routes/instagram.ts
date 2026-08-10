@@ -55,10 +55,24 @@ router.post('/connect', validateBody(connectSchema), async (req, res, next) => {
       tokenExpiresAt,
     };
 
-    // MVP: bitta akkaunt — mavjud bolsa yangilanadi, bolmasa yaratiladi.
-    const existing = await getAccount();
-    const account = existing
-      ? await prisma.instagramAccount.update({ where: { id: existing.id }, data })
+    // Muhim: shu Instagram akkaunt (instagramAccountId boyicha) DB'da avval ulangan bolsa,
+    // O'SHA yozuvni yangilaymiz — aks holda YANGI yozuv yaratamiz. Eski kodda har doim
+    // "birinchi" akkaunt yozuvi ustidan yozilardi, shuning uchun boshqa (haqiqatan boshqa)
+    // Instagram akkaunt ulanganda eski akkauntning suhbatlari yangisiga "yopishib qolardi".
+    const existingForThisAccount = await prisma.instagramAccount.findUnique({
+      where: { instagramAccountId: profile.id },
+    });
+
+    // Bir vaqtning ozida faqat bitta akkaunt "ulangan" bolishi kerak — boshqa (eski)
+    // akkaunt hozir ulangan bolsa, uni uzamiz. Uning suhbatlari OCHIRILMAYDI — faqat
+    // shu akkaunt qayta ulanmaguncha royxatda korinmay turadi.
+    await prisma.instagramAccount.updateMany({
+      where: { instagramAccountId: { not: profile.id }, isConnected: true },
+      data: { isConnected: false, encryptedAccessToken: null, tokenExpiresAt: null },
+    });
+
+    const account = existingForThisAccount
+      ? await prisma.instagramAccount.update({ where: { id: existingForThisAccount.id }, data })
       : await prisma.instagramAccount.create({ data });
 
     // Akkauntni webhook eventlariga obuna qilamiz (aks holda DM eventlari kelmaydi).

@@ -1,24 +1,31 @@
+import { getActiveLocale, getMonthNames, translate } from './i18n';
+
+const LOCALE_TAGS: Record<string, string> = { uz: 'uz-UZ', en: 'en-US', ru: 'ru-RU' };
+
 export function formatTime(dateString: string | null): string {
   if (!dateString) return '';
   const date = new Date(dateString);
   const now = new Date();
+  const locale = getActiveLocale();
+  const tag = LOCALE_TAGS[locale];
 
   const isToday = date.toDateString() === now.toDateString();
   if (isToday) {
-    return date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString(tag, { hour: '2-digit', minute: '2-digit' });
   }
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return 'Kecha';
+  if (date.toDateString() === yesterday.toDateString()) return translate(locale, 'time.yesterday');
 
-  return date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString(tag, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function formatDateTime(dateString: string | null): string {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toLocaleString('uz-UZ', {
+  const tag = LOCALE_TAGS[getActiveLocale()];
+  return date.toLocaleString(tag, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -27,24 +34,10 @@ export function formatDateTime(dateString: string | null): string {
   });
 }
 
-const uzMonthNames = [
-  'yanvar',
-  'fevral',
-  'mart',
-  'aprel',
-  'may',
-  'iyun',
-  'iyul',
-  'avgust',
-  'sentyabr',
-  'oktyabr',
-  'noyabr',
-  'dekabr',
-];
-
-function formatUzDate(date: Date, includeYear = false): string {
+function formatLocalizedDate(date: Date, includeYear = false): string {
+  const locale = getActiveLocale();
   const day = String(date.getDate()).padStart(2, '0');
-  const month = uzMonthNames[date.getMonth()];
+  const month = getMonthNames(locale)[date.getMonth()];
   return includeYear ? `${day} ${month} ${date.getFullYear()}` : `${day} ${month}`;
 }
 
@@ -52,6 +45,7 @@ export function formatRelativeTime(dateString: string | null): string {
   if (!dateString) return '';
 
   const date = new Date(dateString);
+  const locale = getActiveLocale();
   const diffMs = Date.now() - date.getTime();
   const minute = 60 * 1000;
   const hour = 60 * minute;
@@ -61,13 +55,13 @@ export function formatRelativeTime(dateString: string | null): string {
     return formatTime(dateString);
   }
 
-  if (diffMs < minute) return 'Hozirgina';
-  if (diffMs < hour) return `${Math.floor(diffMs / minute)} daqiqa oldin`;
-  if (diffMs < day) return `${Math.floor(diffMs / hour)} soat oldin`;
-  if (diffMs < 7 * day) return `${Math.floor(diffMs / day)} kun oldin`;
+  if (diffMs < minute) return translate(locale, 'time.justNow');
+  if (diffMs < hour) return translate(locale, 'time.minutesAgo', { n: Math.floor(diffMs / minute) });
+  if (diffMs < day) return translate(locale, 'time.hoursAgo', { n: Math.floor(diffMs / hour) });
+  if (diffMs < 7 * day) return translate(locale, 'time.daysAgo', { n: Math.floor(diffMs / day) });
 
   const isCurrentYear = date.getFullYear() === new Date().getFullYear();
-  return formatUzDate(date, !isCurrentYear);
+  return formatLocalizedDate(date, !isCurrentYear);
 }
 
 export function contactDisplayName(contact: {
@@ -75,5 +69,7 @@ export function contactDisplayName(contact: {
   username: string | null;
   instagramScopedId: string;
 }): string {
-  return contact.name || contact.username || `Foydalanuvchi ${contact.instagramScopedId.slice(-6)}`;
+  if (contact.name) return contact.name;
+  if (contact.username) return contact.username;
+  return translate(getActiveLocale(), 'contact.fallbackName', { id: contact.instagramScopedId.slice(-6) });
 }

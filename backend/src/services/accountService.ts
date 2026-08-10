@@ -3,9 +3,16 @@ import { prisma } from '../lib/prisma';
 import { decryptToken } from '../lib/crypto';
 import { AppError } from '../lib/errors';
 
-// MVP: bitta Instagram akkaunt ishlatiladi.
+// MVP: bir vaqtning ozida faqat bitta Instagram akkaunt "ulangan" (isConnected=true)
+// holatda boladi. Dashboard shu ulangan akkauntni korsatadi; ulangani bolmasa,
+// oxirgi murojaat qilingan akkaunt (masalan hozirgina uzilgan) korsatiladi.
 export async function getAccount(): Promise<InstagramAccount | null> {
-  return prisma.instagramAccount.findFirst({ orderBy: { createdAt: 'asc' } });
+  const connected = await prisma.instagramAccount.findFirst({
+    where: { isConnected: true },
+    orderBy: { updatedAt: 'desc' },
+  });
+  if (connected) return connected;
+  return prisma.instagramAccount.findFirst({ orderBy: { updatedAt: 'desc' } });
 }
 
 export async function getConnectedAccount(): Promise<InstagramAccount | null> {

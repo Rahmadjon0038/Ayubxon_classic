@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Paperclip, Phone, Pin, SendHorizontal, Trash2, UserRound } from 'lucide-react';
 import Avatar from './Avatar';
+import { useLocale } from './LocaleProvider';
 import MessageBubble from './MessageBubble';
 import { api, getErrorMessage } from '@/lib/api';
 import { contactDisplayName } from '@/lib/format';
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function ChatWindow({ conversation, onDeleted, backHref, onBack }: Props) {
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -211,19 +213,19 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
 
   const handleDelete = () => {
     if (deleteMutation.isPending) return;
-    const confirmed = window.confirm('Bu chatni o‘chirmoqchimisiz? Bu amalni qaytarib bo‘lmaydi.');
+    const confirmed = window.confirm(t('chat.deleteConfirm'));
     if (!confirmed) return;
     deleteMutation.mutate();
   };
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-3 py-3 sm:gap-3 sm:px-5">
+      <div className="flex items-center gap-2 border-b border-gray-300 bg-white px-3 py-3 sm:gap-3 sm:px-5 dark:border-gray-800 dark:bg-gray-900">
         {backHref && (
           <Link
             href={backHref}
-            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
-            aria-label="Orqaga"
+            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            aria-label={t('chat.back')}
           >
             <ArrowLeft size={18} />
           </Link>
@@ -232,25 +234,25 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
           <button
             type="button"
             onClick={onBack}
-            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 md:hidden"
-            aria-label="Ro'yxatga qaytish"
+            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 md:hidden dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            aria-label={t('chat.backToList')}
           >
             <ArrowLeft size={18} />
           </button>
         )}
         <Avatar src={conversation.contact.profilePictureUrl} name={name} size={38} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{name}</p>
+          <p className="truncate text-sm font-semibold dark:text-gray-100">{name}</p>
           {conversation.contact.username && (
-            <p className="truncate text-xs text-gray-500">@{conversation.contact.username}</p>
+            <p className="truncate text-xs text-gray-600 dark:text-gray-400">@{conversation.contact.username}</p>
           )}
         </div>
         <button
           type="button"
           onClick={handleDelete}
           disabled={deleteMutation.isPending}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-          title="Chatni o'chirish"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-gray-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+          title={t('chat.deleteChat')}
         >
           {deleteMutation.isPending ? (
             <Loader2 size={16} className="animate-spin" />
@@ -265,7 +267,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
       {conversation.contact.phoneNumber && (
         <a
           href={`tel:${conversation.contact.phoneNumber}`}
-          className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 sm:px-4"
+          className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 sm:px-4 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
         >
           <Pin size={13} className="shrink-0" />
           <Phone size={13} className="shrink-0" />
@@ -274,10 +276,10 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
       )}
 
       {conversation.aiPaused && (
-        <div className="flex flex-col items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
+        <div className="flex flex-col items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
           <span className="flex items-center gap-1.5">
             <UserRound size={14} className="shrink-0" />
-            Operator so'ralgan — AI bu suhbatda avtomatik javob bermayapti.
+            {t('chat.operatorBanner')}
           </span>
           <button
             type="button"
@@ -286,17 +288,17 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
             className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-600 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
           >
             {resumeAiMutation.isPending && <Loader2 size={12} className="animate-spin" />}
-            AI&apos;ni qayta yoqish
+            {t('chat.resumeAi')}
           </button>
         </div>
       )}
 
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5">
         {messagesQuery.isLoading && (
-          <p className="py-6 text-center text-sm text-gray-400">Yuklanmoqda...</p>
+          <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-500">{t('common.loading')}</p>
         )}
         {messagesQuery.isError && (
-          <p className="py-6 text-center text-sm text-red-500">
+          <p className="py-6 text-center text-sm text-red-500 dark:text-red-400">
             {getErrorMessage(messagesQuery.error)}
           </p>
         )}
@@ -312,16 +314,16 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-gray-200 bg-white px-4 py-3">
+      <form onSubmit={handleSubmit} className="border-t border-gray-300 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
         {errorSource && (
-          <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
             {getErrorMessage(errorSource)}
           </p>
         )}
         {uploadMutation.isPending && (
-          <p className="mb-2 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">
+          <p className="mb-2 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-400">
             <Loader2 size={15} className="animate-spin" />
-            Fayl yuborilmoqda...
+            {t('chat.uploadPending')}
           </p>
         )}
         <div className="flex items-end gap-2">
@@ -336,8 +338,8 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadMutation.isPending}
-            title="Rasm, video yoki audio yuborish"
-            className="mb-0.5 rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-brand-600 disabled:opacity-50"
+            title={t('chat.attachTitle')}
+            className="mb-0.5 rounded-full p-2 text-gray-600 transition hover:bg-gray-100 hover:text-brand-600 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-brand-400"
           >
             <Paperclip size={19} />
           </button>
@@ -352,13 +354,13 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
               }
             }}
             rows={1}
-            placeholder="Xabar yozing..."
-            className="flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            placeholder={t('chat.messagePlaceholder')}
+            className="flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-500/20"
           />
           <button
             type="submit"
             disabled={!text.trim() || sendMutation.isPending}
-            title="Yuborish (Enter)"
+            title={t('chat.sendTitle')}
             className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-40"
           >
             {sendMutation.isPending ? (

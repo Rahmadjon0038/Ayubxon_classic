@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertCircle, Check, Clock, FileText, Heart } from 'lucide-react';
+import { useLocale } from './LocaleProvider';
 import { formatDateTime } from '@/lib/format';
 import { Message } from '@/lib/types';
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function MessageBubble({ message, onReact, reactPending }: Props) {
+  const { t } = useLocale();
   const isAdmin = message.senderType === 'ADMIN';
   const isImage = message.attachmentType === 'image';
   const isVideo = message.attachmentType === 'video';
@@ -30,7 +32,7 @@ export default function MessageBubble({ message, onReact, reactPending }: Props)
           className={`rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
             isAdmin
               ? 'rounded-br-sm bg-brand-600 text-white'
-              : 'rounded-bl-sm border border-gray-200 bg-white text-gray-900'
+              : 'rounded-bl-sm border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
           }`}
         >
           {isHeartSticker && <span className="text-4xl leading-none">❤️</span>}
@@ -42,7 +44,7 @@ export default function MessageBubble({ message, onReact, reactPending }: Props)
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={message.attachmentUrl}
-                    alt="Rasm"
+                    alt={t('messageBubble.imageAlt')}
                     className="max-h-64 w-full object-cover"
                   />
                 </a>
@@ -60,7 +62,7 @@ export default function MessageBubble({ message, onReact, reactPending }: Props)
                   }`}
                 >
                   <FileText size={14} />
-                  Faylni ochish
+                  {t('messageBubble.openFile')}
                 </a>
               )}
             </div>
@@ -70,14 +72,14 @@ export default function MessageBubble({ message, onReact, reactPending }: Props)
 
           {/* Matn ham, media ham bolmagan xabar (masalan qollab-quvvatlanmaydigan tur) */}
           {!message.text && !message.attachmentUrl && !isHeartSticker && (
-            <p className={`italic ${isAdmin ? 'text-brand-100' : 'text-gray-400'}`}>
-              Qo&apos;llab-quvvatlanmaydigan xabar
+            <p className={`italic ${isAdmin ? 'text-brand-100' : 'text-gray-500 dark:text-gray-500'}`}>
+              {t('messageBubble.unsupported')}
             </p>
           )}
 
           <div
             className={`mt-1 flex items-center gap-1 text-[11px] ${
-              isAdmin ? 'text-brand-100' : 'text-gray-400'
+              isAdmin ? 'text-brand-100' : 'text-gray-500 dark:text-gray-500'
             }`}
           >
             <span>{formatDateTime(message.sentAt)}</span>
@@ -85,7 +87,7 @@ export default function MessageBubble({ message, onReact, reactPending }: Props)
             {isAdmin && message.status === 'SENDING' && <Clock size={12} />}
             {isAdmin && message.status === 'FAILED' && (
               <span className="flex items-center gap-0.5 text-red-300">
-                <AlertCircle size={12} /> Yuborilmadi
+                <AlertCircle size={12} /> {t('messageBubble.failedToSend')}
               </span>
             )}
           </div>
@@ -94,7 +96,7 @@ export default function MessageBubble({ message, onReact, reactPending }: Props)
         {/* Bubble burchagidagi reaksiya belgisi */}
         {shownReaction && (
           <span
-            className={`absolute -bottom-2.5 flex h-5 items-center rounded-full border border-gray-200 bg-white px-1.5 text-xs shadow-sm ${
+            className={`absolute -bottom-2.5 flex h-5 items-center rounded-full border border-gray-300 bg-white px-1.5 text-xs shadow-sm dark:border-gray-700 dark:bg-gray-800 ${
               isAdmin ? 'right-2' : 'left-2'
             }`}
           >
@@ -109,11 +111,11 @@ export default function MessageBubble({ message, onReact, reactPending }: Props)
           type="button"
           disabled={reactPending}
           onClick={() => onReact!(message, hasReacted ? 'unreact' : 'react')}
-          title={hasReacted ? 'Reaksiyani olib tashlash' : "❤️ qo'yish"}
+          title={hasReacted ? t('messageBubble.removeReaction') : t('messageBubble.addReaction')}
           className={`mb-1 rounded-full p-1.5 transition disabled:opacity-40 ${
             hasReacted
-              ? 'text-red-500 opacity-100 hover:bg-red-50'
-              : 'text-gray-400 opacity-0 hover:bg-gray-100 hover:text-red-500 group-hover:opacity-100'
+              ? 'text-red-500 opacity-100 hover:bg-red-500/10'
+              : 'text-gray-500 opacity-0 hover:bg-gray-100 hover:text-red-500 group-hover:opacity-100 dark:text-gray-500 dark:hover:bg-gray-800'
           }`}
         >
           <Heart size={15} fill={hasReacted ? 'currentColor' : 'none'} />

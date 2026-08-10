@@ -47,7 +47,7 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-500">
+      <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-gray-600">
         {label}
       </span>
       <select
