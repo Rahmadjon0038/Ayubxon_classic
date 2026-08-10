@@ -226,6 +226,13 @@ router.delete('/:id', async (req, res, next) => {
     const conversation = await prisma.conversation.findUnique({
       where: { id: req.params.id },
       include: {
+        contact: {
+          include: {
+            conversations: {
+              select: { id: true },
+            },
+          },
+        },
         messages: {
           select: {
             attachmentUrl: true,
@@ -245,6 +252,15 @@ router.delete('/:id', async (req, res, next) => {
     await prisma.conversation.delete({
       where: { id: conversation.id },
     });
+
+    // Agar bu contact boshqa suhbatlarda ishlatilmayotgan bo'lsa, contact yozuvini ham
+    // tozalaymiz. Aks holda phoneNumber va profil ma'lumotlari keyingi DM'da qayta chiqib
+    // qolishi mumkin.
+    if (conversation.contact.conversations.length === 1) {
+      await prisma.contact.delete({
+        where: { id: conversation.contact.id },
+      });
+    }
 
     for (const filePath of attachmentPaths) {
       await fs.promises.unlink(filePath).catch(() => {});
