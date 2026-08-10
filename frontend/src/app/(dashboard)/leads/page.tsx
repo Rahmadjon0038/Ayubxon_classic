@@ -295,7 +295,6 @@ export default function LeadsPage() {
 
                     {items.map((conversation) => {
                       const name = contactDisplayName(conversation.contact);
-                      const bucket = classifyConversation(conversation);
                       const dragClass = draggedId === conversation.id ? 'opacity-50' : '';
 
                       return (
@@ -321,7 +320,7 @@ export default function LeadsPage() {
                                 </div>
 
                                 {conversation.unreadCount > 0 && (
-                                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${bucketConfig[bucket].badgeClass}`}>
+                                  <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white">
                                     {conversation.unreadCount}
                                   </span>
                                 )}
@@ -333,8 +332,15 @@ export default function LeadsPage() {
 
                               <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-gray-400">
                                 <span>{formatRelativeTime(conversation.lastMessageAt)}</span>
-                                <span className="rounded-full border border-gray-200 px-1.5 py-0.5 text-gray-500">
-                                  {conversation.status === 'OPEN' ? 'Ochiq' : 'Yopiq'}
+                                <span className="flex items-center gap-1">
+                                  {conversation.aiPaused && (
+                                    <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700">
+                                      Operator
+                                    </span>
+                                  )}
+                                  <span className="rounded-full border border-gray-200 px-1.5 py-0.5 text-gray-500">
+                                    {conversation.status === 'OPEN' ? 'Ochiq' : 'Yopiq'}
+                                  </span>
                                 </span>
                               </div>
                             </div>

@@ -57,7 +57,15 @@ export default function ConversationList({ conversations, isLoading, selectedId,
               <Avatar src={item.contact.profilePictureUrl} name={name} size={44} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium">{name}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {item.aiPaused && (
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
+                        title="Operator so'ralgan — AI to'xtatilgan"
+                      />
+                    )}
+                    <span className="truncate text-sm font-medium">{name}</span>
+                  </span>
                   <span className="shrink-0 text-xs text-gray-400">
                     {formatTime(item.lastMessageAt)}
                   </span>

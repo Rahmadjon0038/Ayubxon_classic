@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Paperclip, SendHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Paperclip, SendHorizontal, Trash2, UserRound } from 'lucide-react';
 import Avatar from './Avatar';
 import MessageBubble from './MessageBubble';
 import { api, getErrorMessage } from '@/lib/api';
@@ -146,6 +146,26 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
     },
   });
 
+  // Handover Protocol: mijoz operator so'raganda AI shu suhbatda avtomatik to'xtaydi
+  // (backend'da aniqlanadi). Admin shu tugma orqali AI'ni qo'lda qayta yoqadi.
+  const resumeAiMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.patch<{ conversation: ConversationListItem }>(
+        `/conversations/${conversation.id}/status`,
+        { aiPaused: false },
+      );
+      return data.conversation;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<ConversationListItem[]>(['conversations'], (old) =>
+        old?.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
+      );
+      queryClient.setQueryData<ConversationListItem>(['conversation', conversation.id], (old) =>
+        old ? { ...old, ...updated } : old,
+      );
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       await api.delete(`/conversations/${conversation.id}`);
@@ -226,6 +246,24 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
           )}
         </button>
       </div>
+
+      {conversation.aiPaused && (
+        <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+          <span className="flex items-center gap-1.5">
+            <UserRound size={14} className="shrink-0" />
+            Operator so'ralgan — AI bu suhbatda avtomatik javob bermayapti.
+          </span>
+          <button
+            type="button"
+            onClick={() => resumeAiMutation.mutate()}
+            disabled={resumeAiMutation.isPending}
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-600 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+          >
+            {resumeAiMutation.isPending && <Loader2 size={12} className="animate-spin" />}
+            AI&apos;ni qayta yoqish
+          </button>
+        </div>
+      )}
 
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-4">
         {messagesQuery.isLoading && (

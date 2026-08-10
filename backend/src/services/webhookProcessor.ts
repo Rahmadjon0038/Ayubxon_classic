@@ -2,7 +2,13 @@ import { Contact, InstagramAccount, Prisma, SenderType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
-import { ChatTurn, generateAiReply } from './aiService';
+import {
+  analyzeConversation,
+  ChatTurn,
+  detectHandoverRequest,
+  generateAiReply,
+  pickHandoverAcknowledgement,
+} from './aiService';
 import { fetchContactProfile, sendTextMessage } from './instagramApi';
 import {
   getAccessToken,
@@ -293,11 +299,12 @@ async function processMessagingEvent(
 
   // Faqat kontaktdan kelgan (echo emas) matnli xabarlarga AI javob berishga harakat qilinadi.
   if (!isEcho && message.text) {
-    await maybeSendAiReply({
+    await handleIncomingContactMessage({
       account,
       accessToken,
       contactIgsid: contactScopedId,
       conversationId: conversation.id,
+      text: message.text,
     });
   }
 }
@@ -313,11 +320,11 @@ interface MaybeSendAiReplyParams {
 // AI faqat joriy xabarni emas, butun suhbat kontekstini "eslab" javob beradi. Masalan
 // "Qaysi filial yaqin?" degan savoldan keyin mijoz shunchaki "Davlatobod" deb yozsa ham,
 // AI bu nimaga javob ekanini tarixdan tushunadi.
-async function getConversationHistory(conversationId: string): Promise<ChatTurn[]> {
+async function getConversationHistory(conversationId: string, limit = 12): Promise<ChatTurn[]> {
   const messages = await prisma.message.findMany({
     where: { conversationId, text: { not: null } },
     orderBy: { sentAt: 'desc' },
-    take: 12,
+    take: limit,
   });
   return messages
     .reverse()
@@ -327,15 +334,120 @@ async function getConversationHistory(conversationId: string): Promise<ChatTurn[
     }));
 }
 
-// AI yoqilgan va markaz sozlamalari mavjud bolsa, suhbat tarixi asosida javob generatsiya
-// qilib, Instagram Send API orqali yuboradi va suhbatga admin xabari sifatida yozadi. Xato
-// yoki sozlama yoqligida jim otkazib yuboriladi — mijoz inson agentga qoladi.
-async function maybeSendAiReply({
+// ===== Handover Protocol (AI <-> inson operator) =====
+//
+// Har bir suhbat uchun eng ko'pi bilan bitta "kutilayotgan" AI javobi bo'ladi: yangi kontakt
+// xabari kelganda avvalgi taymer bekor qilinadi va yangisi qo'yiladi. Shu orqali mijoz ketma-ket
+// bir necha xabar yozsa ham, AI ularning HAMMASINI birlashtirib bitta tabiiy javob beradi —
+// har bir xabarga alohida, soniyalar ichida bir nechta javob otib yubormaydi.
+const pendingAiTimers = new Map<string, NodeJS.Timeout>();
+
+// Odam yozgandek tabiiy kechikish: 4-5.5 soniya oralig'ida tasodifiy tanlanadi.
+const HUMAN_LIKE_DELAY_MIN_MS = 4000;
+const HUMAN_LIKE_DELAY_MAX_MS = 5500;
+
+// Operator so'ralgach, agar admin javob yozmasa, AI 1 soatdan keyin shu suhbatda avtomatik
+// qayta yonadi — mijoz butunlay javobsiz qolib ketmasligi uchun.
+const AUTO_RESUME_AFTER_MS = 60 * 60 * 1000;
+
+// Admin qo'lda xabar yozganda (routes/conversations.ts) yoki suhbatni qo'lda pauza qilganda,
+// o'sha paytda kutilayotgan (hali yuborilmagan) AI javobini bekor qilish uchun tashqariga ochiladi.
+export function cancelPendingAiTurn(conversationId: string): void {
+  const existing = pendingAiTimers.get(conversationId);
+  if (existing) {
+    clearTimeout(existing);
+    pendingAiTimers.delete(conversationId);
+  }
+}
+
+function scheduleAiTurn(params: MaybeSendAiReplyParams): void {
+  const { conversationId } = params;
+  cancelPendingAiTurn(conversationId);
+
+  const delay =
+    HUMAN_LIKE_DELAY_MIN_MS + Math.random() * (HUMAN_LIKE_DELAY_MAX_MS - HUMAN_LIKE_DELAY_MIN_MS);
+
+  const timer = setTimeout(() => {
+    pendingAiTimers.delete(conversationId);
+    runAiTurn(params).catch((err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[webhook] AI javobini yozishda xato: ${message}`);
+    });
+  }, delay);
+
+  pendingAiTimers.set(conversationId, timer);
+}
+
+interface HandoverParams {
+  accessToken: string;
+  contactIgsid: string;
+  conversationId: string;
+}
+
+// Mijoz aniq operator so'raganda darhol (AI javob generatsiya qilishga urinmasdan) chaqiriladi:
+// suhbatni aiPaused=true qilib belgilaydi va qisqa, tabiiy "operatorga ulanmoqda" xabarini yuboradi.
+async function triggerHandover({ accessToken, contactIgsid, conversationId }: HandoverParams): Promise<void> {
+  cancelPendingAiTurn(conversationId);
+
+  const updatedConversation = await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { aiPaused: true, aiPausedAt: new Date() },
+    include: { contact: true },
+  });
+
+  const ackText = pickHandoverAcknowledgement();
+
+  try {
+    const { messageId } = await sendTextMessage(accessToken, contactIgsid, ackText);
+    const ackMessage = await prisma.message.create({
+      data: {
+        instagramMessageId: messageId,
+        conversationId,
+        senderType: SenderType.ADMIN,
+        text: ackText,
+        status: 'SENT',
+        sentAt: new Date(),
+      },
+    });
+
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: ackMessage.sentAt },
+    });
+
+    emitNewMessage({
+      conversationId,
+      message: ackMessage,
+      conversation: {
+        id: updatedConversation.id,
+        unreadCount: updatedConversation.unreadCount,
+        lastMessageAt: ackMessage.sentAt,
+        contact: updatedConversation.contact,
+      },
+    });
+
+    console.log(`[webhook] Operator so'ralgan, AI to'xtatildi (conversation=${conversationId})`);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return;
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[webhook] Handover xabarini yuborishda xato: ${message}`);
+  }
+}
+
+interface HandleIncomingParams extends MaybeSendAiReplyParams {
+  text: string;
+}
+
+// Kontaktdan har bir yangi matnli xabar kelganda chaqiriladi. Handover Protocol'ning
+// "kirish nuqtasi": pauza/avtomatik-qayta-yoqilish holatini va operator so'rovini shu yerda
+// tekshiramiz, so'ng AI javobini (agar hammasi mos bo'lsa) tabiiy kechikish bilan navbatga qo'yamiz.
+async function handleIncomingContactMessage({
   account,
   accessToken,
   contactIgsid,
   conversationId,
-}: MaybeSendAiReplyParams): Promise<void> {
+  text,
+}: HandleIncomingParams): Promise<void> {
   if (!account.aiEnabled) return;
 
   const settings = await prisma.academySettings.findUnique({
@@ -347,6 +459,51 @@ async function maybeSendAiReply({
     );
     return;
   }
+
+  const current = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { aiPaused: true, aiPausedAt: true },
+  });
+  if (!current) return;
+
+  if (current.aiPaused) {
+    const pausedAtMs = current.aiPausedAt?.getTime() ?? Date.now();
+    if (Date.now() - pausedAtMs < AUTO_RESUME_AFTER_MS) {
+      console.log(`[webhook] Suhbat operator kutmoqda, AI javob bermadi (conversation=${conversationId})`);
+      return;
+    }
+    // Belgilangan vaqt otdi, admin javob yozmadi — AI shu suhbatda avtomatik qayta yoqiladi.
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { aiPaused: false, aiPausedAt: null },
+    });
+    console.log(`[webhook] AI avtomatik qayta yoqildi (conversation=${conversationId})`);
+  }
+
+  if (detectHandoverRequest(text)) {
+    await triggerHandover({ accessToken, contactIgsid, conversationId });
+    return;
+  }
+
+  scheduleAiTurn({ account, accessToken, contactIgsid, conversationId });
+}
+
+// AI yoqilgan va markaz sozlamalari mavjud bolsa, suhbat tarixi asosida javob generatsiya
+// qilib, Instagram Send API orqali yuboradi va suhbatga admin xabari sifatida yozadi. Xato
+// yoki sozlama yoqligida jim otkazib yuboriladi — mijoz inson agentga qoladi.
+async function runAiTurn({ account, accessToken, contactIgsid, conversationId }: MaybeSendAiReplyParams): Promise<void> {
+  // Kutish davomida (4-5.5 soniya) suhbat holati o'zgargan bo'lishi mumkin (masalan admin
+  // qo'lda javob yozdi yoki boshqa xabar handover'ni ishga tushirdi) — shuni oxirgi marta tekshiramiz.
+  const current = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { aiPaused: true },
+  });
+  if (!current || current.aiPaused) return;
+
+  const settings = await prisma.academySettings.findUnique({
+    where: { instagramAccountId: account.id },
+  });
+  if (!settings) return;
 
   const history = await getConversationHistory(conversationId);
   const replyText = await generateAiReply(settings, history);
@@ -365,9 +522,26 @@ async function maybeSendAiReply({
       },
     });
 
+    // AI javob yozgandan keyin, yangilangan suhbat tarixini leads ustunlari
+    // (temperatura / gaplashish / kursga yozilish) bo'yicha avtomatik tasniflaymiz — shu bilan
+    // birga mijoz shu javobga ham operator so'rab javob berganini (handoverRequested) tekshiramiz.
+    // Xato yoki noaniq javob bo'lsa, analysis null bo'ladi — eski qiymatlar saqlanib qoladi.
+    const analysisHistory = await getConversationHistory(conversationId, 20);
+    const analysis = await analyzeConversation(analysisHistory);
+
     const updatedConversation = await prisma.conversation.update({
       where: { id: conversationId },
-      data: { lastMessageAt: aiMessage.sentAt },
+      data: {
+        lastMessageAt: aiMessage.sentAt,
+        ...(analysis
+          ? {
+              leadTemperature: analysis.leadTemperature,
+              talkStatus: analysis.talkStatus,
+              courseDecision: analysis.courseDecision,
+              ...(analysis.handoverRequested ? { aiPaused: true, aiPausedAt: new Date() } : {}),
+            }
+          : {}),
+      },
       include: { contact: true },
     });
 
@@ -382,7 +556,12 @@ async function maybeSendAiReply({
       },
     });
 
-    console.log(`[webhook] AI javobi yuborildi (conversation=${conversationId})`);
+    console.log(
+      `[webhook] AI javobi yuborildi (conversation=${conversationId})` +
+        (analysis
+          ? ` — tahlil: temperatura=${analysis.leadTemperature}, gaplashish=${analysis.talkStatus}, kurs=${analysis.courseDecision}, handover=${analysis.handoverRequested}`
+          : ' — tahlil otkazib yuborildi'),
+    );
   } catch (err) {
     // Instagram Send API xatosi (masalan 24 soatlik oyna yopilgan) AI javobini yuborishni
     // toxtatadi, lekin webhook oqimini buzmaydi.

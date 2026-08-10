@@ -13,6 +13,7 @@ import { requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { sendAttachmentMessage, sendReaction, sendTextMessage } from '../services/instagramApi';
 import { getAccessToken, getConnectedAccount } from '../services/accountService';
+import { cancelPendingAiTurn } from '../services/webhookProcessor';
 
 // Instagram Send API faqat rasm/video/audio qabul qiladi.
 const ALLOWED_MIME: Record<string, 'image' | 'video' | 'audio'> = {
@@ -114,6 +115,8 @@ router.get('/', async (_req, res, next) => {
         leadTemperature: c.leadTemperature,
         talkStatus: c.talkStatus,
         courseDecision: c.courseDecision,
+        aiPaused: c.aiPaused,
+        aiPausedAt: c.aiPausedAt,
         lastMessageAt: c.lastMessageAt,
         lastMessage: c.messages[0] ?? null,
       })),
@@ -139,6 +142,8 @@ router.get('/:id', async (req, res, next) => {
         leadTemperature: conversation.leadTemperature,
         talkStatus: conversation.talkStatus,
         courseDecision: conversation.courseDecision,
+        aiPaused: conversation.aiPaused,
+        aiPausedAt: conversation.aiPausedAt,
         lastMessageAt: conversation.lastMessageAt,
         lastMessage: conversation.messages[0] ?? null,
       },
@@ -153,20 +158,31 @@ const leadStatusSchema = z.object({
   talkStatus: z.enum(['TALKED', 'NOT_TALKED']).optional(),
   courseDecision: z.enum(['WILL_WRITE', 'WILL_NOT_WRITE']).optional(),
   status: z.enum(['OPEN', 'CLOSED']).optional(),
+  // Handover Protocol: admin bu yerdan qo'lda operator rejimiga o'tkazishi yoki AI'ni qayta
+  // yoqishi mumkin (masalan mijoz operator so'ragandan keyin ChatWindow'dagi tugma orqali).
+  aiPaused: z.boolean().optional(),
 });
 
 router.patch('/:id/status', validateBody(leadStatusSchema), async (req, res, next) => {
   try {
-    const data = req.body as z.infer<typeof leadStatusSchema>;
+    const { aiPaused, ...rest } = req.body as z.infer<typeof leadStatusSchema>;
     const conversation = await prisma.conversation.findUnique({
       where: { id: req.params.id },
       select: { id: true },
     });
     if (!conversation) throw new AppError('Suhbat topilmadi', 404);
 
+    if (aiPaused === true) {
+      // Admin qo'lda pauza qilganda kutilayotgan (hali yuborilmagan) AI javobi ham bekor qilinadi.
+      cancelPendingAiTurn(conversation.id);
+    }
+
     const updated = await prisma.conversation.update({
       where: { id: conversation.id },
-      data,
+      data: {
+        ...rest,
+        ...(aiPaused === undefined ? {} : { aiPaused, aiPausedAt: aiPaused ? new Date() : null }),
+      },
       include: {
         contact: true,
         messages: { orderBy: { sentAt: 'desc' }, take: 1 },
@@ -182,6 +198,8 @@ router.patch('/:id/status', validateBody(leadStatusSchema), async (req, res, nex
         leadTemperature: updated.leadTemperature,
         talkStatus: updated.talkStatus,
         courseDecision: updated.courseDecision,
+        aiPaused: updated.aiPaused,
+        aiPausedAt: updated.aiPausedAt,
         lastMessageAt: updated.lastMessageAt,
         lastMessage: updated.messages[0] ?? null,
       },
@@ -265,6 +283,10 @@ router.post('/:id/messages', validateBody(sendMessageSchema), async (req, res, n
     if (!account) {
       throw new AppError('Instagram akkaunt ulanmagan. Avval akkauntni ulang', 400);
     }
+
+    // Admin shu suhbatga qo'lda yozayotgan bo'lsa, navbatda kutayotgan (hali yuborilmagan)
+    // AI javobi bekor qilinadi — ikkalasi ustma-ust kelib ketmasligi uchun.
+    cancelPendingAiTurn(conversation.id);
 
     // Avval SENDING statusida saqlaymiz, API muvaffaqiyatli bolsa SENT qilamiz.
     const pending = await prisma.message.create({

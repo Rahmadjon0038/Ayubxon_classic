@@ -95,6 +95,11 @@ model Conversation {
   leadTemperature    LeadTemperature    @default(WARM)
   talkStatus         TalkStatus         @default(NOT_TALKED)
   courseDecision     CourseDecision     @default(WILL_WRITE)
+  // Handover protokoli: mijoz operator so'raganda (yoki admin qo'lda) true bo'ladi — shu
+  // suhbatda AI avtomatik javob yozishni to'xtatadi, toki admin qayta yoqmaguncha yoki
+  // aiPausedAt'dan beri belgilangan vaqt o'tmaguncha (avtomatik qayta yoqilish).
+  aiPaused           Boolean            @default(false)
+  aiPausedAt         DateTime?
   lastMessageAt      DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt

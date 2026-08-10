@@ -1,5 +1,6 @@
 import { AcademySettings } from '@prisma/client';
 import OpenAI from 'openai';
+import { z } from 'zod';
 import { env } from '../config/env';
 
 const AI_MODEL = 'gpt-4o-mini';
@@ -76,15 +77,16 @@ Qoidalar:
 2. FAQAT telefon raqamini so'rang — ISM SO'RAMANG (faqat telefon kifoya). Buni ham FAQAT mijoz
    chindan ham yozilishga/ro'yxatdan o'tishga qiziqish bildirganda so'rang (masalan "qanday
    yozilsam bo'ladi", "ro'yxatdan o'tmoqchiman", "narxi mos keladi, olaman" kabi aniq signal
-   berganda). So'raganingizda ANIQ shu uslubda tugating: "...telefon raqamingizni qoldirsangiz,
-   administratorlarimiz siz bilan bog'lanib, to'liq ma'lumot berishadi" (yoki shunga o'xshash
-   tabiiy variant, so'zlarni xilma-xil qiling) — chunki mijozga YORDAM BERADIGAN administratorlar,
-   siz emas. Mijozning savolini ("qanday yozilaman?", "ro'yxatdan qanday o'taman?" kabi)
-   javobingizda SO'ZMA-SO'Z TAKRORLAB YOZMANG — to'g'ridan-to'g'ri javob bering. Buni suhbatda
-   bir marta so'rang — agar allaqachon so'ragan yoki mijoz allaqachon bergan bo'lsangiz, qayta
-   so'ramang. BU JUMLANI HAR BIR JAVOBNING OXIRIGA AVTOMATIK, SHABLON SIFATIDA QO'SHIB
-   YUBORMANG. Oddiy salomlashuv, umumiy savol yoki ma'lumot so'rashda telefon so'ramang — faqat
-   so'ralgan ma'lumotni bering.
+   berganda). So'raganingizda QISQA va ODDIY qiling — faqat shunga o'xshash bitta jumla
+   yeting, ortiqcha gap qo'shmang: "Yozilish uchun telefon raqamingizni qoldiring,
+   administratorlarimiz siz bilan bog'lanadi." (so'zlarni ozgina o'zgartirishingiz mumkin,
+   lekin QISQA bo'lishi shart — 1 ta jumladan oshmasin). Mijozning savolini ("qanday
+   yozilaman?", "ro'yxatdan qanday o'taman?" kabi) HECH QACHON qaytarib yozmang/takrorlamang —
+   to'g'ridan-to'g'ri shu qisqa javobni bering, boshqa izoh qo'shmang. Buni suhbatda bir marta
+   so'rang — agar allaqachon so'ragan yoki mijoz allaqachon bergan bo'lsangiz, qayta so'ramang.
+   BU JUMLANI HAR BIR JAVOBNING OXIRIGA AVTOMATIK, SHABLON SIFATIDA QO'SHIB YUBORMANG. Oddiy
+   salomlashuv, umumiy savol yoki ma'lumot so'rashda telefon so'ramang — faqat so'ralgan
+   ma'lumotni bering.
 3. Instagram DM formatiga mos, qisqa va yangi qatorlardan yozing.
 4. Mijozlar telefondan shoshilib, imlo xatolari yoki qisqartmalar bilan yozishi odatiy hol
    (masalan "Davalatabot" — "Davlatobod" degani, "salm" — "salom" degani). Bunday xatolarga
@@ -201,6 +203,135 @@ export async function generateAiReply(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[ai] OpenAI chaqiruvida xato: ${message}`);
+    return null;
+  }
+}
+
+export interface ConversationAnalysis {
+  leadTemperature: 'HOT' | 'WARM' | 'COLD';
+  talkStatus: 'TALKED' | 'NOT_TALKED';
+  courseDecision: 'WILL_WRITE' | 'WILL_NOT_WRITE';
+  handoverRequested: boolean;
+}
+
+const analysisSchema = z.object({
+  leadTemperature: z.enum(['HOT', 'WARM', 'COLD']),
+  talkStatus: z.enum(['TALKED', 'NOT_TALKED']),
+  courseDecision: z.enum(['WILL_WRITE', 'WILL_NOT_WRITE']),
+  handoverRequested: z.boolean(),
+});
+
+// Tezkor, OpenAI'siz aniqlash: mijozning ENG OXIRGI xabarida operator/inson so'ralganini
+// darhol (kechikishsiz) ushlab qolish uchun. Bu — Handover Protocol'ning birinchi qatlami:
+// aniq signal bo'lsa, AI javob generatsiya qilishni ham boshlamay, darhol suhbatni insonga
+// topshiradi. Nozikroq/bilvosita so'rovlarni esa analyzeConversation() (2-qatlam, AI orqali)
+// AI javob yozib bo'lgandan keyin ushlaydi — shuning uchun regex 100% qamrab olishi shart emas.
+const HANDOVER_REQUEST_PATTERN =
+  /operator|оператор|menejer|менеджер|administrator|odam\s*bilan|inson\s*bilan|jonli\s*(inson|odam|operator)|haqiqiy\s*(odam|inson)|human\s*(agent|support)?|real\s*person|live\s*agent|человек/i;
+
+export function detectHandoverRequest(text: string): boolean {
+  return HANDOVER_REQUEST_PATTERN.test(text);
+}
+
+// Handover ishga tushganda mijozga darhol yuboriladigan qisqa, tabiiy xabar — AI emas,
+// admin/operatorga ulanayotganini bildiradi. Har safar bir xil bo'lmasligi uchun bir nechta
+// variant orasidan tasodifiy tanlanadi.
+const HANDOVER_ACKNOWLEDGEMENTS = [
+  "Albatta, hozir sizni operatorimizga ulayapman, biroz kuting 🙌",
+  "Tushunarli, hozir administratorlarimizdan biri siz bilan bog'lanadi, birozdan so'ng javob beradi 😊",
+  "Yaxshi, sizni jonli operatorga ulaymiz — tez orada javob berishadi 🙌",
+];
+
+export function pickHandoverAcknowledgement(): string {
+  return HANDOVER_ACKNOWLEDGEMENTS[Math.floor(Math.random() * HANDOVER_ACKNOWLEDGEMENTS.length)];
+}
+
+const ANALYSIS_SYSTEM_PROMPT = `
+Siz "InboxCRM" tizimi uchun ishlaydigan suhbat tahlilchisisiz. Sizga Instagram DM orqali
+o'quv markazi va mijoz o'rtasidagi suhbat tarixi beriladi ("Mijoz:" — kontakt, "Admin:" — markaz
+tomonidan yozilgan javob, inson yoki AI farqi yo'q). Vazifangiz — shu suhbatni to'rtta mezon
+bo'yicha tasniflab, FAQAT quyidagi JSON formatida javob berish (boshqa hech qanday matn, izoh
+yoki markdown qo'shmang):
+
+{"leadTemperature": "HOT" | "WARM" | "COLD", "talkStatus": "TALKED" | "NOT_TALKED", "courseDecision": "WILL_WRITE" | "WILL_NOT_WRITE", "handoverRequested": true | false}
+
+Mezonlar:
+
+1. leadTemperature (mijozning qizg'inligi):
+   - HOT: mijoz aniq qiziqish bildirgan va yozilishga/qaror qabul qilishga yaqin — masalan
+     telefon raqam qoldirgan yoki qoldirishga rozi bo'lgan, "qanday yozilsam bo'ladi",
+     "ro'yxatdan o'tmoqchiman", "narxi mos keladi, olaman" kabi aniq signal bergan.
+   - COLD: mijoz aniq qiziqish bildirmagan, sovuq/qisqa javob bergan, rad etgan yoki suhbatni
+     ochiq rad javobi bilan yakunlagan ("kerak emas", "qiziq emas", "narx mos kelmadi" va h.k.).
+   - WARM: yuqoridagi ikkisiga aniq mos kelmaydigan barcha hollar — savol so'ramoqda, ma'lumot
+     olmoqda, lekin hali qat'iy qaror bermagan.
+
+2. talkStatus (real muloqot bo'lganmi):
+   - TALKED: mijoz va markaz o'rtasida haqiqiy ikki tomonlama dialog bo'lgan (mijoz kamida bir
+     necha marta mazmunli javob yozgan, faqat bitta salomlashuv emas).
+   - NOT_TALKED: mijoz hali yetarlicha javob bermagan yoki suhbat shunchaki boshlangan
+     (masalan faqat bitta xabar yoki salomlashuv bilan tugagan).
+
+3. courseDecision (kursga yozilish ehtimoli):
+   - WILL_NOT_WRITE: mijoz ANIQ rad etgan yoki qiziqmasligini bildirgan (narx, masofa, vaqt
+     mos kelmasligi, "kerak emas", "o'ylab ko'raman" kabi rad ohangidagi javoblar ham shu yerga
+     kiradi, chunki ular hozircha yozilishni istamayotganini bildiradi).
+   - WILL_WRITE: barcha boshqa hollar — hali rad javobi yo'q, qiziqish davom etmoqda yoki
+     hali aniqlik yo'q.
+
+4. handoverRequested (mijoz aniq inson operator bilan gaplashishni so'raganmi):
+   - true: FAQAT mijoz ANIQ ravishda inson/operator/administrator bilan gaplashishni so'ragan
+     bo'lsa (masalan "odam bilan gaplashtiring", "operator kerak", "menejer bilan ulang",
+     "jonli operator bilan gaplashsam bo'ladimi").
+   - false: bunday aniq so'rov bo'lmasa — mijoz AI javobidan norozi bo'lsa yoki tushunmagan
+     bo'lsa ham, agar ANIQ inson/operator so'ramagan bo'lsa, false qaytaring.
+
+Faqat suhbat tarixidagi haqiqiy dalillarga tayaning, taxmin qilib to'qib chiqarmang. Suhbat juda
+qisqa yoki noaniq bo'lsa, xavfsiz standart qiymatlardan foydalaning: leadTemperature="WARM",
+talkStatus mos holatga qarab, courseDecision="WILL_WRITE", handoverRequested=false.
+`.trim();
+
+function formatHistoryForAnalysis(history: ChatTurn[]): string {
+  return history
+    .map((turn) => `${turn.role === 'user' ? 'Mijoz' : 'Admin'}: ${turn.content}`)
+    .join('\n');
+}
+
+// Suhbat tarixi asosida lead'ni uchta ustun (temperatura, gaplashish holati, kursga yozilish
+// ehtimoli) bo'yicha avtomatik tasniflaydi. AI mijozga javob yozgandan keyin chaqiriladi —
+// natija leads bo'limidagi ustunlarni yangilash uchun ishlatiladi. Kalit sozlanmagan, tarix
+// bo'sh yoki javob JSON formatiga mos kelmasa, null qaytadi (chaqiruvchi tomon eski qiymatlarni
+// saqlab qoladi).
+export async function analyzeConversation(history: ChatTurn[]): Promise<ConversationAnalysis | null> {
+  const client = getClient();
+  if (!client) return null;
+  if (history.length === 0) return null;
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: AI_MODEL,
+      temperature: 0,
+      max_tokens: 150,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
+        { role: 'user', content: formatHistoryForAnalysis(history) },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+
+    const parsed = analysisSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) {
+      console.warn('[ai] Tahlil natijasi kutilgan formatga mos kelmadi');
+      return null;
+    }
+
+    return parsed.data;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[ai] Suhbatni tahlil qilishda xato: ${message}`);
     return null;
   }
 }

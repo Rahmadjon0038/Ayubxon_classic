@@ -65,6 +65,10 @@ export interface ConversationListItem {
   leadTemperature: 'HOT' | 'WARM' | 'COLD';
   talkStatus: 'TALKED' | 'NOT_TALKED';
   courseDecision: 'WILL_WRITE' | 'WILL_NOT_WRITE';
+  // Handover Protocol: true bo'lsa, mijoz operator so'ragan (yoki admin qo'lda to'xtatgan) —
+  // AI shu suhbatda avtomatik javob bermaydi.
+  aiPaused: boolean;
+  aiPausedAt: string | null;
   lastMessageAt: string | null;
   lastMessage: Message | null;
 }
