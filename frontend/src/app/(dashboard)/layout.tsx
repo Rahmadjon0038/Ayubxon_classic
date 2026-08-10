@@ -57,9 +57,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!ready) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden md:flex-row">
       <aside
-        className={`flex shrink-0 flex-col border-r border-gray-200 bg-white transition-[width] duration-200 ${
+        className={`hidden shrink-0 flex-col border-r border-gray-200 bg-white transition-[width] duration-200 md:flex ${
           collapsed ? 'w-16' : 'w-60'
         }`}
       >
@@ -115,7 +115,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <main className="flex-1 overflow-hidden">{children}</main>
+      <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+
+      {/* Mobil pastki navigatsiya — yon panel md: dan boshlab korinadi, undan pastda shu almashadi. */}
+      <nav className="flex shrink-0 items-stretch justify-around border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+        {navItems.map(({ href, label, Icon }) => {
+          const active = pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              title={label}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 transition ${
+                active ? 'text-brand-600' : 'text-gray-500'
+              }`}
+            >
+              <Icon size={21} strokeWidth={active ? 2.4 : 2} />
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Chiqish"
+          title="Chiqish"
+          className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-gray-500 transition"
+        >
+          <LogOut size={21} />
+        </button>
+      </nav>
     </div>
   );
 }

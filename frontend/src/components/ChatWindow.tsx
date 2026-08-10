@@ -16,9 +16,12 @@ interface Props {
   onDeleted?: () => void;
   // Berilsa, header boshida orqaga tugmasi chiqadi (masalan Leads sahifasidan ochilganda).
   backHref?: string;
+  // Inbox kabi bitta sahifada ro'yxat+chat birga bo'lgan joylarda ishlatiladi: faqat mobil
+  // ekranda (list va chat bitta vaqtda ko'rinmaydigan joyda) orqaga tugmasi chiqadi.
+  onBack?: () => void;
 }
 
-export default function ChatWindow({ conversation, onDeleted, backHref }: Props) {
+export default function ChatWindow({ conversation, onDeleted, backHref, onBack }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -215,7 +218,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-3 py-3 sm:gap-3 sm:px-5">
         {backHref && (
           <Link
             href={backHref}
@@ -224,6 +227,16 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
           >
             <ArrowLeft size={18} />
           </Link>
+        )}
+        {!backHref && onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 md:hidden"
+            aria-label="Ro'yxatga qaytish"
+          >
+            <ArrowLeft size={18} />
+          </button>
         )}
         <Avatar src={conversation.contact.profilePictureUrl} name={name} size={38} />
         <div className="min-w-0 flex-1">
@@ -248,7 +261,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
       </div>
 
       {conversation.aiPaused && (
-        <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+        <div className="flex flex-col items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
           <span className="flex items-center gap-1.5">
             <UserRound size={14} className="shrink-0" />
             Operator so'ralgan — AI bu suhbatda avtomatik javob bermayapti.
@@ -265,7 +278,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref }: Props)
         </div>
       )}
 
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5">
         {messagesQuery.isLoading && (
           <p className="py-6 text-center text-sm text-gray-400">Yuklanmoqda...</p>
         )}

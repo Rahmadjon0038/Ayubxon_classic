@@ -104,7 +104,7 @@ export default function AiAssistantPage() {
   const settings = settingsQuery.data?.settings;
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-lg font-semibold">AI Assistent</h1>
@@ -116,8 +116,8 @@ export default function AiAssistantPage() {
         </div>
 
         {/* AI yoqish/ochirish */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div>
+        <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold text-gray-700">AI avtomatik javob</h2>
             <p className="mt-1 text-xs text-gray-500">
               Yoqilgan bo&apos;lsa, kelgan har bir DM&apos;ga AI darhol javob yozadi. O&apos;chirilgan
@@ -163,9 +163,9 @@ export default function AiAssistantPage() {
         {!settingsQuery.isLoading && !settingsQuery.isError && (
           <form
             onSubmit={handleSubmit}
-            className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+            className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <h2 className="text-sm font-semibold text-gray-700">Markaz ma&apos;lumotlari</h2>
               {settings?.updatedAt && (
                 <span className="text-xs text-gray-400">

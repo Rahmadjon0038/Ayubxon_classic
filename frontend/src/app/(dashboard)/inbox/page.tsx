@@ -87,7 +87,13 @@ export default function InboxPage() {
 
   return (
     <div className="flex h-full">
-      <div className="w-80 shrink-0 border-r border-gray-200 bg-white">
+      {/* Mobilda faqat bittasi korinadi: suhbat tanlanmagan bolsa royxat, tanlangan bolsa chat.
+          md: dan boshlab ikkalasi doim yonma-yon turadi. */}
+      <div
+        className={`w-full shrink-0 border-r border-gray-200 bg-white md:block md:w-80 ${
+          selectedId ? 'hidden md:block' : 'block'
+        }`}
+      >
         <ConversationList
           conversations={conversationsQuery.data ?? []}
           isLoading={conversationsQuery.isLoading}
@@ -95,10 +101,11 @@ export default function InboxPage() {
           onSelect={handleSelect}
         />
       </div>
-      <div className="flex-1 bg-gray-50">
+      <div className={`flex-1 bg-gray-50 ${selectedId ? 'block' : 'hidden md:block'}`}>
         {selected ? (
           <ChatWindow
             conversation={selected}
+            onBack={() => setSelectedId(null)}
             onDeleted={() => {
               setSelectedId(null);
               queryClient.invalidateQueries({ queryKey: ['conversations'] });

@@ -63,7 +63,7 @@ export default function InstagramPage() {
     'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-lg font-semibold">Instagram akkaunt</h1>
@@ -73,7 +73,7 @@ export default function InstagramPage() {
         </div>
 
         {/* Akkaunt holati */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
           <h2 className="mb-4 text-sm font-semibold text-gray-700">Akkaunt holati</h2>
 
           {accountQuery.isLoading && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
@@ -87,18 +87,18 @@ export default function InstagramPage() {
 
           {account && (
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <Avatar
                   src={account.profilePictureUrl}
                   name={account.name || account.username}
                   size={56}
                 />
-                <div>
-                  <p className="font-medium">@{account.username}</p>
-                  {account.name && <p className="text-sm text-gray-500">{account.name}</p>}
+                <div className="min-w-0">
+                  <p className="truncate font-medium">@{account.username}</p>
+                  {account.name && <p className="truncate text-sm text-gray-500">{account.name}</p>}
                 </div>
                 <span
-                  className={`ml-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                  className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
                     account.isConnected
                       ? 'bg-green-50 text-green-700'
                       : 'bg-gray-100 text-gray-500'
@@ -113,9 +113,9 @@ export default function InstagramPage() {
                 </span>
               </div>
 
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
                 <dt className="text-gray-500">Account ID</dt>
-                <dd className="font-mono text-xs">{account.instagramAccountId}</dd>
+                <dd className="break-all font-mono text-xs">{account.instagramAccountId}</dd>
                 <dt className="text-gray-500">Akkaunt turi</dt>
                 <dd>{account.accountType || '—'}</dd>
                 <dt className="text-gray-500">Token</dt>
@@ -126,7 +126,7 @@ export default function InstagramPage() {
                 </dd>
               </dl>
 
-              <div className="flex gap-2 pt-1">
+              <div className="flex flex-wrap gap-2 pt-1">
                 <button
                   onClick={() => testMutation.mutate()}
                   disabled={testMutation.isPending || !account.hasToken}
@@ -162,7 +162,7 @@ export default function InstagramPage() {
         {/* Ulash formasi */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+          className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5"
         >
           <div>
             <h2 className="text-sm font-semibold text-gray-700">Akkauntni ulash</h2>

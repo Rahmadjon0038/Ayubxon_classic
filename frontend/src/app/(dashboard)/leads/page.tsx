@@ -259,8 +259,8 @@ export default function LeadsPage() {
           </div>
         )}
 
-        <section className="overflow-x-auto pb-1">
-          <div className="grid min-w-[1080px] gap-2 xl:grid-cols-4">
+        <section className="pb-1">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {(['new', 'solved', 'pending', 'rejected'] as BoardBucketId[]).map((bucketId) => {
               const config = bucketConfig[bucketId];
               const items = buckets[bucketId];
@@ -273,7 +273,7 @@ export default function LeadsPage() {
                     e.preventDefault();
                     if (draggedId) handleDrop(draggedId, bucketId);
                   }}
-                  className="flex min-h-[560px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm"
+                  className="flex min-h-[220px] flex-col rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm sm:min-h-[420px] xl:min-h-[560px]"
                 >
                   <div className="mb-1.5 flex items-center justify-between gap-2 px-1 pt-0.5">
                     <div className="flex items-center gap-1.5">

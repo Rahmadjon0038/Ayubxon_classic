@@ -15,14 +15,14 @@ export default function SettingsPage() {
   });
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-lg font-semibold">Sozlamalar</h1>
           <p className="mt-1 text-sm text-gray-500">Platforma va admin malumotlari.</p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
           <h2 className="mb-4 text-sm font-semibold text-gray-700">Administrator</h2>
           {meQuery.isLoading ? (
             <p className="text-sm text-gray-400">Yuklanmoqda...</p>
@@ -38,7 +38,7 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
           <h2 className="mb-4 text-sm font-semibold text-gray-700">Tizim</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="shrink-0 text-gray-500">Backend API</dt>
