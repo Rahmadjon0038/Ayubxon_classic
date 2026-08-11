@@ -14,12 +14,21 @@ interface Props {
   months: string[];
   series: BarSeries[];
   monthNames: string[];
+  monthNamesShort: string[];
   emptyLabel: string;
+  selectedMonth?: string;
 }
 
 const PLOT_HEIGHT = 176;
 
-export default function MonthlyBarChart({ months, series, monthNames, emptyLabel }: Props) {
+export default function MonthlyBarChart({
+  months,
+  series,
+  monthNames,
+  monthNamesShort,
+  emptyLabel,
+  selectedMonth,
+}: Props) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const max = niceMax(Math.max(1, ...series.flatMap((s) => s.values)));
@@ -76,6 +85,13 @@ export default function MonthlyBarChart({ months, series, monthNames, emptyLabel
                   onMouseEnter={() => setHoverIndex(i)}
                   onMouseLeave={() => setHoverIndex((cur) => (cur === i ? null : cur))}
                 >
+                  {month === selectedMonth && (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 rounded-t-[3px] bg-brand-500/10 dark:bg-brand-400/10"
+                      style={{ height: PLOT_HEIGHT }}
+                    />
+                  )}
+
                   {hoverIndex === i && (
                     <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-max -translate-x-1/2 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] shadow-md dark:border-gray-700 dark:bg-gray-800">
                       <p className="font-semibold text-gray-900 dark:text-gray-100">
@@ -111,9 +127,13 @@ export default function MonthlyBarChart({ months, series, monthNames, emptyLabel
             {months.map((month) => (
               <span
                 key={month}
-                className="flex-1 text-center text-[10px] text-gray-500 dark:text-gray-500"
+                className={
+                  month === selectedMonth
+                    ? 'flex-1 text-center text-[10px] font-semibold text-brand-600 dark:text-brand-400'
+                    : 'flex-1 text-center text-[10px] text-gray-500 dark:text-gray-500'
+                }
               >
-                {monthShortLabel(month, monthNames)}
+                {monthShortLabel(month, monthNamesShort)}
               </span>
             ))}
           </div>

@@ -1,13 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BookOpen, Loader2, MessagesSquare, Phone, PhoneCall, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BookOpen, Loader2, MessagesSquare, Phone, PhoneCall, Users } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
 import MonthlyBarChart from '@/components/stats/MonthlyBarChart';
 import RankedBarList from '@/components/stats/RankedBarList';
 import StackedBreakdown from '@/components/stats/StackedBreakdown';
+import { currentMonthKey, monthFullLabel, shiftMonthKey } from '@/components/stats/chartUtils';
 import { api, getErrorMessage } from '@/lib/api';
-import { getMonthNames } from '@/lib/i18n';
+import { getMonthNames, getMonthShortNames } from '@/lib/i18n';
 import { InstagramAccount, StatsResponse } from '@/lib/types';
 
 // Tasdiqlangan (CVD-xavfsiz) rang toplami — Lidlar/Qongiroqlar bolimlaridagi rang tiliga mos.
@@ -47,9 +49,66 @@ function StatTile({
   );
 }
 
+function MonthPicker({
+  selectedMonth,
+  onChange,
+  monthNames,
+  thisMonthLabel,
+  prevMonthLabel,
+  nextMonthLabel,
+}: {
+  selectedMonth: string;
+  onChange: (month: string) => void;
+  monthNames: string[];
+  thisMonthLabel: string;
+  prevMonthLabel: string;
+  nextMonthLabel: string;
+}) {
+  const isCurrentMonth = selectedMonth === currentMonthKey();
+
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <button
+        type="button"
+        aria-label={prevMonthLabel}
+        onClick={() => onChange(shiftMonthKey(selectedMonth, -1))}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+      >
+        <ChevronLeft size={16} />
+      </button>
+
+      <span className="min-w-[9rem] text-center text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
+        {monthFullLabel(selectedMonth, monthNames)}
+      </span>
+
+      <button
+        type="button"
+        aria-label={nextMonthLabel}
+        onClick={() => onChange(shiftMonthKey(selectedMonth, 1))}
+        disabled={isCurrentMonth}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:text-gray-400 dark:hover:bg-gray-800"
+      >
+        <ChevronRight size={16} />
+      </button>
+
+      {!isCurrentMonth && (
+        <button
+          type="button"
+          onClick={() => onChange(currentMonthKey())}
+          className="ml-1 rounded-md px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
+        >
+          {thisMonthLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function StatsPage() {
   const { t, locale } = useLocale();
   const monthNames = getMonthNames(locale);
+  const monthNamesShort = getMonthShortNames(locale);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
 
   const accountQuery = useQuery({
     queryKey: ['instagram-account'],
@@ -61,9 +120,9 @@ export default function StatsPage() {
   const accountKey = accountQuery.data?.id ?? 'none';
 
   const statsQuery = useQuery({
-    queryKey: ['stats', accountKey],
+    queryKey: ['stats', accountKey, selectedMonth],
     queryFn: async () => {
-      const { data } = await api.get<StatsResponse>('/stats');
+      const { data } = await api.get<StatsResponse>('/stats', { params: { month: selectedMonth } });
       return data;
     },
     refetchInterval: 60_000,
@@ -79,6 +138,18 @@ export default function StatsPage() {
   return (
     <div className="h-full overflow-y-auto bg-gray-50 p-2.5 dark:bg-gray-950">
       <div className="mx-auto w-full max-w-6xl space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-gray-500 dark:text-gray-500">{t('stats.selectedMonthHint')}</p>
+          <MonthPicker
+            selectedMonth={selectedMonth}
+            onChange={setSelectedMonth}
+            monthNames={monthNames}
+            thisMonthLabel={t('stats.thisMonth')}
+            prevMonthLabel={t('stats.prevMonth')}
+            nextMonthLabel={t('stats.nextMonth')}
+          />
+        </div>
+
         {statsQuery.isError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
             {getErrorMessage(statsQuery.error)}
@@ -114,6 +185,8 @@ export default function StatsPage() {
                     },
                   ]}
                   monthNames={monthNames}
+                  monthNamesShort={monthNamesShort}
+                  selectedMonth={selectedMonth}
                   emptyLabel={t('stats.noData')}
                 />
               </Card>
@@ -136,6 +209,8 @@ export default function StatsPage() {
                     },
                   ]}
                   monthNames={monthNames}
+                  monthNamesShort={monthNamesShort}
+                  selectedMonth={selectedMonth}
                   emptyLabel={t('stats.noData')}
                 />
               </Card>

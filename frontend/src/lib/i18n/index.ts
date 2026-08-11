@@ -59,3 +59,7 @@ export function translate(locale: Locale, key: string, vars?: Record<string, str
 export function getMonthNames(locale: Locale): string[] {
   return dictionaries[locale].time.months;
 }
+
+export function getMonthShortNames(locale: Locale): string[] {
+  return dictionaries[locale].time.monthsShort;
+}

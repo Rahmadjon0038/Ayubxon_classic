@@ -12,12 +12,25 @@ export function niceMax(value: number): number {
   return niceResidual * magnitude;
 }
 
-export function monthShortLabel(monthKey: string, monthNames: string[]): string {
+// monthNamesShort — locale ning "time.monthsShort" ro'yxati (har biri qisqa, bir-biridan farqli belgi,
+// masalan o'zbekchada "iyun"/"iyul" uchun mos ravishda "iyn"/"iyl" — slice(0,3) ikkalasini ham "iyu" qilib qo'yardi).
+export function monthShortLabel(monthKey: string, monthNamesShort: string[]): string {
   const [, monthNum] = monthKey.split('-').map(Number);
-  return monthNames[monthNum - 1]?.slice(0, 3) ?? monthKey;
+  return monthNamesShort[monthNum - 1] ?? monthKey;
 }
 
 export function monthFullLabel(monthKey: string, monthNames: string[]): string {
   const [year, monthNum] = monthKey.split('-').map(Number);
   return `${monthNames[monthNum - 1] ?? monthKey} ${year}`;
+}
+
+export function currentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function shiftMonthKey(monthKey: string, delta: number): string {
+  const [year, monthNum] = monthKey.split('-').map(Number);
+  const d = new Date(year, monthNum - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }

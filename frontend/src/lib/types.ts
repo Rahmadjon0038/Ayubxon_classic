@@ -84,6 +84,7 @@ export interface ConversationListItem {
 }
 
 export interface StatsResponse {
+  selectedMonth: string;
   totals: {
     totalConversations: number;
     totalWithPhone: number;

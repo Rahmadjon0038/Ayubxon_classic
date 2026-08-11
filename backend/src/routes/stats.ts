@@ -8,29 +8,39 @@ const router = Router();
 router.use(requireAuth);
 
 const MONTHS_BACK = 12;
-
-// "2026-01" korinishidagi kalitlar — eng eskisidan eng yangisiga qarab, oxirgi 12 oy.
-function lastMonthKeys(count: number): string[] {
-  const keys: string[] = [];
-  const now = new Date();
-  for (let i = count - 1; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
-  return keys;
-}
+const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 function monthKeyFromDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-router.get('/', async (_req, res, next) => {
+// "2026-01" korinishidagi kalitlar — `end` oyigacha (shu oyni ham qoshib) tugaydigan oxirgi `count` oy.
+function lastMonthKeys(count: number, end: Date): string[] {
+  const keys: string[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(end.getFullYear(), end.getMonth() - i, 1);
+    keys.push(monthKeyFromDate(d));
+  }
+  return keys;
+}
+
+router.get('/', async (req, res, next) => {
   try {
     const account = await getConnectedAccount();
-    const months = lastMonthKeys(MONTHS_BACK);
+
+    // ?month=YYYY-MM — sahifadagi oy filteri. Notogri/bosh bolsa joriy oyga tushadi.
+    const rawMonth = typeof req.query.month === 'string' ? req.query.month : undefined;
+    const selectedMonth = rawMonth && MONTH_KEY_RE.test(rawMonth) ? rawMonth : monthKeyFromDate(new Date());
+    const [selYear, selMonthNum] = selectedMonth.split('-').map(Number);
+    const monthStart = new Date(selYear, selMonthNum - 1, 1);
+    const monthEnd = new Date(selYear, selMonthNum, 1);
+
+    const months = lastMonthKeys(MONTHS_BACK, monthStart);
+    const trendWindowStart = new Date(selYear, selMonthNum - 1 - (MONTHS_BACK - 1), 1);
 
     if (!account) {
       return res.json({
+        selectedMonth,
         totals: { totalConversations: 0, totalWithPhone: 0, totalMessages: 0, talkedCount: 0 },
         monthlyLeads: months.map((month) => ({ month, count: 0 })),
         monthlyMessages: months.map((month) => ({ month, contact: 0, admin: 0 })),
@@ -40,17 +50,28 @@ router.get('/', async (_req, res, next) => {
       });
     }
 
+    // Yuqoridagi 4 ta plitka va pastdagi kartalar — tanlangan oy uchun.
+    const monthFilter = { createdAt: { gte: monthStart, lt: monthEnd } };
+
     const [totalConversations, totalWithPhone, totalMessages, talkedCount] = await Promise.all([
-      prisma.conversation.count({ where: { instagramAccountId: account.id } }),
+      prisma.conversation.count({ where: { instagramAccountId: account.id, ...monthFilter } }),
       prisma.contact.count({
-        where: { phoneNumber: { not: null }, conversations: { some: { instagramAccountId: account.id } } },
+        where: {
+          phoneNumber: { not: null },
+          conversations: { some: { instagramAccountId: account.id, ...monthFilter } },
+        },
       }),
-      prisma.message.count({ where: { conversation: { instagramAccountId: account.id } } }),
-      prisma.conversation.count({ where: { instagramAccountId: account.id, talkStatus: 'TALKED' } }),
+      prisma.message.count({
+        where: { conversation: { instagramAccountId: account.id }, sentAt: { gte: monthStart, lt: monthEnd } },
+      }),
+      prisma.conversation.count({
+        where: { instagramAccountId: account.id, talkStatus: 'TALKED', ...monthFilter },
+      }),
     ]);
 
+    // Oylik trend grafiklari — tanlangan oy bilan tugaydigan oxirgi 12 oy.
     const conversationDates = await prisma.conversation.findMany({
-      where: { instagramAccountId: account.id, createdAt: { gte: new Date(Date.now() - 366 * 24 * 60 * 60 * 1000) } },
+      where: { instagramAccountId: account.id, createdAt: { gte: trendWindowStart, lt: monthEnd } },
       select: { createdAt: true },
     });
     const leadsByMonth = new Map<string, number>();
@@ -63,7 +84,7 @@ router.get('/', async (_req, res, next) => {
     const messageDates = await prisma.message.findMany({
       where: {
         conversation: { instagramAccountId: account.id },
-        sentAt: { gte: new Date(Date.now() - 366 * 24 * 60 * 60 * 1000) },
+        sentAt: { gte: trendWindowStart, lt: monthEnd },
       },
       select: { sentAt: true, senderType: true },
     });
@@ -83,7 +104,7 @@ router.get('/', async (_req, res, next) => {
 
     const leadTempGroups = await prisma.conversation.groupBy({
       by: ['leadTemperature'],
-      where: { instagramAccountId: account.id },
+      where: { instagramAccountId: account.id, ...monthFilter },
       _count: { _all: true },
     });
     const leadTemperature = { HOT: 0, WARM: 0, COLD: 0 };
@@ -91,7 +112,7 @@ router.get('/', async (_req, res, next) => {
 
     const callStatusGroups = await prisma.conversation.groupBy({
       by: ['callStatus'],
-      where: { instagramAccountId: account.id, contact: { phoneNumber: { not: null } } },
+      where: { instagramAccountId: account.id, contact: { phoneNumber: { not: null } }, ...monthFilter },
       _count: { _all: true },
     });
     const callStatus = { NEW: 0, TALKED: 0, NOT_ANSWERED: 0 };
@@ -100,7 +121,7 @@ router.get('/', async (_req, res, next) => {
     // interestedCourse erkin matn va bir nechta kurs vergul bilan yozilgan bolishi mumkin
     // (masalan "Matematika, Ingliz tili") — shuning uchun JS tomonda ajratib sanaymiz.
     const courseRows = await prisma.conversation.findMany({
-      where: { instagramAccountId: account.id, interestedCourse: { not: null } },
+      where: { instagramAccountId: account.id, interestedCourse: { not: null }, ...monthFilter },
       select: { interestedCourse: true },
     });
     const courseCounts = new Map<string, number>();
@@ -116,6 +137,7 @@ router.get('/', async (_req, res, next) => {
       .slice(0, 8);
 
     return res.json({
+      selectedMonth,
       totals: { totalConversations, totalWithPhone, totalMessages, talkedCount },
       monthlyLeads,
       monthlyMessages,
