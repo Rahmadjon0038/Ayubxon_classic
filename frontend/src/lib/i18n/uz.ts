@@ -96,6 +96,8 @@ const uz = {
     failedToSend: 'Yuborilmadi',
     removeReaction: 'Reaksiyani olib tashlash',
     addReaction: "❤️ qo'yish",
+    deleteMessage: "Xabarni o'chirish",
+    deleteConfirm: "Bu xabarni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.",
   },
   settings: {
     title: 'Sozlamalar',

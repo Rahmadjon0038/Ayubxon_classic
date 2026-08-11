@@ -95,6 +95,8 @@ const en: Translations = {
     failedToSend: 'Failed to send',
     removeReaction: 'Remove reaction',
     addReaction: '❤️ React',
+    deleteMessage: 'Delete message',
+    deleteConfirm: 'Are you sure you want to delete this message? This action cannot be undone.',
   },
   settings: {
     title: 'Settings',

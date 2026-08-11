@@ -80,6 +80,11 @@ export interface MessageUpdatedEvent {
   message: Message;
 }
 
+export interface MessageDeletedEvent {
+  conversationId: string;
+  messageId: string;
+}
+
 export interface NewMessageEvent {
   conversationId: string;
   message: Message;

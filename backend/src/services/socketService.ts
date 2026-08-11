@@ -42,3 +42,8 @@ export function emitNewMessage(payload: unknown) {
 export function emitMessageUpdated(payload: unknown) {
   io?.emit('message_updated', payload);
 }
+
+// Admin bitta xabarni ochirganda (faqat platformadan, Instagramdan emas).
+export function emitMessageDeleted(payload: unknown) {
+  io?.emit('message_deleted', payload);
+}

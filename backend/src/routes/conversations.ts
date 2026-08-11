@@ -14,6 +14,7 @@ import { validateBody } from '../middleware/validate';
 import { sendAttachmentMessage, sendReaction, sendTextMessage } from '../services/instagramApi';
 import { getAccessToken, getConnectedAccount } from '../services/accountService';
 import { cancelPendingAiTurn } from '../services/webhookProcessor';
+import { emitMessageDeleted } from '../services/socketService';
 
 // Instagram Send API faqat rasm/video/audio qabul qiladi.
 const ALLOWED_MIME: Record<string, 'image' | 'video' | 'audio'> = {
@@ -452,6 +453,43 @@ router.post('/:id/messages/:messageId/react', validateBody(reactSchema), async (
     });
 
     return res.json({ message: updated });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Bitta xabarni platformadan ochirish (Instagramdan emas — faqat bizning ko'rinishimizdan).
+router.delete('/:id/messages/:messageId', async (req, res, next) => {
+  try {
+    const { conversation } = await getCurrentConversationOrThrow(req.params.id);
+
+    const message = await prisma.message.findUnique({ where: { id: req.params.messageId } });
+    if (!message || message.conversationId !== conversation.id) {
+      throw new AppError('Xabar topilmadi', 404);
+    }
+
+    await prisma.message.delete({ where: { id: message.id } });
+
+    if (message.attachmentUrl) {
+      const filePath = getLocalUploadPath(message.attachmentUrl);
+      if (filePath) await fs.promises.unlink(filePath).catch(() => {});
+    }
+
+    // Suhbat royxatidagi "oxirgi xabar" korinishi yangilanishi uchun qoldirilgan
+    // eng songi xabarni topib, lastMessageAt shunga moslashtiriladi.
+    const latest = await prisma.message.findFirst({
+      where: { conversationId: conversation.id },
+      orderBy: { sentAt: 'desc' },
+      select: { sentAt: true },
+    });
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: latest?.sentAt ?? null },
+    });
+
+    emitMessageDeleted({ conversationId: conversation.id, messageId: message.id });
+
+    return res.json({ ok: true });
   } catch (err) {
     return next(err);
   }

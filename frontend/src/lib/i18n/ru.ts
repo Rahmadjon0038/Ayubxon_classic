@@ -95,6 +95,8 @@ const ru: Translations = {
     failedToSend: 'Не отправлено',
     removeReaction: 'Убрать реакцию',
     addReaction: '❤️ Поставить реакцию',
+    deleteMessage: 'Удалить сообщение',
+    deleteConfirm: 'Вы уверены, что хотите удалить это сообщение? Это действие нельзя отменить.',
   },
   settings: {
     title: 'Настройки',

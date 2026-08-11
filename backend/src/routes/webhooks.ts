@@ -36,26 +36,15 @@ function isSignatureValid(req: RawBodyRequest): boolean {
     return true;
   }
   const signature = req.headers['x-hub-signature-256'];
-  if (typeof signature !== 'string' || !req.rawBody) {
-    console.warn(
-      `[webhook][debug] signature turi=${typeof signature} rawBody bormi=${Boolean(req.rawBody)}`,
-    );
-    return false;
-  }
+  if (typeof signature !== 'string' || !req.rawBody) return false;
 
   const expected =
     'sha256=' +
     crypto.createHmac('sha256', env.INSTAGRAM_APP_SECRET).update(req.rawBody).digest('hex');
 
-  // VAQTINCHALIK DIAGNOSTIKA — muammo topilgach olib tashlanadi.
-  console.log(
-    `[webhook][debug] rawBodyLen=${req.rawBody.length} secretLen=${env.INSTAGRAM_APP_SECRET.length} received=${signature} expected=${expected}`,
-  );
-
   try {
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch (err) {
-    console.warn(`[webhook][debug] timingSafeEqual xato: ${err instanceof Error ? err.message : err}`);
+  } catch {
     return false;
   }
 }

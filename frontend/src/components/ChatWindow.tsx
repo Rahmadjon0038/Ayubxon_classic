@@ -14,6 +14,7 @@ import {
   ConversationListItem,
   InstagramAccount,
   Message,
+  MessageDeletedEvent,
   MessageUpdatedEvent,
   NewMessageEvent,
 } from '@/lib/types';
@@ -114,11 +115,21 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
       );
     };
 
+    const onMessageDeleted = (event: MessageDeletedEvent) => {
+      if (event.conversationId !== conversation.id) return;
+      queryClient.setQueryData<Message[]>(['messages', accountKey, conversation.id], (old) =>
+        old?.filter((m) => m.id !== event.messageId),
+      );
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    };
+
     socket.on('new_message', onNewMessage);
     socket.on('message_updated', onMessageUpdated);
+    socket.on('message_deleted', onMessageDeleted);
     return () => {
       socket.off('new_message', onNewMessage);
       socket.off('message_updated', onMessageUpdated);
+      socket.off('message_deleted', onMessageDeleted);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.id, queryClient]);
@@ -186,6 +197,19 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
     },
   });
 
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (message: Message) => {
+      await api.delete(`/conversations/${conversation.id}/messages/${message.id}`);
+      return message.id;
+    },
+    onSuccess: (messageId) => {
+      queryClient.setQueryData<Message[]>(['messages', accountKey, conversation.id], (old) =>
+        old?.filter((m) => m.id !== messageId),
+      );
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       await api.delete(`/conversations/${conversation.id}`);
@@ -224,15 +248,24 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
       ? uploadMutation.error
       : reactMutation.isError
         ? reactMutation.error
-        : deleteMutation.isError
-          ? deleteMutation.error
-        : null;
+        : deleteMessageMutation.isError
+          ? deleteMessageMutation.error
+          : deleteMutation.isError
+            ? deleteMutation.error
+            : null;
 
   const handleDelete = () => {
     if (deleteMutation.isPending) return;
     const confirmed = window.confirm(t('chat.deleteConfirm'));
     if (!confirmed) return;
     deleteMutation.mutate();
+  };
+
+  const handleDeleteMessage = (message: Message) => {
+    if (deleteMessageMutation.isPending) return;
+    const confirmed = window.confirm(t('messageBubble.deleteConfirm'));
+    if (!confirmed) return;
+    deleteMessageMutation.mutate(message);
   };
 
   return (
@@ -326,6 +359,8 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
               message={message}
               onReact={(msg, action) => reactMutation.mutate({ message: msg, action })}
               reactPending={reactMutation.isPending}
+              onDelete={handleDeleteMessage}
+              deletePending={deleteMessageMutation.isPending}
             />
           ))}
         </div>
