@@ -125,6 +125,36 @@ interface ResolvedAttachment {
 
 const KNOWN_MEDIA_TYPES = new Set(['image', 'video', 'audio', 'file']);
 
+// Webhook payload ichida yashiringan birinchi public HTTP(S) linkni topadi.
+// Instagram ayrim xabar turlarida URL'ni text/attachments[0].payload.url dan tashqari
+// boshqa nested maydonlarda ham yuborishi mumkin. Shu fallback unsupported bubble
+// chiqib qolmasligi uchun ishlatiladi.
+function findFirstHttpUrl(value: unknown, seen = new WeakSet<object>()): string | null {
+  if (typeof value === 'string') {
+    const match = value.match(/https?:\/\/[^\s"'<>()[\]{}]+/i);
+    return match ? match[0] : null;
+  }
+
+  if (!value || typeof value !== 'object') return null;
+  if (seen.has(value as object)) return null;
+  seen.add(value as object);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstHttpUrl(item, seen);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  for (const item of Object.values(value as Record<string, unknown>)) {
+    const found = findFirstHttpUrl(item, seen);
+    if (found) return found;
+  }
+
+  return null;
+}
+
 // Meta payload'idagi attachment turi bizning oddiy image/video/audio toifalarimizga mos
 // kelmasa (masalan story_mention, ig_reel, share) alohida ishlov beriladi:
 // - story_mention kabi turlar haqiqiy media fayl, lekin havolasi vaqtinchalik (imzoli) —
@@ -330,6 +360,21 @@ async function processMessagingEvent(
       ? new Date(rawTs < 1_000_000_000_000 ? rawTs * 1000 : rawTs)
       : new Date();
   const resolvedAttachment = await resolveIncomingAttachment(message.attachments?.[0], accessToken);
+  const normalizedText = message.text?.trim() || null;
+  let attachmentType = resolvedAttachment.attachmentType;
+  let attachmentUrl = resolvedAttachment.attachmentUrl;
+
+  // Agar xabarda matn va attachment yo'q bo'lsa, payload ichidan yashiringan URL'ni
+  // qidiramiz. Bu Instagram ba'zi link/video/share ko'rinishlarini oddiy textga
+  // aylantirmay yuborganida unsupported bubble chiqib qolmasligi uchun kerak.
+  if (!normalizedText && !attachmentUrl) {
+    const fallbackUrl = findFirstHttpUrl(event);
+    if (fallbackUrl) {
+      attachmentUrl = fallbackUrl;
+      attachmentType = attachmentType ?? 'file';
+      console.log(`[webhook] Link fallback topildi (mid=${message.mid.slice(0, 24)}…): ${fallbackUrl}`);
+    }
+  }
 
   let saved;
   try {
@@ -338,9 +383,9 @@ async function processMessagingEvent(
         instagramMessageId: message.mid,
         conversationId: conversation.id,
         senderType: isEcho ? SenderType.ADMIN : SenderType.CONTACT,
-        text: message.text ?? null,
-        attachmentType: resolvedAttachment.attachmentType,
-        attachmentUrl: resolvedAttachment.attachmentUrl,
+        text: normalizedText,
+        attachmentType,
+        attachmentUrl,
         attachmentThumbnailUrl: resolvedAttachment.attachmentThumbnailUrl,
         status: isEcho ? 'SENT' : 'RECEIVED',
         sentAt,
@@ -355,7 +400,7 @@ async function processMessagingEvent(
   // Telefon raqamini AI holatidan (yoqilgan/ochirilgan/operatorga otkazilgan) qatiy nazar
   // har bir kontakt xabarida qidiramiz — shu orqali mijoz operator bilan gaplashayotganda
   // ham (AI umuman ishtirok etmasa ham) qoldirgan raqami platformaga tushadi.
-  const detectedPhone = !isEcho && message.text ? extractPhoneNumber(message.text) : null;
+  const detectedPhone = !isEcho && normalizedText ? extractPhoneNumber(normalizedText) : null;
   if (detectedPhone) {
     console.log(`[webhook] Telefon raqami aniqlandi (contact=${contact.id}): ${detectedPhone}`);
   }
@@ -392,13 +437,13 @@ async function processMessagingEvent(
   });
 
   // Faqat kontaktdan kelgan (echo emas) matnli xabarlarga AI javob berishga harakat qilinadi.
-  if (!isEcho && message.text) {
+  if (!isEcho && normalizedText) {
     await handleIncomingContactMessage({
       account,
       accessToken,
       contactIgsid: contactScopedId,
       conversationId: conversation.id,
-      text: message.text,
+      text: normalizedText,
     });
   }
 }

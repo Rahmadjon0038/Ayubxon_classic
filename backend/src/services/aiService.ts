@@ -246,6 +246,68 @@ export function detectHandoverRequest(text: string): boolean {
   return HANDOVER_REQUEST_PATTERN.test(text);
 }
 
+function getLatestUserMessage(history: ChatTurn[]): string {
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    if (history[i]?.role === 'user') {
+      return history[i].content.trim();
+    }
+  }
+  return '';
+}
+
+const EXPLICIT_REJECTION_PATTERN =
+  /(kerak\s*emas|kerakmas|qiziq\s*emas|qiziqmas|yoqmadi|mos\s*kelmadi|mos kelmadi|hozircha\s*olmayman|hozircha\s*kerak\s*emas|olmayman|xohlamayman|qimmat|narxi?\s*qimmat|masofa\s*uzoq|uzoq\s*ekan|vaqt\s*mos\s*kelmadi|vaqt\s*to'g'ri\s*emas|time\s*mos\s*emas|keyinroq\s*yozaman|keyinroq\s*qolaman)/i;
+
+const STRONG_INTEREST_PATTERN =
+  /(ro'?yxatdan\s*o't|yozil|yozilsam|qanday\s*yozil|kursga\s*yozil|qabul\s*qila\s*asiz|qoldir|telefon\s*qoldir|raqam\s*qoldir|bog'lan|ulang|ulanglar|operator\s*kerak|manzil\s*yubor|jadval\s*yubor|narx\s*qancha|qancha\s*tur|kurs\s*bor|bormi|ma'lumot\s*ber|batafsil\s*ber)/i;
+
+const INFO_SEEKING_PATTERN =
+  /(narx|qancha|qayerda|manzil|adres|telefon|raqam|jadval|vaqt|qachon|filial|kurs\s*bor|bormi|qaysi\s*kurs|dars\s*kun|dars\s*vaqt|yo'nalish|yo'nalishi|necha\s*so'm|qancha\s*so'm|qaysi\s*filial)/i;
+
+function refineConversationAnalysis(history: ChatTurn[], analysis: ConversationAnalysis): ConversationAnalysis {
+  const latestUserMessage = getLatestUserMessage(history);
+  if (!latestUserMessage) return analysis;
+
+  const explicitRejection = EXPLICIT_REJECTION_PATTERN.test(latestUserMessage);
+  const strongInterest = STRONG_INTEREST_PATTERN.test(latestUserMessage);
+  const infoSeeking = INFO_SEEKING_PATTERN.test(latestUserMessage);
+
+  if (explicitRejection) {
+    return {
+      ...analysis,
+      leadTemperature: 'COLD',
+      courseDecision: 'WILL_NOT_WRITE',
+      handoverRequested: analysis.handoverRequested,
+      interestedCourse: analysis.interestedCourse,
+    };
+  }
+
+  if (strongInterest) {
+    return {
+      ...analysis,
+      leadTemperature: 'HOT',
+      courseDecision: 'WILL_WRITE',
+    };
+  }
+
+  if (infoSeeking && analysis.courseDecision === 'WILL_NOT_WRITE') {
+    return {
+      ...analysis,
+      leadTemperature: analysis.leadTemperature === 'COLD' ? 'WARM' : analysis.leadTemperature,
+      courseDecision: 'WILL_WRITE',
+    };
+  }
+
+  if (infoSeeking && analysis.leadTemperature === 'COLD') {
+    return {
+      ...analysis,
+      leadTemperature: 'WARM',
+    };
+  }
+
+  return analysis;
+}
+
 // Handover ishga tushganda mijozga darhol yuboriladigan qisqa, tabiiy xabar — AI emas,
 // admin/operatorga ulanayotganini bildiradi. Har safar bir xil bo'lmasligi uchun bir nechta
 // variant orasidan tasodifiy tanlanadi.
@@ -274,10 +336,13 @@ Mezonlar:
    - HOT: mijoz aniq qiziqish bildirgan va yozilishga/qaror qabul qilishga yaqin — masalan
      telefon raqam qoldirgan yoki qoldirishga rozi bo'lgan, "qanday yozilsam bo'ladi",
      "ro'yxatdan o'tmoqchiman", "narxi mos keladi, olaman" kabi aniq signal bergan.
-   - COLD: mijoz aniq qiziqish bildirmagan, sovuq/qisqa javob bergan, rad etgan yoki suhbatni
-     ochiq rad javobi bilan yakunlagan ("kerak emas", "qiziq emas", "narx mos kelmadi" va h.k.).
+   - COLD: mijoz aniq rad etgan yoki suhbatni yopgan — "kerak emas", "qiziq emas", "yoqmadi",
+     "mos kelmadi", "hozircha olmayman" kabi ochiq radlar.
    - WARM: yuqoridagi ikkisiga aniq mos kelmaydigan barcha hollar — savol so'ramoqda, ma'lumot
-     olmoqda, lekin hali qat'iy qaror bermagan.
+     olmoqda, narx/manzil/telefon/jadval/filial haqida so'rayapti, lekin hali qat'iy rad ham,
+     yozilish qarori ham yo'q.
+   Muhim: narx, manzil, telefon raqam, jadval, filial, dars vaqti yoki kurs bor-yo'qligini
+   so'rash COLD emas. Bunday xabarlar odatda WARM hisoblanadi.
 
 2. talkStatus (real muloqot bo'lganmi):
    - TALKED: mijoz va markaz o'rtasida haqiqiy ikki tomonlama dialog bo'lgan (mijoz kamida bir
@@ -286,11 +351,10 @@ Mezonlar:
      (masalan faqat bitta xabar yoki salomlashuv bilan tugagan).
 
 3. courseDecision (kursga yozilish ehtimoli):
-   - WILL_NOT_WRITE: mijoz ANIQ rad etgan yoki qiziqmasligini bildirgan (narx, masofa, vaqt
-     mos kelmasligi, "kerak emas", "o'ylab ko'raman" kabi rad ohangidagi javoblar ham shu yerga
-     kiradi, chunki ular hozircha yozilishni istamayotganini bildiradi).
-   - WILL_WRITE: barcha boshqa hollar — hali rad javobi yo'q, qiziqish davom etmoqda yoki
-     hali aniqlik yo'q.
+   - WILL_NOT_WRITE: mijoz ANIQ rad etgan yoki qiziqmasligini bildirgan ("kerak emas",
+     "qiziq emas", "yoqmadi", "mos kelmadi" va shunga o'xshash ochiq radlar).
+   - WILL_WRITE: barcha boshqa hollar — savol so'rash, narx/manzil/telefon/jadval haqida
+     aniqlik kiritish, hali qaror bermagan holatlar yoki qiziqish davom etayotgan vaziyatlar.
 
 4. handoverRequested (mijoz operatorga ulanishga ANIQ rozilik bildirdimi):
    true FAQAT quyidagi ikki holatdan BIRIGA to'liq mos kelsa qaytariladi:
@@ -372,7 +436,7 @@ export async function analyzeConversation(history: ChatTurn[]): Promise<Conversa
       return null;
     }
 
-    return parsed.data;
+    return refineConversationAnalysis(history, parsed.data);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[ai] Suhbatni tahlil qilishda xato: ${message}`);
