@@ -10,7 +10,7 @@ const uz = {
   },
   nav: {
     leads: 'Lidlar',
-    inbox: 'Inbox',
+    inbox: 'Xabarlar',
     calls: "Qo'ng'iroqlar",
     stats: 'Statistika',
     instagram: 'Instagram akkaunt',
@@ -101,7 +101,7 @@ const uz = {
   },
   inbox: {
     selectConversation: 'Suhbatni tanlang',
-    title: 'Inbox',
+    title: 'Xabarlar',
     emptyBody: 'Hozircha suhbatlar yoq. Instagram akkauntga DM kelganda shu yerda korinadi.',
     noMessage: 'Xabar yoq',
     messageLabel: 'Xabar',
