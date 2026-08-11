@@ -83,6 +83,20 @@ export interface ConversationListItem {
   lastMessage: Message | null;
 }
 
+export interface StatsResponse {
+  totals: {
+    totalConversations: number;
+    totalWithPhone: number;
+    totalMessages: number;
+    talkedCount: number;
+  };
+  monthlyLeads: { month: string; count: number }[];
+  monthlyMessages: { month: string; contact: number; admin: number }[];
+  leadTemperature: { HOT: number; WARM: number; COLD: number };
+  callStatus: { NEW: number; TALKED: number; NOT_ANSWERED: number };
+  topCourses: { course: string; count: number }[];
+}
+
 export interface MessageUpdatedEvent {
   conversationId: string;
   message: Message;
