@@ -222,6 +222,7 @@ export interface ConversationAnalysis {
   courseDecision: 'WILL_WRITE' | 'WILL_NOT_WRITE';
   handoverRequested: boolean;
   phoneNumber: string | null;
+  interestedCourse: string | null;
 }
 
 const analysisSchema = z.object({
@@ -230,6 +231,7 @@ const analysisSchema = z.object({
   courseDecision: z.enum(['WILL_WRITE', 'WILL_NOT_WRITE']),
   handoverRequested: z.boolean(),
   phoneNumber: z.string().nullable(),
+  interestedCourse: z.string().nullable(),
 });
 
 // Tezkor, OpenAI'siz aniqlash: mijozning ENG OXIRGI xabarida operator/inson so'ralganini
@@ -260,11 +262,11 @@ export function pickHandoverAcknowledgement(): string {
 const ANALYSIS_SYSTEM_PROMPT = `
 Siz "InboxCRM" tizimi uchun ishlaydigan suhbat tahlilchisisiz. Sizga Instagram DM orqali
 o'quv markazi va mijoz o'rtasidagi suhbat tarixi beriladi ("Mijoz:" — kontakt, "Admin:" — markaz
-tomonidan yozilgan javob, inson yoki AI farqi yo'q). Vazifangiz — shu suhbatni beshta mezon
+tomonidan yozilgan javob, inson yoki AI farqi yo'q). Vazifangiz — shu suhbatni oltita mezon
 bo'yicha tasniflab, FAQAT quyidagi JSON formatida javob berish (boshqa hech qanday matn, izoh
 yoki markdown qo'shmang):
 
-{"leadTemperature": "HOT" | "WARM" | "COLD", "talkStatus": "TALKED" | "NOT_TALKED", "courseDecision": "WILL_WRITE" | "WILL_NOT_WRITE", "handoverRequested": true | false, "phoneNumber": string | null}
+{"leadTemperature": "HOT" | "WARM" | "COLD", "talkStatus": "TALKED" | "NOT_TALKED", "courseDecision": "WILL_WRITE" | "WILL_NOT_WRITE", "handoverRequested": true | false, "phoneNumber": string | null, "interestedCourse": string | null}
 
 Mezonlar:
 
@@ -319,9 +321,18 @@ Mezonlar:
    - Agar mijoz raqam yozmagan bo'lsa, yoki gap boshqa birovning raqami haqida bo'lsa (masalan
      "do'stimning raqami"), null qaytaring — taxmin qilib to'qimang.
 
+6. interestedCourse (mijoz qiziqish bildirgan fan/kurs nomi):
+   - Agar mijoz suhbat davomida aniq bitta (yoki bir nechta) fan/kurs nomini aytgan yoki shu
+     haqida so'ragan bo'lsa, o'sha nomni qisqa, o'z holicha (mijoz qanday atagan bo'lsa,
+     tuzatib, katta harf bilan) qaytaring — masalan "Matematika", "Ingliz tili", "Frontend dasturlash".
+   - Bir nechta fan/kurs aytilgan bo'lsa, vergul bilan ajratib barchasini yozing.
+   - Agar mijoz aniq fan/kurs nomini aytmagan (masalan faqat "narxlaringiz qancha" deb umumiy
+     so'ragan) bo'lsa, null qaytaring — taxmin qilib to'qimang.
+
 Faqat suhbat tarixidagi haqiqiy dalillarga tayaning, taxmin qilib to'qib chiqarmang. Suhbat juda
 qisqa yoki noaniq bo'lsa, xavfsiz standart qiymatlardan foydalaning: leadTemperature="WARM",
-talkStatus mos holatga qarab, courseDecision="WILL_WRITE", handoverRequested=false, phoneNumber=null.
+talkStatus mos holatga qarab, courseDecision="WILL_WRITE", handoverRequested=false, phoneNumber=null,
+interestedCourse=null.
 `.trim();
 
 function formatHistoryForAnalysis(history: ChatTurn[]): string {

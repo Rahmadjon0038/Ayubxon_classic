@@ -11,6 +11,7 @@ const uz = {
   nav: {
     leads: 'Lidlar',
     inbox: 'Inbox',
+    calls: "Qo'ng'iroqlar",
     instagram: 'Instagram akkaunt',
     aiAssistant: 'AI Assistent',
     settings: 'Sozlamalar',
@@ -64,6 +65,20 @@ const uz = {
     notFoundTitle: 'Suhbat topilmadi',
     notFoundBody: "Ushbu lead uchun chat mavjud emas yoki o'chirib yuborilgan.",
     backToLeads: 'Leads sahifasiga qaytish',
+  },
+  calls: {
+    searchPlaceholder: 'Ism, telefon yoki kurs boyicha qidirish...',
+    monthAll: 'Barcha oylar',
+    columnNew: 'Yangi',
+    columnTalked: 'Gaplashildi',
+    columnNotAnswered: "Telefonni ko'tarmadi",
+    statTotal: 'Jami',
+    empty: "Bo'sh",
+    noResultsTitle: 'Natija topilmadi',
+    noResultsBody: 'Tanlangan oy yoki qidiruvga mos lid topilmadi.',
+    noCourse: "Kurs aniqlanmagan",
+    noPhoneTitle: "Hozircha telefon raqam qoldirgan mijoz yo'q",
+    noPhoneBody: 'Mijoz suhbatda telefon raqam qoldirsa, shu yerda korinadi.',
   },
   inbox: {
     selectConversation: 'Suhbatni tanlang',

@@ -10,6 +10,7 @@ const en: Translations = {
   nav: {
     leads: 'Leads',
     inbox: 'Inbox',
+    calls: 'Calls',
     instagram: 'Instagram account',
     aiAssistant: 'AI Assistant',
     settings: 'Settings',
@@ -63,6 +64,20 @@ const en: Translations = {
     notFoundTitle: 'Conversation not found',
     notFoundBody: 'This lead has no chat, or it has been deleted.',
     backToLeads: 'Back to Leads',
+  },
+  calls: {
+    searchPlaceholder: 'Search by name, phone, or course...',
+    monthAll: 'All months',
+    columnNew: 'New',
+    columnTalked: 'Talked',
+    columnNotAnswered: "Didn't answer",
+    statTotal: 'Total',
+    empty: 'Empty',
+    noResultsTitle: 'No results found',
+    noResultsBody: 'No leads match the selected month or search.',
+    noCourse: 'Course not identified',
+    noPhoneTitle: 'No customers have left a phone number yet',
+    noPhoneBody: "They'll appear here once a customer leaves a phone number in chat.",
   },
   inbox: {
     selectConversation: 'Select a conversation',

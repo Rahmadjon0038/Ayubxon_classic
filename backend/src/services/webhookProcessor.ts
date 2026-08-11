@@ -634,6 +634,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
               leadTemperature: analysis.leadTemperature,
               talkStatus: analysis.talkStatus,
               courseDecision: analysis.courseDecision,
+              ...(analysis.interestedCourse ? { interestedCourse: analysis.interestedCourse } : {}),
               ...(analysis.handoverRequested ? { aiPaused: true, aiPausedAt: new Date() } : {}),
             }
           : {}),

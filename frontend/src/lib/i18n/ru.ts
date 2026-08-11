@@ -10,6 +10,7 @@ const ru: Translations = {
   nav: {
     leads: 'Лиды',
     inbox: 'Входящие',
+    calls: 'Звонки',
     instagram: 'Instagram аккаунт',
     aiAssistant: 'AI Ассистент',
     settings: 'Настройки',
@@ -63,6 +64,20 @@ const ru: Translations = {
     notFoundTitle: 'Беседа не найдена',
     notFoundBody: 'У этого лида нет чата, либо он был удалён.',
     backToLeads: 'Назад к лидам',
+  },
+  calls: {
+    searchPlaceholder: 'Поиск по имени, телефону или курсу...',
+    monthAll: 'Все месяцы',
+    columnNew: 'Новые',
+    columnTalked: 'Поговорили',
+    columnNotAnswered: 'Не взял трубку',
+    statTotal: 'Всего',
+    empty: 'Пусто',
+    noResultsTitle: 'Результаты не найдены',
+    noResultsBody: 'Нет лидов за выбранный месяц или по вашему запросу.',
+    noCourse: 'Курс не определён',
+    noPhoneTitle: 'Пока нет клиентов, оставивших номер телефона',
+    noPhoneBody: 'Они появятся здесь, как только клиент оставит номер телефона в чате.',
   },
   inbox: {
     selectConversation: 'Выберите беседу',
