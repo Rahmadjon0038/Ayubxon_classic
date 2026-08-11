@@ -105,7 +105,9 @@ const en: Translations = {
   inbox: {
     selectConversation: 'Select a conversation',
     title: 'Inbox',
+    searchPlaceholder: 'Search users...',
     emptyBody: "No conversations yet. They'll appear here once you receive a DM on Instagram.",
+    searchEmptyBody: 'No conversations match your search.',
     noMessage: 'No message',
     messageLabel: 'Message',
     imagePreview: '📷 Image',

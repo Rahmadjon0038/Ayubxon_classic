@@ -105,7 +105,9 @@ const ru: Translations = {
   inbox: {
     selectConversation: 'Выберите беседу',
     title: 'Входящие',
+    searchPlaceholder: 'Поиск пользователей...',
     emptyBody: 'Пока нет бесед. Они появятся здесь, когда вам напишут в Instagram Direct.',
+    searchEmptyBody: 'По вашему запросу беседы не найдены.',
     noMessage: 'Нет сообщения',
     messageLabel: 'Сообщение',
     imagePreview: '📷 Изображение',

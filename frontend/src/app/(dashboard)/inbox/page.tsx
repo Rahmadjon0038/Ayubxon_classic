@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MessagesSquare } from 'lucide-react';
 import ChatWindow from '@/components/ChatWindow';
@@ -22,6 +22,7 @@ export default function InboxPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const accountQuery = useQuery({
     queryKey: ['instagram-account'],
@@ -109,6 +110,19 @@ export default function InboxPage() {
 
   const selected = conversationsQuery.data?.find((c) => c.id === selectedId) ?? null;
 
+  const filteredConversations = useMemo(() => {
+    const items = conversationsQuery.data ?? [];
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+
+    return items.filter((item) => {
+      const name = item.contact.name?.toLowerCase() ?? '';
+      const username = item.contact.username?.toLowerCase() ?? '';
+      const lastMessage = item.lastMessage?.text?.toLowerCase() ?? '';
+      return name.includes(q) || username.includes(q) || lastMessage.includes(q);
+    });
+  }, [conversationsQuery.data, search]);
+
   return (
     <div className="flex h-full">
       {/* Mobilda faqat bittasi korinadi: suhbat tanlanmagan bolsa royxat, tanlangan bolsa chat.
@@ -119,10 +133,13 @@ export default function InboxPage() {
         }`}
       >
         <ConversationList
-          conversations={conversationsQuery.data ?? []}
+          conversations={filteredConversations}
           isLoading={conversationsQuery.isLoading}
           selectedId={selectedId}
           onSelect={handleSelect}
+          search={search}
+          onSearchChange={setSearch}
+          hasSearchResults={(conversationsQuery.data ?? []).length > 0 && filteredConversations.length === 0}
         />
       </div>
       <div className={`flex-1 bg-gray-50 dark:bg-gray-950 ${selectedId ? 'block' : 'hidden md:block'}`}>

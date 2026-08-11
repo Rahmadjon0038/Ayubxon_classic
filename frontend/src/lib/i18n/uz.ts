@@ -106,7 +106,9 @@ const uz = {
   inbox: {
     selectConversation: 'Suhbatni tanlang',
     title: 'Xabarlar',
+    searchPlaceholder: 'Foydalanuvchini qidirish...',
     emptyBody: 'Hozircha suhbatlar yoq. Instagram akkauntga DM kelganda shu yerda korinadi.',
+    searchEmptyBody: 'Qidiruvga mos suhbat topilmadi.',
     noMessage: 'Xabar yoq',
     messageLabel: 'Xabar',
     imagePreview: '📷 Rasm',

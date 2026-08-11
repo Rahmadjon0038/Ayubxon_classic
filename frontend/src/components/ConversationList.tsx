@@ -1,6 +1,6 @@
 'use client';
 
-import { Inbox } from 'lucide-react';
+import { Inbox, Search } from 'lucide-react';
 import Avatar from './Avatar';
 import { useLocale } from './LocaleProvider';
 import { contactDisplayName, formatTime } from '@/lib/format';
@@ -11,6 +11,9 @@ interface Props {
   isLoading: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
+  hasSearchResults: boolean;
 }
 
 function lastMessagePreview(item: ConversationListItem, t: (key: string) => string): string {
@@ -25,13 +28,36 @@ function lastMessagePreview(item: ConversationListItem, t: (key: string) => stri
   return t('inbox.messageLabel');
 }
 
-export default function ConversationList({ conversations, isLoading, selectedId, onSelect }: Props) {
+export default function ConversationList({
+  conversations,
+  isLoading,
+  selectedId,
+  onSelect,
+  search,
+  onSearchChange,
+  hasSearchResults,
+}: Props) {
   const { t } = useLocale();
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-gray-300 px-4 py-4 dark:border-gray-800">
-        <h2 className="text-base font-semibold dark:text-gray-100">{t('inbox.title')}</h2>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <h2 className="text-base font-semibold dark:text-gray-100">{t('inbox.title')}</h2>
+          <label className="relative w-full lg:max-w-xs">
+            <Search
+              size={16}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+            />
+            <input
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={t('inbox.searchPlaceholder')}
+              className="h-10 w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+            />
+          </label>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -40,7 +66,7 @@ export default function ConversationList({ conversations, isLoading, selectedId,
         {!isLoading && conversations.length === 0 && (
           <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-gray-500 dark:text-gray-500">
             <Inbox size={28} strokeWidth={1.5} />
-            <p className="text-sm">{t('inbox.emptyBody')}</p>
+            <p className="text-sm">{hasSearchResults ? t('inbox.searchEmptyBody') : t('inbox.emptyBody')}</p>
           </div>
         )}
 
