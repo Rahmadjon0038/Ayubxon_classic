@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
 import { downloadRemoteMedia } from '../lib/media';
+import { extractPhoneNumber } from '../lib/phone';
 import {
   analyzeConversation,
   ChatTurn,
@@ -351,20 +352,29 @@ async function processMessagingEvent(
     throw err;
   }
 
-  const [updatedConversation] = await Promise.all([
-    prisma.conversation.update({
-      where: { id: conversation.id },
-      data: {
-        lastMessageAt: sentAt,
-        ...(isEcho ? {} : { unreadCount: { increment: 1 } }),
-      },
-      include: { contact: true },
-    }),
-    prisma.contact.update({
-      where: { id: contact.id },
-      data: { lastMessageAt: sentAt },
-    }),
-  ]);
+  // Telefon raqamini AI holatidan (yoqilgan/ochirilgan/operatorga otkazilgan) qatiy nazar
+  // har bir kontakt xabarida qidiramiz — shu orqali mijoz operator bilan gaplashayotganda
+  // ham (AI umuman ishtirok etmasa ham) qoldirgan raqami platformaga tushadi.
+  const detectedPhone = !isEcho && message.text ? extractPhoneNumber(message.text) : null;
+  if (detectedPhone) {
+    console.log(`[webhook] Telefon raqami aniqlandi (contact=${contact.id}): ${detectedPhone}`);
+  }
+
+  // Avval kontaktni yangilaymiz (telefon shu yerda yoziladi), keyin suhbatni — shunda
+  // suhbat bilan birga qaytariladigan "contact" snapshot ham yangi raqamni aks ettiradi.
+  await prisma.contact.update({
+    where: { id: contact.id },
+    data: { lastMessageAt: sentAt, ...(detectedPhone ? { phoneNumber: detectedPhone } : {}) },
+  });
+
+  const updatedConversation = await prisma.conversation.update({
+    where: { id: conversation.id },
+    data: {
+      lastMessageAt: sentAt,
+      ...(isEcho ? {} : { unreadCount: { increment: 1 } }),
+    },
+    include: { contact: true },
+  });
 
   console.log(
     `[webhook] Xabar saqlandi (conversation=${conversation.id}, senderType=${saved.senderType}, sentAt=${saved.sentAt.toISOString()})`,
