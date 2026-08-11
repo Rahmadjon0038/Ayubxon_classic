@@ -91,6 +91,7 @@ const uz = {
   },
   messageBubble: {
     imageAlt: 'Rasm',
+    reelAlt: 'Instagram post/reel',
     openFile: 'Faylni ochish',
     unsupported: "Qo'llab-quvvatlanmaydigan xabar",
     failedToSend: 'Yuborilmadi',

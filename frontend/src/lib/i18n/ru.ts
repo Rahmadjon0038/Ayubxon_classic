@@ -90,6 +90,7 @@ const ru: Translations = {
   },
   messageBubble: {
     imageAlt: 'Изображение',
+    reelAlt: 'Пост/reels Instagram',
     openFile: 'Открыть файл',
     unsupported: 'Неподдерживаемое сообщение',
     failedToSend: 'Не отправлено',

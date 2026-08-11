@@ -2,6 +2,7 @@ import { Contact, InstagramAccount, Prisma, SenderType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
+import { downloadRemoteMedia } from '../lib/media';
 import {
   analyzeConversation,
   ChatTurn,
@@ -9,7 +10,7 @@ import {
   generateAiReply,
   pickHandoverAcknowledgement,
 } from './aiService';
-import { fetchContactProfile, sendTextMessage } from './instagramApi';
+import { fetchContactProfile, fetchInstagramOEmbed, sendTextMessage } from './instagramApi';
 import {
   getAccessToken,
   getConnectedAccount,
@@ -113,6 +114,55 @@ async function resolveWebhookAccount(
   // profil ID webhook entry.id bilan farqlanib qolgan holatlarda ham xabarlarni
   // saqlab qoladi.
   return getConnectedAccount();
+}
+
+interface ResolvedAttachment {
+  attachmentType: string | null;
+  attachmentUrl: string | null;
+  attachmentThumbnailUrl: string | null;
+}
+
+const KNOWN_MEDIA_TYPES = new Set(['image', 'video', 'audio', 'file']);
+
+// Meta payload'idagi attachment turi bizning oddiy image/video/audio toifalarimizga mos
+// kelmasa (masalan story_mention, ig_reel, share) alohida ishlov beriladi:
+// - story_mention kabi turlar haqiqiy media fayl, lekin havolasi vaqtinchalik (imzoli) —
+//   ozimizga yuklab olib, haqiqiy turini (rasm/video) Content-Type orqali aniqlaymiz.
+// - ig_reel/share kabi turlar shunchaki Instagram post sahifasiga havola — media fayl emas,
+//   shuning uchun oEmbed orqali preview rasm olinadi.
+async function resolveIncomingAttachment(
+  attachment: { type?: string; payload?: { url?: string } } | undefined,
+  accessToken: string,
+): Promise<ResolvedAttachment> {
+  const rawType = attachment?.type ?? null;
+  const rawUrl = attachment?.payload?.url ?? null;
+  if (!rawUrl) return { attachmentType: rawType, attachmentUrl: null, attachmentThumbnailUrl: null };
+
+  if (rawType && !KNOWN_MEDIA_TYPES.has(rawType)) {
+    let isPermalink = false;
+    try {
+      isPermalink = new URL(rawUrl).hostname.endsWith('instagram.com');
+    } catch {
+      isPermalink = false;
+    }
+
+    if (isPermalink) {
+      const oembed = await fetchInstagramOEmbed(accessToken, rawUrl);
+      const attachmentThumbnailUrl = oembed?.thumbnailUrl
+        ? await downloadContactAvatar(oembed.thumbnailUrl)
+        : null;
+      return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl };
+    }
+
+    const downloaded = await downloadRemoteMedia(rawUrl);
+    if (downloaded) {
+      return { attachmentType: downloaded.type, attachmentUrl: downloaded.localUrl, attachmentThumbnailUrl: null };
+    }
+    // Yuklab olinmasa, asl (ehtimol muddati tez tugaydigan) havola bilan saqlanadi.
+    return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl: null };
+  }
+
+  return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl: null };
 }
 
 export async function processWebhookPayload(rawPayload: unknown): Promise<void> {
@@ -278,7 +328,7 @@ async function processMessagingEvent(
     event.timestamp && Number.isFinite(rawTs)
       ? new Date(rawTs < 1_000_000_000_000 ? rawTs * 1000 : rawTs)
       : new Date();
-  const attachment = message.attachments?.[0];
+  const resolvedAttachment = await resolveIncomingAttachment(message.attachments?.[0], accessToken);
 
   let saved;
   try {
@@ -288,8 +338,9 @@ async function processMessagingEvent(
         conversationId: conversation.id,
         senderType: isEcho ? SenderType.ADMIN : SenderType.CONTACT,
         text: message.text ?? null,
-        attachmentType: attachment?.type ?? null,
-        attachmentUrl: attachment?.payload?.url ?? null,
+        attachmentType: resolvedAttachment.attachmentType,
+        attachmentUrl: resolvedAttachment.attachmentUrl,
+        attachmentThumbnailUrl: resolvedAttachment.attachmentThumbnailUrl,
         status: isEcho ? 'SENT' : 'RECEIVED',
         sentAt,
       },

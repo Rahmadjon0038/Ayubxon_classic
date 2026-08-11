@@ -3,6 +3,8 @@ import { InstagramApiError } from '../lib/errors';
 
 const GRAPH_BASE = 'https://graph.instagram.com';
 const GRAPH_VERSION = 'v23.0';
+// oEmbed faqat graph.facebook.com orqali ishlaydi (graph.instagram.com'da mavjud emas).
+const FACEBOOK_GRAPH_BASE = 'https://graph.facebook.com';
 
 export interface InstagramProfile {
   id: string;
@@ -123,6 +125,29 @@ export async function subscribeToMessages(accessToken: string): Promise<boolean>
     const apiErr = toInstagramError(err);
     console.warn(`[instagram] Webhook obunasida xato: ${apiErr.message}`);
     return false;
+  }
+}
+
+// Kontakt DM orqali ulashgan Instagram post/reel havolasi uchun preview (thumbnail) olinadi.
+// Xato yoki ruxsat yoq bolsa jim null qaytaradi — xabar oddiy havola sifatida korsatiladi.
+export async function fetchInstagramOEmbed(
+  accessToken: string,
+  permalinkUrl: string,
+): Promise<{ thumbnailUrl?: string; title?: string } | null> {
+  try {
+    const { data } = await axios.get(`${FACEBOOK_GRAPH_BASE}/${GRAPH_VERSION}/instagram_oembed`, {
+      params: { url: permalinkUrl, access_token: accessToken },
+      timeout: 15_000,
+    });
+    return {
+      thumbnailUrl: data?.thumbnail_url ?? undefined,
+      title: data?.title ?? undefined,
+    };
+  } catch (err) {
+    const message =
+      err instanceof AxiosError ? err.response?.data?.error?.message ?? err.message : String(err);
+    console.warn(`[instagram] oEmbed olinmadi (${permalinkUrl}): ${message}`);
+    return null;
   }
 }
 

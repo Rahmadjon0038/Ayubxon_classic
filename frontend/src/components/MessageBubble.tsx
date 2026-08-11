@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Check, Clock, FileText, Heart, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, Clock, FileText, Heart, Play, Trash2 } from 'lucide-react';
 import { useLocale } from './LocaleProvider';
 import { formatDateTime } from '@/lib/format';
 import { Message } from '@/lib/types';
@@ -21,6 +21,8 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
   const isAudio = message.attachmentType === 'audio';
   // Instagramdagi tez yurak (like) stikeri URLsiz keladi.
   const isHeartSticker = message.attachmentType === 'like_heart';
+  // Ulashilgan post/reel (attachmentUrl faqat sahifa havolasi) — oEmbed orqali olingan preview bor.
+  const isReelShare = Boolean(message.attachmentThumbnailUrl);
 
   const hasReacted = Boolean(message.adminReaction);
   const canReact = !isAdmin && Boolean(message.instagramMessageId) && onReact;
@@ -56,7 +58,26 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
 
           {message.attachmentUrl && (
             <div className="mb-1.5 overflow-hidden rounded-lg">
-              {isImage ? (
+              {isReelShare ? (
+                <a
+                  href={message.attachmentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative block"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={message.attachmentThumbnailUrl!}
+                    alt={t('messageBubble.reelAlt')}
+                    className="max-h-80 w-full object-cover"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/10">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm">
+                      <Play size={18} fill="currentColor" />
+                    </span>
+                  </span>
+                </a>
+              ) : isImage ? (
                 <a href={message.attachmentUrl} target="_blank" rel="noopener noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

@@ -90,6 +90,7 @@ const en: Translations = {
   },
   messageBubble: {
     imageAlt: 'Image',
+    reelAlt: 'Instagram post/reel',
     openFile: 'Open file',
     unsupported: 'Unsupported message',
     failedToSend: 'Failed to send',

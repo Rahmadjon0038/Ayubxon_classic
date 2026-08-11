@@ -52,6 +52,7 @@ export interface Message {
   text: string | null;
   attachmentType: string | null;
   attachmentUrl: string | null;
+  attachmentThumbnailUrl: string | null;
   adminReaction: string | null;
   contactReaction: string | null;
   status: MessageStatus;
