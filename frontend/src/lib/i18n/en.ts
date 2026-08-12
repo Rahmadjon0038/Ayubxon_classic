@@ -37,6 +37,23 @@ const en: Translations = {
     submit: 'Sign in',
     submitting: 'Signing in...',
   },
+  home: {
+    title: 'Manage Instagram messages from one place',
+    subtitle:
+      'Keep track of Instagram Direct messages in one place. ChatFlow organizes conversations, automatically moves interested customers into the leads table, and uses AI to answer questions quickly.',
+    signIn: 'Sign in',
+    openDashboard: 'Open dashboard',
+    exploreFeatures: 'Explore features',
+    feature1Title: 'Messages',
+    feature1Body:
+      'All conversations in one place. See and manage all customer messages from Instagram Direct in a single window. Track new messages, continue conversations, and never leave a customer unanswered.',
+    feature2Title: 'Leads',
+    feature2Body:
+      'Automatically organize customers. AI analyzes the conversation, identifies customers interested in your courses or services, and adds them to the leads table. Manage leads as New, Interested, Won, or Rejected.',
+    feature3Title: 'AI helper',
+    feature3Body:
+      'Automated answers to questions. AI replies to customers using your center’s courses, prices, address, class times, and other details. When needed, an administrator can continue the conversation manually.',
+  },
   leads: {
     searchPlaceholder: 'Search customers...',
     statTotal: 'Total',

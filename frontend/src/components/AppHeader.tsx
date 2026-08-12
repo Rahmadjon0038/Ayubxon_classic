@@ -1,9 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, MessageCircleHeart } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Avatar from './Avatar';
 import LanguageSwitcher from './LanguageSwitcher';
+import LogoMark from './LogoMark';
 import { useLocale } from './LocaleProvider';
 import ThemeToggle from './ThemeToggle';
 import { api } from '@/lib/api';
@@ -30,10 +31,7 @@ export default function AppHeader({ collapsed, onToggleCollapsed }: Props) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-gray-300 bg-white px-3 sm:px-5 dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-          <MessageCircleHeart size={19} strokeWidth={2.2} />
-        </div>
-        <span className="text-sm font-semibold tracking-tight dark:text-gray-100">DM Platform</span>
+        <LogoMark className="h-9" width={112} height={36} showLabel />
 
         <button
           type="button"

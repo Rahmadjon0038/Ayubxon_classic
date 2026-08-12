@@ -38,6 +38,23 @@ const uz = {
     submit: 'Kirish',
     submitting: 'Kirilmoqda...',
   },
+  home: {
+    title: 'Instagram xabarlarini bir joydan boshqaring',
+    subtitle:
+      'Instagram Direct orqali kelgan xabarlarni bir joyda kuzating. ChatFlow mijozlar bilan yozishmalarni tartibga soladi, qiziqqan mijozlarni avtomatik lidlar jadvaliga ajratadi va AI yordamida savollarga tezkor javob beradi.',
+    signIn: 'Kirish',
+    openDashboard: 'Panelni ochish',
+    exploreFeatures: 'Imkoniyatlarni ko‘rish',
+    feature1Title: 'Xabarlar',
+    feature1Body:
+      'Barcha suhbatlar bir joyda. Instagram Direct orqali kelgan barcha mijozlar xabarlarini yagona oynada ko‘ring va boshqaring. Yangi xabarlarni kuzating, suhbatlarni davom ettiring va hech bir mijozni javobsiz qoldirmang.',
+    feature2Title: 'Lidlar',
+    feature2Body:
+      'Mijozlarni avtomatik tartiblang. AI suhbatni tahlil qilib, kurs yoki xizmatga qiziqqan mijozlarni aniqlaydi va lidlar jadvaliga qo‘shadi. Lidlarni Yangi, Qiziqqan, Hal bo‘lgan yoki Rad etilgan kabi holatlarga ajratib boshqarishingiz mumkin.',
+    feature3Title: 'AI yordamchi',
+    feature3Body:
+      'Savollarga avtomatik javob. AI markazingiz haqidagi kurslar, narxlar, manzillar, dars vaqtlari va boshqa ma’lumotlar asosida mijozlarga avtomatik javob beradi. Kerakli holatlarda suhbatni administrator davom ettirishi mumkin.',
+  },
   leads: {
     searchPlaceholder: 'Mijozlarni qidirish...',
     statTotal: 'Jami',
