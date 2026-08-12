@@ -155,6 +155,14 @@ function findFirstHttpUrl(value: unknown, seen = new WeakSet<object>()): string 
   return null;
 }
 
+function isInstagramPermalink(rawUrl: string): boolean {
+  try {
+    return new URL(rawUrl).hostname.endsWith('instagram.com');
+  } catch {
+    return false;
+  }
+}
+
 // Meta payload'idagi attachment turi bizning oddiy image/video/audio toifalarimizga mos
 // kelmasa (masalan story_mention, ig_reel, share) alohida ishlov beriladi:
 // - story_mention kabi turlar haqiqiy media fayl, lekin havolasi vaqtinchalik (imzoli) —
@@ -169,25 +177,24 @@ async function resolveIncomingAttachment(
   const rawUrl = attachment?.payload?.url ?? null;
   if (!rawUrl) return { attachmentType: rawType, attachmentUrl: null, attachmentThumbnailUrl: null };
 
-  if (rawType && !KNOWN_MEDIA_TYPES.has(rawType)) {
-    let isPermalink = false;
-    try {
-      isPermalink = new URL(rawUrl).hostname.endsWith('instagram.com');
-    } catch {
-      isPermalink = false;
-    }
+  const permalink = isInstagramPermalink(rawUrl);
 
-    if (isPermalink) {
-      const oembed = await fetchInstagramOEmbed(accessToken, rawUrl);
-      const attachmentThumbnailUrl = oembed?.thumbnailUrl
-        ? await downloadContactAvatar(oembed.thumbnailUrl)
-        : null;
-      return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl };
-    }
+  if (permalink) {
+    const oembed = await fetchInstagramOEmbed(accessToken, rawUrl);
+    const attachmentThumbnailUrl = oembed?.thumbnailUrl
+      ? await downloadContactAvatar(oembed.thumbnailUrl)
+      : null;
+    return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl };
+  }
 
+  if (rawType === 'file' || (rawType && !KNOWN_MEDIA_TYPES.has(rawType))) {
     const downloaded = await downloadRemoteMedia(rawUrl);
     if (downloaded) {
-      return { attachmentType: downloaded.type, attachmentUrl: downloaded.localUrl, attachmentThumbnailUrl: null };
+      return {
+        attachmentType: downloaded.type,
+        attachmentUrl: downloaded.localUrl,
+        attachmentThumbnailUrl: null,
+      };
     }
     // Yuklab olinmasa, asl (ehtimol muddati tez tugaydigan) havola bilan saqlanadi.
     return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl: null };

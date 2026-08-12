@@ -35,8 +35,8 @@ const bucketConfig: Record<
   new: {
     titleKey: 'leads.columnNew',
     badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-    titleClass: 'text-violet-600 dark:text-violet-400',
-    accentClass: 'bg-violet-500',
+    titleClass: 'text-brand-600 dark:text-brand-400',
+    accentClass: 'bg-brand-500',
   },
   solved: {
     titleKey: 'leads.columnInterested',
@@ -259,7 +259,7 @@ export default function LeadsPage() {
 
           <div className="flex flex-wrap items-center gap-1.5">
             <StatChip label={t('leads.statTotal')} value={stats.total} icon={<Users size={12} />} />
-            <StatChip label={t('leads.statNew')} value={stats.newCount} icon={<Sparkles size={12} />} accent="text-violet-600 dark:text-violet-400" />
+            <StatChip label={t('leads.statNew')} value={stats.newCount} icon={<Sparkles size={12} />} accent="text-brand-600 dark:text-brand-400" />
             <StatChip label={t('leads.statInterested')} value={stats.solvedCount} icon={<CheckCircle2 size={12} />} accent="text-emerald-600 dark:text-emerald-400" />
             <StatChip label={t('leads.statNotInterested')} value={stats.pendingCount} icon={<CircleDashed size={12} />} accent="text-amber-600 dark:text-amber-400" />
             <StatChip label={t('leads.statRejected')} value={stats.rejectedCount} icon={<XCircle size={12} />} accent="text-rose-600 dark:text-rose-400" />

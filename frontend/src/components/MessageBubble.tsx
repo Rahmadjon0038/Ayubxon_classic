@@ -21,8 +21,9 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
   const isAudio = message.attachmentType === 'audio';
   // Instagramdagi tez yurak (like) stikeri URLsiz keladi.
   const isHeartSticker = message.attachmentType === 'like_heart';
+  const isInstagramLink = Boolean(message.attachmentUrl && message.attachmentUrl.includes('instagram.com'));
   // Ulashilgan post/reel (attachmentUrl faqat sahifa havolasi) — oEmbed orqali olingan preview bor.
-  const isReelShare = Boolean(message.attachmentThumbnailUrl);
+  const isReelShare = Boolean(message.attachmentThumbnailUrl) || isInstagramLink;
 
   const hasReacted = Boolean(message.adminReaction);
   const canReact = !isAdmin && Boolean(message.instagramMessageId) && onReact;
@@ -65,17 +66,28 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
                   rel="noopener noreferrer"
                   className="relative block"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={message.attachmentThumbnailUrl!}
-                    alt={t('messageBubble.reelAlt')}
-                    className="max-h-80 w-full object-cover"
-                  />
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/10">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm">
-                      <Play size={18} fill="currentColor" />
-                    </span>
-                  </span>
+                  {message.attachmentThumbnailUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={message.attachmentThumbnailUrl}
+                        alt={t('messageBubble.reelAlt')}
+                        className="max-h-80 w-full object-cover"
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/10">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm">
+                          <Play size={18} fill="currentColor" />
+                        </span>
+                      </span>
+                    </>
+                  ) : (
+                    <div className="flex min-h-28 items-center justify-center bg-gradient-to-br from-brand-50 via-white to-brand-100 px-4 py-6 text-brand-700">
+                      <span className="flex items-center gap-2 rounded-full border border-brand-200 bg-white/80 px-3 py-2 text-sm font-medium shadow-sm">
+                        <Play size={16} fill="currentColor" />
+                        Instagram havolasi
+                      </span>
+                    </div>
+                  )}
                 </a>
               ) : isImage ? (
                 <a href={message.attachmentUrl} target="_blank" rel="noopener noreferrer">

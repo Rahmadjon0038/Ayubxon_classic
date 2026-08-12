@@ -19,8 +19,8 @@ const bucketConfig: Record<
   NEW: {
     titleKey: 'calls.columnNew',
     badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-    titleClass: 'text-violet-600 dark:text-violet-400',
-    accentClass: 'bg-violet-500',
+    titleClass: 'text-brand-600 dark:text-brand-400',
+    accentClass: 'bg-brand-500',
     Icon: Sparkles,
   },
   TALKED: {
