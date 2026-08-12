@@ -24,6 +24,7 @@ function lastMessagePreview(item: ConversationListItem, t: (key: string) => stri
   if (msg.attachmentType === 'video') return t('inbox.videoPreview');
   if (msg.attachmentType === 'audio') return t('inbox.audioPreview');
   if (msg.attachmentType === 'like_heart') return '❤️';
+  if (msg.attachmentType === 'template') return t('inbox.templatePreview');
   if (msg.attachmentType) return t('inbox.filePreview');
   return t('inbox.messageLabel');
 }

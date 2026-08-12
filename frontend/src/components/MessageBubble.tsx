@@ -19,6 +19,7 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
   const isImage = message.attachmentType === 'image';
   const isVideo = message.attachmentType === 'video';
   const isAudio = message.attachmentType === 'audio';
+  const isTemplate = message.attachmentType === 'template';
   // Instagramdagi tez yurak (like) stikeri URLsiz keladi.
   const isHeartSticker = message.attachmentType === 'like_heart';
   const isInstagramLink = Boolean(message.attachmentUrl && message.attachmentUrl.includes('instagram.com'));
@@ -102,6 +103,11 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
                 <video src={message.attachmentUrl} controls className="max-h-64 w-full" />
               ) : isAudio ? (
                 <audio src={message.attachmentUrl} controls className="w-60" />
+              ) : isTemplate && !message.text ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                  <FileText size={14} className="shrink-0" />
+                  <span>{t('messageBubble.templateLabel')}</span>
+                </div>
               ) : (
                 <a
                   href={message.attachmentUrl}
@@ -121,7 +127,7 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
           {message.text && <p className="whitespace-pre-wrap break-words">{message.text}</p>}
 
           {/* Matn ham, media ham bolmagan xabar (masalan qollab-quvvatlanmaydigan tur) */}
-          {!message.text && !message.attachmentUrl && !isHeartSticker && (
+          {!message.text && !message.attachmentUrl && !isHeartSticker && !isTemplate && (
             <p className={`italic ${isAdmin ? 'text-brand-100' : 'text-gray-500 dark:text-gray-500'}`}>
               {t('messageBubble.unsupported')}
             </p>

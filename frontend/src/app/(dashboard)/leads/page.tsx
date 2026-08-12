@@ -65,6 +65,7 @@ function lastMessagePreview(item: ConversationListItem, t: (key: string) => stri
   if (msg.attachmentType === 'image') return t('leads.imageLabel');
   if (msg.attachmentType === 'video') return t('leads.videoLabel');
   if (msg.attachmentType === 'audio') return t('leads.audioLabel');
+  if (msg.attachmentType === 'template') return t('leads.templateLabel');
   if (msg.attachmentType) return t('leads.fileLabel');
   return t('leads.messageLabel');
 }
