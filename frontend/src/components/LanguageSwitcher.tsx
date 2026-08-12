@@ -5,12 +5,17 @@ import { useLocale } from './LocaleProvider';
 
 const LOCALE_CODES: Record<Locale, string> = { uz: 'UZ', en: 'EN', ru: 'RU' };
 
-export default function LanguageSwitcher() {
+interface Props {
+  className?: string;
+  buttonClassName?: string;
+}
+
+export default function LanguageSwitcher({ className = '', buttonClassName = '' }: Props) {
   const { locale, setLocale, t } = useLocale();
 
   return (
     <div
-      className="flex items-center gap-0.5 rounded-full border border-gray-300 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-800"
+      className={`flex items-center gap-0.5 rounded-full border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-800 ${className}`}
       role="group"
       aria-label={t('language.label')}
     >
@@ -20,7 +25,7 @@ export default function LanguageSwitcher() {
           type="button"
           onClick={() => setLocale(l)}
           aria-pressed={locale === l}
-          className={`rounded-full px-1.5 py-1 text-[10px] font-semibold transition ${
+          className={`rounded-full px-2 py-1.5 text-xs font-semibold transition ${buttonClassName} ${
             locale === l
               ? 'bg-brand-600 text-white'
               : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'

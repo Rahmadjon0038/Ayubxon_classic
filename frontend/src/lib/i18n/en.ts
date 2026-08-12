@@ -40,7 +40,7 @@ const en: Translations = {
   home: {
     title: 'Manage Instagram messages from one place',
     subtitle:
-      'Keep track of Instagram Direct messages in one place. ChatFlow organizes conversations, automatically moves interested customers into the leads table, and uses AI to answer questions quickly.',
+      'Keep track of Instagram Direct messages in one place. InboxCrm organizes conversations, automatically moves interested customers into the leads table, and uses AI to answer questions quickly.',
     signIn: 'Sign in',
     openDashboard: 'Open dashboard',
     exploreFeatures: 'Explore features',

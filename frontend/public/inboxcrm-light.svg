@@ -1,0 +1,23 @@
+<svg width="480" height="156" viewBox="0 0 480 156" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="20" y1="16" x2="104" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C3AED" />
+      <stop offset="0.52" stop-color="#4F46E5" />
+      <stop offset="1" stop-color="#0EA5E9" />
+    </linearGradient>
+    <linearGradient id="t" x1="132" y1="54" x2="372" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A" />
+      <stop offset="1" stop-color="#2563EB" />
+    </linearGradient>
+  </defs>
+  <g transform="translate(10 20)">
+    <path d="M44 0C19.6995 0 0 19.6995 0 44V44C0 68.3005 19.6995 88 44 88H47.5L69 109.5C70.6 111.1 73.5 109.9 73.5 107.6V88H78C102.301 88 122 68.3005 122 44V44C122 19.6995 102.301 0 78 0H44Z" fill="url(#g)"/>
+    <path d="M35 34H63" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <path d="M24 48H67" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <path d="M35 62H58" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="49" cy="44" r="4.5" fill="white"/>
+    <circle cx="64" cy="44" r="4.5" fill="white"/>
+    <circle cx="79" cy="44" r="4.5" fill="white"/>
+  </g>
+  <text x="138" y="94" fill="url(#t)" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="800" letter-spacing="-1.1">InboxCrm</text>
+</svg>

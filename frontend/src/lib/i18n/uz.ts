@@ -41,7 +41,7 @@ const uz = {
   home: {
     title: 'Instagram xabarlarini bir joydan boshqaring',
     subtitle:
-      'Instagram Direct orqali kelgan xabarlarni bir joyda kuzating. ChatFlow mijozlar bilan yozishmalarni tartibga soladi, qiziqqan mijozlarni avtomatik lidlar jadvaliga ajratadi va AI yordamida savollarga tezkor javob beradi.',
+      'Instagram Direct orqali kelgan xabarlarni bir joyda kuzating. InboxCrm mijozlar bilan yozishmalarni tartibga soladi, qiziqqan mijozlarni avtomatik lidlar jadvaliga ajratadi va AI yordamida savollarga tezkor javob beradi.',
     signIn: 'Kirish',
     openDashboard: 'Panelni ochish',
     exploreFeatures: 'Imkoniyatlarni ko‘rish',

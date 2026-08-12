@@ -31,7 +31,7 @@ export default function AppHeader({ collapsed, onToggleCollapsed }: Props) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-gray-300 bg-white px-3 sm:px-5 dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-center gap-2.5">
-        <LogoMark className="h-9" width={112} height={36} showLabel />
+        <LogoMark className="h-9" width={132} height={38} showLabel />
 
         <button
           type="button"

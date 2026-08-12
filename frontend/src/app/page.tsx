@@ -40,16 +40,16 @@ export default function HomePage() {
       <div className="pointer-events-none absolute right-[-7%] top-[18%] h-[260px] w-[260px] rounded-full bg-sky-200/25 blur-3xl dark:bg-sky-500/10" />
 
       <div className="relative mx-auto flex min-h-screen max-w-[1680px] flex-col px-4 py-4 sm:px-6 lg:px-10">
-        <header className="rounded-[28px] border border-white/70 bg-white/75 px-2 py-2.5 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-950/55">
+        <header className="rounded-[28px] border border-white/70 bg-white/75 px-3 py-3 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-950/55">
           <div className="flex items-center justify-between">
-            <LogoMark className="-ml-1" width={168} height={52} />
+            <LogoMark className="-ml-1" width={176} height={54} />
 
             <div className="flex items-center gap-1.5 sm:gap-2">
               <ThemeToggle />
               <LanguageSwitcher />
               <Link
                 href={isAuthenticated ? '/inbox' : '/login'}
-                className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/90 px-3.5 py-1.5 text-sm font-semibold text-violet-700 shadow-[0_8px_20px_rgba(99,102,241,0.08)] transition hover:border-violet-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-violet-300 dark:hover:bg-slate-900"
+                className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/90 px-4 py-1.5 text-sm font-semibold text-violet-700 shadow-[0_8px_20px_rgba(99,102,241,0.08)] transition hover:border-violet-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-violet-300 dark:hover:bg-slate-900"
               >
                 {t('home.signIn')}
                 <ArrowRight size={16} />
@@ -61,7 +61,7 @@ export default function HomePage() {
         <section className="flex flex-1 flex-col px-2 pb-2 pt-8 sm:px-4 lg:px-8">
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <div className="mb-5">
-              <LogoMark width={420} height={145} />
+              <LogoMark className="mx-auto" width={360} height={124} />
             </div>
 
             <h1 className="max-w-4xl text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl dark:text-white">

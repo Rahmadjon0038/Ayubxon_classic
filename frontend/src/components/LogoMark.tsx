@@ -22,7 +22,7 @@ export default function LogoMark({ className = '', width = 120, height = 40, sho
     return () => observer.disconnect();
   }, []);
 
-  const src = isDark ? '/darklogo.png' : '/lightlogo.png';
+  const src = isDark ? '/inboxcrm-dark.svg' : '/inboxcrm-light.svg';
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -34,7 +34,7 @@ export default function LogoMark({ className = '', width = 120, height = 40, sho
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" className="absolute inset-0 h-full w-full object-contain object-center" />
       </div>
-      {showLabel && <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">DM Platform</span>}
+      {showLabel && <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">InboxCrm</span>}
     </div>
   );
 }
