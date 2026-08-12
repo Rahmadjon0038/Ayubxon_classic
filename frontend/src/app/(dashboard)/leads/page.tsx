@@ -315,7 +315,11 @@ export default function LeadsPage() {
                         <article
                           key={conversation.id}
                           draggable
-                          onDragStart={() => setDraggedId(conversation.id)}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', conversation.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggedId(conversation.id);
+                          }}
                           onDragEnd={() => setDraggedId(null)}
                           onClick={() => router.push(`/leads/${conversation.id}`)}
                           className={`cursor-pointer rounded-md border border-gray-300 bg-white p-2 transition hover:border-gray-400 hover:shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 ${dragClass}`}
