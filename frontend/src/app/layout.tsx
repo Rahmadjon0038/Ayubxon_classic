@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Providers from './providers';
 import { NO_FLASH_THEME_SCRIPT } from '@/lib/theme';
@@ -68,6 +68,9 @@ export const metadata: Metadata = {
     shortcut: '/inboxcrm-icon.svg',
     apple: '/inboxcrm-icon.svg',
   },
+};
+
+export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
     { media: '(prefers-color-scheme: dark)', color: '#020617' },
