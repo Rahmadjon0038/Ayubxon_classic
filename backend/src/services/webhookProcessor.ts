@@ -121,6 +121,7 @@ interface ResolvedAttachment {
   attachmentType: string | null;
   attachmentUrl: string | null;
   attachmentThumbnailUrl: string | null;
+  attachmentText: string | null;
 }
 
 const KNOWN_MEDIA_TYPES = new Set(['image', 'video', 'audio', 'file']);
@@ -155,6 +156,37 @@ function findFirstHttpUrl(value: unknown, seen = new WeakSet<object>()): string 
   return null;
 }
 
+function collectMeaningfulStrings(
+  value: unknown,
+  seen = new WeakSet<object>(),
+): string[] {
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text || /^https?:\/\//i.test(text)) return [];
+    return [text];
+  }
+
+  if (!value || typeof value !== 'object') return [];
+  if (seen.has(value as object)) return [];
+  seen.add(value as object);
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectMeaningfulStrings(item, seen));
+  }
+
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, item]) => {
+    // Meta template/contact payloadlarida foydali bo'lishi mumkin bo'lgan asosiy maydonlarni
+    // oldinga suramiz, lekin qolgan stringlarni ham yig'amiz.
+    if (typeof item === 'string') {
+      const text = item.trim();
+      if (!text || /^https?:\/\//i.test(text)) return [];
+      if (['type', 'id'].includes(key) && text.length > 80) return [];
+      return [text];
+    }
+    return collectMeaningfulStrings(item, seen);
+  });
+}
+
 function isInstagramPermalink(rawUrl: string): boolean {
   try {
     return new URL(rawUrl).hostname.endsWith('instagram.com');
@@ -175,7 +207,12 @@ async function resolveIncomingAttachment(
 ): Promise<ResolvedAttachment> {
   const rawType = attachment?.type ?? null;
   const rawUrl = attachment?.payload?.url ?? null;
-  if (!rawUrl) return { attachmentType: rawType, attachmentUrl: null, attachmentThumbnailUrl: null };
+  if (!rawUrl) {
+    const attachmentText = rawType === 'template'
+      ? Array.from(new Set(collectMeaningfulStrings(attachment))).slice(0, 6).join('\n') || null
+      : null;
+    return { attachmentType: rawType, attachmentUrl: null, attachmentThumbnailUrl: null, attachmentText };
+  }
 
   const permalink = isInstagramPermalink(rawUrl);
 
@@ -184,7 +221,10 @@ async function resolveIncomingAttachment(
     const attachmentThumbnailUrl = oembed?.thumbnailUrl
       ? await downloadContactAvatar(oembed.thumbnailUrl)
       : null;
-    return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl };
+    const attachmentText = rawType === 'template'
+      ? Array.from(new Set(collectMeaningfulStrings(attachment))).slice(0, 6).join('\n') || null
+      : null;
+    return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl, attachmentText };
   }
 
   if (rawType === 'file' || (rawType && !KNOWN_MEDIA_TYPES.has(rawType))) {
@@ -194,13 +234,19 @@ async function resolveIncomingAttachment(
         attachmentType: downloaded.type,
         attachmentUrl: downloaded.localUrl,
         attachmentThumbnailUrl: null,
+        attachmentText: null,
       };
     }
     // Yuklab olinmasa, asl (ehtimol muddati tez tugaydigan) havola bilan saqlanadi.
-    return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl: null };
+    return {
+      attachmentType: rawType,
+      attachmentUrl: rawUrl,
+      attachmentThumbnailUrl: null,
+      attachmentText: null,
+    };
   }
 
-  return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl: null };
+  return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl: null, attachmentText: null };
 }
 
 export async function processWebhookPayload(rawPayload: unknown): Promise<void> {
@@ -367,7 +413,8 @@ async function processMessagingEvent(
       ? new Date(rawTs < 1_000_000_000_000 ? rawTs * 1000 : rawTs)
       : new Date();
   const resolvedAttachment = await resolveIncomingAttachment(message.attachments?.[0], accessToken);
-  const normalizedText = message.text?.trim() || null;
+  const resolvedText = resolvedAttachment.attachmentText?.trim() || null;
+  let normalizedText = message.text?.trim() || resolvedText;
   let attachmentType = resolvedAttachment.attachmentType;
   let attachmentUrl = resolvedAttachment.attachmentUrl;
 
