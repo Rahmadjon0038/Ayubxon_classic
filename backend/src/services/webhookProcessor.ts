@@ -454,8 +454,13 @@ async function processMessagingEvent(
 
   // Telefon raqamini AI holatidan (yoqilgan/ochirilgan/operatorga otkazilgan) qatiy nazar
   // har bir kontakt xabarida qidiramiz — shu orqali mijoz operator bilan gaplashayotganda
-  // ham (AI umuman ishtirok etmasa ham) qoldirgan raqami platformaga tushadi.
+  // ham (AI umuman ishtirok etmasa ham) qoldirgan raqami platformaga tushadi. Bu — Telegram
+  // lid kanaliga xabar yuborish uchun ham ASOSIY nuqta: AI tahlili (runAiTurn) bir necha
+  // soniya kechikish bilan ishlaydi va shu vaqtga kelib raqam allaqachon shu yerda
+  // saqlangan bo'ladi, shuning uchun "yangi lidmi" tekshiruvi ANA SHU YERDA, raqam hali
+  // yozilmasdan turib qilinishi shart.
   const detectedPhone = !isEcho && normalizedText ? extractPhoneNumber(normalizedText) : null;
+  const isNewLead = Boolean(detectedPhone) && !contact.phoneNumber && !conversation.leadNotifiedAt;
   if (detectedPhone) {
     console.log(`[webhook] Telefon raqami aniqlandi (contact=${contact.id}): ${detectedPhone}`);
   }
@@ -472,9 +477,23 @@ async function processMessagingEvent(
     data: {
       lastMessageAt: sentAt,
       ...(isEcho ? {} : { unreadCount: { increment: 1 } }),
+      ...(isNewLead ? { leadNotifiedAt: new Date() } : {}),
     },
     include: { contact: true },
   });
+
+  if (isNewLead && detectedPhone) {
+    const settings = await prisma.academySettings.findUnique({ where: { instagramAccountId: account.id } });
+    notifyNewLead({
+      academyName: settings?.academyName ?? account.name ?? account.username,
+      phoneNumber: detectedPhone,
+      courseName: conversation.interestedCourse,
+      branch: conversation.interestedBranch,
+      preferredTime: conversation.preferredTime,
+      contactName: updatedConversation.contact.name,
+      contactUsername: updatedConversation.contact.username,
+    }).catch(() => {});
+  }
 
   console.log(
     `[webhook] Xabar saqlandi (conversation=${conversation.id}, senderType=${saved.senderType}, sentAt=${saved.sentAt.toISOString()})`,
