@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
 import { downloadRemoteMedia } from '../lib/media';
 import { extractPhoneNumber } from '../lib/phone';
+import { notifyNewLead } from '../bot/telegramNotifier';
 import {
   analyzeConversation,
   ChatTurn,
@@ -724,8 +725,17 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
     const analysis = await analyzeConversation(analysisHistory);
 
     // AI suhbatdan telefon raqamini aniqlagan bo'lsa, kontakt yozuviga saqlaymiz — shu orqali
-    // lidlar ro'yxatida va chat ichida "pin" sifatida ko'rsatiladi.
+    // lidlar ro'yxatida va chat ichida "pin" sifatida ko'rsatiladi. Telegram lid kanaliga faqat
+    // BIR MARTA (raqam birinchi marta aniqlanganda) xabar yuborish uchun, yangilashdan oldingi
+    // holatni tekshirib olamiz.
+    let shouldNotifyLead = false;
     if (analysis?.phoneNumber) {
+      const priorState = await prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { leadNotifiedAt: true, contact: { select: { phoneNumber: true } } },
+      });
+      shouldNotifyLead = !priorState?.leadNotifiedAt && !priorState?.contact.phoneNumber;
+
       await prisma.contact
         .update({
           where: { instagramScopedId: contactIgsid },
@@ -744,12 +754,27 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
               talkStatus: analysis.talkStatus,
               courseDecision: analysis.courseDecision,
               ...(analysis.interestedCourse ? { interestedCourse: analysis.interestedCourse } : {}),
+              ...(analysis.interestedBranch ? { interestedBranch: analysis.interestedBranch } : {}),
+              ...(analysis.preferredTime ? { preferredTime: analysis.preferredTime } : {}),
               ...(analysis.handoverRequested ? { aiPaused: true, aiPausedAt: new Date() } : {}),
+              ...(shouldNotifyLead ? { leadNotifiedAt: new Date() } : {}),
             }
           : {}),
       },
       include: { contact: true },
     });
+
+    if (shouldNotifyLead && analysis?.phoneNumber) {
+      notifyNewLead({
+        academyName: settings.academyName,
+        phoneNumber: analysis.phoneNumber,
+        courseName: analysis.interestedCourse,
+        branch: analysis.interestedBranch,
+        preferredTime: analysis.preferredTime,
+        contactName: updatedConversation.contact.name,
+        contactUsername: updatedConversation.contact.username,
+      }).catch(() => {});
+    }
 
     emitNewMessage({
       conversationId,

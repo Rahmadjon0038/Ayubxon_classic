@@ -29,6 +29,11 @@ const envSchema = z.object({
 
   // Berilmasa, AI auto-reply o'chiq holatda ishlaydi (fallback: inson javob yozadi).
   OPENAI_API_KEY: z.string().optional(),
+
+  // Telefon raqam qoldirgan lidlarni Telegram kanaliga yuborish uchun. Ikkalasi ham
+  // berilmasa, lid xabarnomasi jim o'chiq holatda ishlaydi.
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_CHANNEL_ID: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
