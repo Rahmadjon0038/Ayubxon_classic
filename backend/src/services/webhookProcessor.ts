@@ -455,12 +455,14 @@ async function processMessagingEvent(
   // Telefon raqamini AI holatidan (yoqilgan/ochirilgan/operatorga otkazilgan) qatiy nazar
   // har bir kontakt xabarida qidiramiz — shu orqali mijoz operator bilan gaplashayotganda
   // ham (AI umuman ishtirok etmasa ham) qoldirgan raqami platformaga tushadi. Bu — Telegram
-  // lid kanaliga xabar yuborish uchun ham ASOSIY nuqta: AI tahlili (runAiTurn) bir necha
-  // soniya kechikish bilan ishlaydi va shu vaqtga kelib raqam allaqachon shu yerda
-  // saqlangan bo'ladi, shuning uchun "yangi lidmi" tekshiruvi ANA SHU YERDA, raqam hali
-  // yozilmasdan turib qilinishi shart.
+  // lid kanaliga xabar yuborish uchun ham ASOSIY nuqta.
+  //
+  // Mijoz xabarida raqam topilgan HAR SAFAR guruhga xabar yuboriladi — hatto raqam avvalgisi
+  // bilan bir xil bo'lsa ham. Sabab: mijoz oldin bir kursga yozilib, keyinroq boshqa (yangi)
+  // kursga qiziqib, o'sha eski raqamini yana qoldirishi mumkin — bu ham alohida lid sifatida
+  // operatorga yetib borishi kerak.
   const detectedPhone = !isEcho && normalizedText ? extractPhoneNumber(normalizedText) : null;
-  const isNewLead = Boolean(detectedPhone) && !contact.phoneNumber && !conversation.leadNotifiedAt;
+  const previousPhoneNumber = contact.phoneNumber;
   if (detectedPhone) {
     console.log(`[webhook] Telefon raqami aniqlandi (contact=${contact.id}): ${detectedPhone}`);
   }
@@ -477,16 +479,17 @@ async function processMessagingEvent(
     data: {
       lastMessageAt: sentAt,
       ...(isEcho ? {} : { unreadCount: { increment: 1 } }),
-      ...(isNewLead ? { leadNotifiedAt: new Date() } : {}),
+      ...(detectedPhone ? { leadNotifiedAt: new Date() } : {}),
     },
     include: { contact: true },
   });
 
-  if (isNewLead && detectedPhone) {
+  if (detectedPhone) {
     const settings = await prisma.academySettings.findUnique({ where: { instagramAccountId: account.id } });
     notifyNewLead({
       academyName: settings?.academyName ?? account.name ?? account.username,
       phoneNumber: detectedPhone,
+      previousPhoneNumber,
       courseName: conversation.interestedCourse,
       branch: conversation.interestedBranch,
       preferredTime: conversation.preferredTime,
@@ -744,16 +747,23 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
     const analysis = await analyzeConversation(analysisHistory);
 
     // AI suhbatdan telefon raqamini aniqlagan bo'lsa, kontakt yozuviga saqlaymiz — shu orqali
-    // lidlar ro'yxatida va chat ichida "pin" sifatida ko'rsatiladi. Telegram lid kanaliga faqat
-    // BIR MARTA (raqam birinchi marta aniqlanganda) xabar yuborish uchun, yangilashdan oldingi
-    // holatni tekshirib olamiz.
+    // lidlar ro'yxatida va chat ichida "pin" sifatida ko'rsatiladi. Bu — regex asosidagi asosiy
+    // nuqta (processMessagingEvent) o'tkazib yuborgan hollar uchun ZAXIRA: masalan AI raqamni
+    // regex qamrab olmagan formatda tushunib olsa. MUHIM: bu yerda "raqam avvalgisidan farq
+    // qilsa" tekshiruvi SAQLANADI (asosiy nuqtadan farqli) — chunki analyzeConversation butun
+    // suhbat TARIXini har AI navbatida qayta tahlil qiladi, shuning uchun bitta raqam bir marta
+    // aytilgach, dedup bo'lmasa HAR safar (suhbatdagi navbat sayin) qayta xabar yuborilib,
+    // spam bo'lib qolardi. Asosiy nuqta esa faqat JORIY xabarda raqam borligini tekshirgani
+    // uchun u yerda dedup shart emas.
     let shouldNotifyLead = false;
+    let previousPhoneNumber: string | null = null;
     if (analysis?.phoneNumber) {
       const priorState = await prisma.conversation.findUnique({
         where: { id: conversationId },
-        select: { leadNotifiedAt: true, contact: { select: { phoneNumber: true } } },
+        select: { contact: { select: { phoneNumber: true } } },
       });
-      shouldNotifyLead = !priorState?.leadNotifiedAt && !priorState?.contact.phoneNumber;
+      previousPhoneNumber = priorState?.contact.phoneNumber ?? null;
+      shouldNotifyLead = analysis.phoneNumber !== previousPhoneNumber;
 
       await prisma.contact
         .update({
@@ -787,6 +797,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
       notifyNewLead({
         academyName: settings.academyName,
         phoneNumber: analysis.phoneNumber,
+        previousPhoneNumber,
         courseName: analysis.interestedCourse,
         branch: analysis.interestedBranch,
         preferredTime: analysis.preferredTime,

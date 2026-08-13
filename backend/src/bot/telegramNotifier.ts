@@ -4,6 +4,10 @@ import { env } from '../config/env';
 export interface NewLeadNotification {
   academyName: string;
   phoneNumber: string;
+  // Kontaktda shu xabardan OLDIN saqlangan raqam (bo'lmasa null). Faqat xabar matnida qanday
+  // izoh chiqishini belgilash uchun — dedup uchun EMAS: mijoz bir xil raqamni qayta yozsa ham
+  // (masalan yangi kursga yozilmoqchi bo'lsa), baribir har safar guruhga xabar yuboriladi.
+  previousPhoneNumber: string | null;
   courseName: string | null;
   branch: string | null;
   preferredTime: string | null;
@@ -19,6 +23,11 @@ function buildMessage(lead: NewLeadNotification): string {
   const title = lead.branch ? escapeHtml(lead.branch) : `${escapeHtml(lead.academyName)} — yangi lid`;
 
   const lines = [`<b>📍 ${title}</b>`, ''];
+  if (lead.previousPhoneNumber && lead.previousPhoneNumber === lead.phoneNumber) {
+    lines.push("🔁 <i>Mijoz shu raqamni yana yubordi — yangi kursga qiziqqan bo'lishi mumkin</i>");
+  } else if (lead.previousPhoneNumber) {
+    lines.push('🔄 <i>Mijoz raqamini yangiladi</i>');
+  }
   lines.push(`📞 <b>Telefon:</b> ${escapeHtml(lead.phoneNumber)}`);
   lines.push(`📚 <b>Kurs:</b> ${lead.courseName ? escapeHtml(lead.courseName) : 'aniqlanmagan'}`);
   if (lead.preferredTime) {
@@ -41,14 +50,25 @@ export async function notifyNewLead(lead: NewLeadNotification): Promise<void> {
     return;
   }
 
+  console.log(`[telegram] Lid xabarnomasi yuborilmoqda (chat_id=${env.TELEGRAM_CHANNEL_ID}, telefon=${lead.phoneNumber})`);
+
   try {
-    await axios.post(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const response = await axios.post(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
       chat_id: env.TELEGRAM_CHANNEL_ID,
       text: buildMessage(lead),
       parse_mode: 'HTML',
     });
+
+    if (response.data?.ok) {
+      console.log(`[telegram] Lid xabarnomasi muvaffaqiyatli yuborildi (chat_id=${env.TELEGRAM_CHANNEL_ID})`);
+    } else {
+      console.error(`[telegram] Telegram "ok:false" qaytardi (chat_id=${env.TELEGRAM_CHANNEL_ID}): ${JSON.stringify(response.data)}`);
+    }
   } catch (err) {
+    const details = axios.isAxiosError(err) && err.response ? JSON.stringify(err.response.data) : undefined;
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[telegram] Lid xabarnomasini yuborishda xato: ${message}`);
+    console.error(
+      `[telegram] Lid xabarnomasini yuborishda xato (chat_id=${env.TELEGRAM_CHANNEL_ID}): ${message}${details ? ` — ${details}` : ''}`,
+    );
   }
 }
