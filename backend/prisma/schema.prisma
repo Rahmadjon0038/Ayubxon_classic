@@ -34,6 +34,9 @@ model InstagramAccount {
   conversations   Conversation[]
   academySettings AcademySettings?
   knowledgeBaseItems KnowledgeBaseItem[]
+  branches        BranchInfo[]
+  groups          GroupInfo[]
+  promotions      PromotionInfo[]
 }
 
 // Har bir Instagram biznes akkaunti (o'quv markazi) uchun AI'ga o'rgatiladigan
@@ -60,6 +63,70 @@ enum KnowledgeBaseCategory {
   PRICE
   BRANCH
   OTHER
+}
+
+enum PromotionScope {
+  ALL_BRANCHES
+  BRANCH
+}
+
+model BranchInfo {
+  id                 String   @id @default(cuid())
+  instagramAccountId  String
+  name              String
+  locationUrl       String
+  workingHours      String
+  phoneNumber       String
+  subjectNames      String
+  extraInfo         String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  account   InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  groups    GroupInfo[]
+  promotions PromotionInfo[] @relation("BranchPromotions")
+
+  @@index([instagramAccountId, updatedAt])
+  @@index([instagramAccountId, isActive])
+}
+
+model GroupInfo {
+  id                 String   @id @default(cuid())
+  instagramAccountId  String
+  branchId          String
+  subjectName       String
+  price             String
+  details           String
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  branch  BranchInfo       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([instagramAccountId, branchId])
+  @@index([instagramAccountId, updatedAt])
+  @@index([instagramAccountId, isActive])
+}
+
+model PromotionInfo {
+  id                 String         @id @default(cuid())
+  instagramAccountId  String
+  branchId          String?
+  scope             PromotionScope @default(ALL_BRANCHES)
+  title             String
+  details           String
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  branch  BranchInfo?      @relation("BranchPromotions", fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([instagramAccountId, branchId])
+  @@index([instagramAccountId, updatedAt])
+  @@index([instagramAccountId, isActive])
 }
 
 model KnowledgeBaseItem {

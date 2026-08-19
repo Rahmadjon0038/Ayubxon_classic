@@ -32,6 +32,46 @@ export interface AcademySettings {
 
 export type KnowledgeBaseCategory = 'COURSE' | 'GROUP' | 'PROMOTION' | 'PRICE' | 'BRANCH' | 'OTHER';
 
+export type PromotionScope = 'ALL_BRANCHES' | 'BRANCH';
+
+export interface BranchInfo {
+  id: string;
+  instagramAccountId: string;
+  name: string;
+  locationUrl: string;
+  workingHours: string;
+  phoneNumber: string;
+  subjectNames: string;
+  extraInfo: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GroupInfo {
+  id: string;
+  instagramAccountId: string;
+  branchId: string;
+  subjectName: string;
+  price: string;
+  details: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromotionInfo {
+  id: string;
+  instagramAccountId: string;
+  branchId: string | null;
+  scope: PromotionScope;
+  title: string;
+  details: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface KnowledgeBaseItem {
   id: string;
   instagramAccountId: string;

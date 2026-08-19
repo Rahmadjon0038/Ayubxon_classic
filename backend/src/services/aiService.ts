@@ -1,4 +1,4 @@
-import { AcademySettings, KnowledgeBaseItem } from '@prisma/client';
+import { AcademySettings, BranchInfo, GroupInfo, KnowledgeBaseItem, PromotionInfo } from '@prisma/client';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../config/env';
@@ -54,7 +54,44 @@ async function rewriteWithoutForbiddenPhrase(client: OpenAI, original: string): 
   }
 }
 
-function formatKnowledgeBaseItem(item: KnowledgeBaseItem): string {
+function formatBranchInfo(item: BranchInfo): string {
+  const parts = [
+    `Nomi: ${item.name}`,
+    `Joylashuv linki: ${item.locationUrl}`,
+    `Ish vaqti: ${item.workingHours}`,
+    `Telefon: ${item.phoneNumber}`,
+    `Fan yo'nalishlari: ${item.subjectNames}`,
+    item.extraInfo ? `Qo'shimcha ma'lumot: ${item.extraInfo}` : null,
+    `Holati: ${item.isActive ? 'Faol' : 'Faol emas'}`,
+  ].filter(Boolean);
+
+  return parts.join('\n');
+}
+
+function formatGroupInfo(item: GroupInfo, branchName: string): string {
+  const parts = [
+    `Filial: ${branchName}`,
+    `Fan nomi: ${item.subjectName}`,
+    `Kurs narxi: ${item.price}`,
+    `Batafsil ma'lumot: ${item.details}`,
+    `Holati: ${item.isActive ? 'Faol' : 'Faol emas'}`,
+  ].filter(Boolean);
+
+  return parts.join('\n');
+}
+
+function formatPromotionInfo(item: PromotionInfo, branchName: string): string {
+  const parts = [
+    `Qamrov: ${item.scope === 'ALL_BRANCHES' ? 'Barcha filiallar' : branchName}`,
+    `Sarlavha: ${item.title}`,
+    `Batafsil ma'lumot: ${item.details}`,
+    `Holati: ${item.isActive ? 'Faol' : 'Faol emas'}`,
+  ].filter(Boolean);
+
+  return parts.join('\n');
+}
+
+function formatLegacyKnowledgeBaseItem(item: KnowledgeBaseItem): string {
   const parts = [
     `Sarlavha: ${item.title}`,
     `Kategoriya: ${item.category}`,
@@ -67,19 +104,55 @@ function formatKnowledgeBaseItem(item: KnowledgeBaseItem): string {
   return parts.join('\n');
 }
 
-function buildSystemPrompt(settings: AcademySettings, knowledgeBaseItems: KnowledgeBaseItem[]): string {
-  const knowledgeBaseBlock =
-    knowledgeBaseItems.length > 0
-      ? knowledgeBaseItems.map((item, index) => `${index + 1}. ${formatKnowledgeBaseItem(item)}`).join('\n\n')
-      : 'Hozircha faol bilimlar yo\'q.';
+function buildSystemPrompt(params: {
+  settings: AcademySettings;
+  branches: BranchInfo[];
+  groups: GroupInfo[];
+  promotions: PromotionInfo[];
+  legacyKnowledgeBaseItems: KnowledgeBaseItem[];
+}): string {
+  const { settings, branches, groups, promotions, legacyKnowledgeBaseItems } = params;
+  const branchMap = new Map(branches.map((branch) => [branch.id, branch.name]));
+
+  const branchesBlock =
+    branches.length > 0
+      ? branches.map((item, index) => `${index + 1}. ${formatBranchInfo(item)}`).join('\n\n')
+      : "Hozircha filiallar kiritilmagan.";
+
+  const groupsBlock =
+    groups.length > 0
+      ? groups
+          .map((item, index) => `${index + 1}. ${formatGroupInfo(item, branchMap.get(item.branchId) ?? "Noma'lum filial")}`)
+          .join('\n\n')
+      : "Hozircha guruhlar kiritilmagan.";
+
+  const promotionsBlock =
+    promotions.length > 0
+      ? promotions
+          .map((item, index) =>
+            `${index + 1}. ${formatPromotionInfo(item, item.branchId ? branchMap.get(item.branchId) ?? "Noma'lum filial" : 'Barcha filiallar')}`,
+          )
+          .join('\n\n')
+      : "Hozircha aksiyalar kiritilmagan.";
+
+  const legacyBlock =
+    legacyKnowledgeBaseItems.length > 0
+      ? legacyKnowledgeBaseItems.map((item, index) => `${index + 1}. ${formatLegacyKnowledgeBaseItem(item)}`).join('\n\n')
+      : "Hozircha legacy bilimlar yo'q.";
 
   return `
 Siz InboxCRM tizimiga ulangan "${settings.academyName}" o'quv markazining rasmiy AI assistentisiz. Foydalanuvchilar Instagram DM orqali yozishmoqda.
 Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar tez-tez o'zgaradi, shuning uchun eski bilimlarni unuting:
 
 === AKTUAL MA'LUMOTLAR BAZASI ===
-BILIMLAR BAZASI:
-${knowledgeBaseBlock}
+FILIALLAR:
+${branchesBlock}
+
+GURUHLAR:
+${groupsBlock}
+
+AKSIYALAR:
+${promotionsBlock}
 
 MARKAZ HAQIDAGI QO'SHIMCHA SOZLAMALAR:
 Kurslar va narxlar:
@@ -93,10 +166,13 @@ ${settings.phoneNumbers}
 
 Aksiyalar:
 ${settings.promotions || "Hozircha faol aksiyalar yo'q."}
+
+LEGACY MA'LUMOTLAR:
+${legacyBlock}
 =================================
 
 Qoidalar:
-0. Har bir bilim alohida card sifatida yuritiladi. Bir mavzu bo'yicha bir nechta card bo'lishi mumkin. Yangi, aniqroq yoki keyinroq yangilangan faol card ustun hisoblanadi.
+0. Filiallar asosiy ma'lumot. Guruhlar filialga bog'langan. Aksiyalar bitta filialga yoki barcha filiallarga tegishli bo'lishi mumkin. Bir mavzu bo'yicha bir nechta karta bo'lishi mumkin, lekin eng aniq va oxirgi faol ma'lumot ustun.
 1. Yo'q kurslarni to'qib chiqarmang (No hallucinations).
 2. Narx yoki filial haqida so'ralganda buni bosqichma-bosqich aniqlab boring — bitta xabarda
    barcha kurslar, narxlar yoki filiallarni birga tashlamang. Tartib: avval qaysi kurs
@@ -267,20 +343,46 @@ export async function generateAiReply(
   if (history.length === 0) return null;
 
   try {
-    const knowledgeBaseItems = await prisma.knowledgeBaseItem.findMany({
-      where: {
-        instagramAccountId: settings.instagramAccountId,
-        isActive: true,
-      },
-      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-      take: 50,
-    });
+    const [branches, groups, promotions, legacyKnowledgeBaseItems] = await Promise.all([
+      prisma.branchInfo.findMany({
+        where: { instagramAccountId: settings.instagramAccountId, isActive: true },
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 50,
+      }),
+      prisma.groupInfo.findMany({
+        where: { instagramAccountId: settings.instagramAccountId, isActive: true },
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 50,
+      }),
+      prisma.promotionInfo.findMany({
+        where: { instagramAccountId: settings.instagramAccountId, isActive: true },
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 50,
+      }),
+      prisma.knowledgeBaseItem.findMany({
+        where: { instagramAccountId: settings.instagramAccountId, isActive: true },
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 50,
+      }),
+    ]);
 
     const completion = await client.chat.completions.create({
       model: AI_MODEL,
       temperature: 0.6,
       max_tokens: 500,
-      messages: [{ role: 'system', content: buildSystemPrompt(settings, knowledgeBaseItems) }, ...history],
+      messages: [
+        {
+          role: 'system',
+          content: buildSystemPrompt({
+            settings,
+            branches,
+            groups,
+            promotions,
+            legacyKnowledgeBaseItems,
+          }),
+        },
+        ...history,
+      ],
     });
 
     const reply = completion.choices[0]?.message?.content?.trim();
