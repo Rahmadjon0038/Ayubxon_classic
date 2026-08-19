@@ -33,6 +33,7 @@ model InstagramAccount {
 
   conversations   Conversation[]
   academySettings AcademySettings?
+  knowledgeBaseItems KnowledgeBaseItem[]
 }
 
 // Har bir Instagram biznes akkaunti (o'quv markazi) uchun AI'ga o'rgatiladigan
@@ -50,6 +51,34 @@ model AcademySettings {
   updatedAt          DateTime @updatedAt
 
   account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+}
+
+enum KnowledgeBaseCategory {
+  COURSE
+  GROUP
+  PROMOTION
+  PRICE
+  BRANCH
+  OTHER
+}
+
+model KnowledgeBaseItem {
+  id                 String                 @id @default(cuid())
+  instagramAccountId  String
+  title              String
+  category           KnowledgeBaseCategory
+  course             String?
+  branch             String?
+  details            String
+  isActive           Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@index([instagramAccountId, category])
+  @@index([instagramAccountId, isActive])
+  @@index([instagramAccountId, updatedAt])
 }
 
 model Contact {

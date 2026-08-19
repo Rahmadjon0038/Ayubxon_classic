@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import academySettingsRoutes from './routes/academySettings';
 import authRoutes from './routes/auth';
 import conversationRoutes from './routes/conversations';
+import knowledgeBaseRoutes from './routes/knowledgeBase';
 import instagramRoutes from './routes/instagram';
 import statsRoutes from './routes/stats';
 import webhookRoutes from './routes/webhooks';
@@ -67,6 +68,7 @@ export function createApp() {
   app.use('/api/webhooks', webhookRoutes);
   app.use('/api/conversations', conversationRoutes);
   app.use('/api/academy-settings', academySettingsRoutes);
+  app.use('/api/knowledge-base', knowledgeBaseRoutes);
   app.use('/api/stats', statsRoutes);
 
   app.use(notFoundHandler);

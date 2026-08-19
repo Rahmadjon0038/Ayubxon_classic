@@ -1,7 +1,8 @@
-import { AcademySettings } from '@prisma/client';
+import { AcademySettings, KnowledgeBaseItem } from '@prisma/client';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../config/env';
+import { prisma } from '../lib/prisma';
 
 const AI_MODEL = 'gpt-4o-mini';
 
@@ -53,26 +54,49 @@ async function rewriteWithoutForbiddenPhrase(client: OpenAI, original: string): 
   }
 }
 
-function buildSystemPrompt(settings: AcademySettings): string {
+function formatKnowledgeBaseItem(item: KnowledgeBaseItem): string {
+  const parts = [
+    `Sarlavha: ${item.title}`,
+    `Kategoriya: ${item.category}`,
+    item.course ? `Tegishli kurs: ${item.course}` : null,
+    item.branch ? `Tegishli filial: ${item.branch}` : null,
+    `Holati: ${item.isActive ? 'Faol' : 'Faol emas'}`,
+    `Ma'lumot: ${item.details}`,
+  ].filter(Boolean);
+
+  return parts.join('\n');
+}
+
+function buildSystemPrompt(settings: AcademySettings, knowledgeBaseItems: KnowledgeBaseItem[]): string {
+  const knowledgeBaseBlock =
+    knowledgeBaseItems.length > 0
+      ? knowledgeBaseItems.map((item, index) => `${index + 1}. ${formatKnowledgeBaseItem(item)}`).join('\n\n')
+      : 'Hozircha faol bilimlar yo\'q.';
+
   return `
 Siz InboxCRM tizimiga ulangan "${settings.academyName}" o'quv markazining rasmiy AI assistentisiz. Foydalanuvchilar Instagram DM orqali yozishmoqda.
 Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar tez-tez o'zgaradi, shuning uchun eski bilimlarni unuting:
 
 === AKTUAL MA'LUMOTLAR BAZASI ===
-KURSLARIMIZ VA NARXLAR:
+BILIMLAR BAZASI:
+${knowledgeBaseBlock}
+
+MARKAZ HAQIDAGI QO'SHIMCHA SOZLAMALAR:
+Kurslar va narxlar:
 ${settings.coursesAndPrices}
 
-MARKAZNING MANZILI VA MO'LJAL:
+Manzil:
 ${settings.address}
 
-ALOQA TELEFONLARI:
+Telefonlar:
 ${settings.phoneNumbers}
 
-AKSIYALAR VA CHEGIRMALAR:
+Aksiyalar:
 ${settings.promotions || "Hozircha faol aksiyalar yo'q."}
 =================================
 
 Qoidalar:
+0. Har bir bilim alohida card sifatida yuritiladi. Bir mavzu bo'yicha bir nechta card bo'lishi mumkin. Yangi, aniqroq yoki keyinroq yangilangan faol card ustun hisoblanadi.
 1. Yo'q kurslarni to'qib chiqarmang (No hallucinations).
 2. Narx yoki filial haqida so'ralganda buni bosqichma-bosqich aniqlab boring — bitta xabarda
    barcha kurslar, narxlar yoki filiallarni birga tashlamang. Tartib: avval qaysi kurs
@@ -243,11 +267,20 @@ export async function generateAiReply(
   if (history.length === 0) return null;
 
   try {
+    const knowledgeBaseItems = await prisma.knowledgeBaseItem.findMany({
+      where: {
+        instagramAccountId: settings.instagramAccountId,
+        isActive: true,
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 50,
+    });
+
     const completion = await client.chat.completions.create({
       model: AI_MODEL,
       temperature: 0.6,
       max_tokens: 500,
-      messages: [{ role: 'system', content: buildSystemPrompt(settings) }, ...history],
+      messages: [{ role: 'system', content: buildSystemPrompt(settings, knowledgeBaseItems) }, ...history],
     });
 
     const reply = completion.choices[0]?.message?.content?.trim();
