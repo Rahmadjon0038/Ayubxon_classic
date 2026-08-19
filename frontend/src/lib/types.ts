@@ -30,6 +30,21 @@ export interface AcademySettings {
   updatedAt: string;
 }
 
+export type KnowledgeBaseCategory = 'COURSE' | 'GROUP' | 'PROMOTION' | 'PRICE' | 'BRANCH' | 'OTHER';
+
+export interface KnowledgeBaseItem {
+  id: string;
+  instagramAccountId: string;
+  title: string;
+  category: KnowledgeBaseCategory;
+  course: string | null;
+  branch: string | null;
+  details: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Contact {
   id: string;
   instagramScopedId: string;
