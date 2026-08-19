@@ -354,14 +354,32 @@ export default function AiAssistantPage() {
                 type="button"
                 onClick={handleToggle}
                 disabled={toggleMutation.isPending || settingsQuery.isLoading}
-                className={`inline-flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                className={`flex min-w-[200px] items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
                   aiEnabled
                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
                     : 'border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
                 }`}
+                aria-pressed={aiEnabled}
+                aria-label={aiEnabled ? 'AI o‘chirish' : 'AI yoqish'}
               >
-                {aiEnabled ? <Check size={16} /> : <EyeOff size={16} />}
-                {aiEnabled ? 'AI yoqilgan' : 'AI o\'chirilgan'}
+                <span className="flex items-center gap-2">
+                  {aiEnabled ? <Check size={16} /> : <EyeOff size={16} />}
+                  {aiEnabled ? 'AI yoqilgan' : 'AI o\'chirilgan'}
+                </span>
+                <span
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
+                    aiEnabled
+                      ? 'border-emerald-500 bg-emerald-500'
+                      : 'border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-700'
+                  }`}
+                  aria-hidden="true"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition ${
+                      aiEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </span>
               </button>
             </div>
           </div>
