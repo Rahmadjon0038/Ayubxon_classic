@@ -161,6 +161,7 @@ const ru: Translations = {
   settings: {
     title: 'Настройки',
     subtitle: 'Информация о платформе и администраторе.',
+    appearance: 'Язык и оформление',
     administrator: 'Администратор',
     createdAt: 'Создан',
     system: 'Система',
@@ -229,6 +230,7 @@ const ru: Translations = {
     hoursAgo: '{{n}} ч. назад',
     daysAgo: '{{n}} дн. назад',
     yesterday: 'Вчера',
+    today: 'Сегодня',
     months: [
       'января',
       'февраля',

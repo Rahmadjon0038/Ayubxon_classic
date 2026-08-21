@@ -38,7 +38,7 @@ export default function MonthlyBarChart({
   return (
     <div>
       {series.length > 1 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+        <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-gray-600 dark:text-tg-textMuted">
           {series.map((s) => (
             <span key={s.key} className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
@@ -50,7 +50,7 @@ export default function MonthlyBarChart({
 
       <div className="flex gap-2">
         <div
-          className="flex flex-col justify-between py-0 text-right text-[10px] text-gray-500 dark:text-gray-500"
+          className="flex flex-col justify-between py-0 text-right text-[10px] text-gray-500 dark:text-tg-textFaint"
           style={{ height: PLOT_HEIGHT }}
         >
           {[...ticks].reverse().map((tick, i) => (
@@ -62,13 +62,13 @@ export default function MonthlyBarChart({
           {/* Gorizontal gridlinelar */}
           <div className="absolute inset-0 flex flex-col justify-between" style={{ height: PLOT_HEIGHT }}>
             {ticks.map((_, i) => (
-              <div key={i} className="h-px bg-gray-200 dark:bg-gray-800" />
+              <div key={i} className="h-px bg-gray-200 dark:bg-tg-panelAlt" />
             ))}
           </div>
 
           {!hasData && (
             <div
-              className="relative flex items-center justify-center text-xs text-gray-400 dark:text-gray-600"
+              className="relative flex items-center justify-center text-xs text-gray-400 dark:text-tg-textFaint"
               style={{ height: PLOT_HEIGHT }}
             >
               {emptyLabel}
@@ -93,12 +93,12 @@ export default function MonthlyBarChart({
                   )}
 
                   {hoverIndex === i && (
-                    <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-max -translate-x-1/2 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] shadow-md dark:border-gray-700 dark:bg-gray-800">
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                    <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-max -translate-x-1/2 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] shadow-md dark:border-tg-hover dark:bg-tg-panelAlt">
+                      <p className="font-semibold text-gray-900 dark:text-tg-text">
                         {monthFullLabel(month, monthNames)}
                       </p>
                       {series.map((s) => (
-                        <p key={s.key} className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                        <p key={s.key} className="flex items-center gap-1 text-gray-600 dark:text-tg-textMuted">
                           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
                           {s.label}: {s.values[i].toLocaleString()}
                         </p>
@@ -130,7 +130,7 @@ export default function MonthlyBarChart({
                 className={
                   month === selectedMonth
                     ? 'flex-1 text-center text-[10px] font-semibold text-brand-600 dark:text-brand-400'
-                    : 'flex-1 text-center text-[10px] text-gray-500 dark:text-gray-500'
+                    : 'flex-1 text-center text-[10px] text-gray-500 dark:text-tg-textFaint'
                 }
               >
                 {monthShortLabel(month, monthNamesShort)}

@@ -20,7 +20,7 @@ export default function StackedBreakdown({ segments, emptyLabel }: Props) {
 
   if (total === 0) {
     return (
-      <div className="flex h-24 items-center justify-center text-xs text-gray-400 dark:text-gray-600">
+      <div className="flex h-24 items-center justify-center text-xs text-gray-400 dark:text-tg-textFaint">
         {emptyLabel}
       </div>
     );
@@ -57,12 +57,12 @@ export default function StackedBreakdown({ segments, emptyLabel }: Props) {
               onMouseLeave={() => setHoverKey((cur) => (cur === s.key ? null : cur))}
               className="flex items-center justify-between gap-2 text-xs"
             >
-              <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+              <span className="flex items-center gap-1.5 text-gray-700 dark:text-tg-textMuted">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
                 {s.label}
               </span>
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                {s.value.toLocaleString()} <span className="text-gray-500 dark:text-gray-500">({pct}%)</span>
+              <span className="font-medium text-gray-900 dark:text-tg-text">
+                {s.value.toLocaleString()} <span className="text-gray-500 dark:text-tg-textFaint">({pct}%)</span>
               </span>
             </li>
           );

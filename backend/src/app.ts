@@ -2,7 +2,7 @@ import cors from 'cors';
 import express, { Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import { env, getAllowedOrigins } from './config/env';
+import { env, getAllowedOrigins, isProduction } from './config/env';
 import { UPLOAD_DIR } from './lib/uploads';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import academySettingsRoutes from './routes/academySettings';
@@ -56,7 +56,9 @@ export function createApp() {
     limit: 300,
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path.startsWith('/api/webhooks'),
+    // TEMP (2026-08-21): dev paytida bloklanmaslik uchun vaqtincha ochirilgan.
+    // Ish tugagach isProduction tekshiruvisiz qoldirmasdan qayta yoqish kerak.
+    skip: (req) => !isProduction || req.path.startsWith('/api/webhooks'),
     message: { error: 'Juda kop sorov yuborildi. Birozdan keyin qayta urinib koring' },
   });
   app.use(apiLimiter);

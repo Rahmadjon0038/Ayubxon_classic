@@ -162,6 +162,7 @@ const uz = {
   settings: {
     title: 'Sozlamalar',
     subtitle: 'Platforma va admin malumotlari.',
+    appearance: "Til va ko'rinish",
     administrator: 'Administrator',
     createdAt: 'Yaratilgan',
     system: 'Tizim',
@@ -232,6 +233,7 @@ const uz = {
     hoursAgo: '{{n}} soat oldin',
     daysAgo: '{{n}} kun oldin',
     yesterday: 'Kecha',
+    today: 'Bugun',
     months: [
       'yanvar',
       'fevral',

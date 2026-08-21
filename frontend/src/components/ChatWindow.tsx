@@ -8,11 +8,11 @@ import Avatar from './Avatar';
 import { useLocale } from './LocaleProvider';
 import MessageBubble from './MessageBubble';
 import { api, getErrorMessage } from '@/lib/api';
-import { contactDisplayName } from '@/lib/format';
+import { contactDisplayName, formatDaySeparator } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
+import { useInstagramAccount } from '@/lib/useInstagramAccount';
 import {
   ConversationListItem,
-  InstagramAccount,
   Message,
   MessageDeletedEvent,
   MessageUpdatedEvent,
@@ -37,13 +37,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const accountQuery = useQuery({
-    queryKey: ['instagram-account'],
-    queryFn: async () => {
-      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
-      return data.account;
-    },
-  });
+  const accountQuery = useInstagramAccount();
   const accountKey = accountQuery.data?.id ?? 'none';
 
   const messagesQuery = useQuery({
@@ -270,11 +264,11 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-gray-300 bg-white px-3 py-3 sm:gap-3 sm:px-5 dark:border-gray-800 dark:bg-gray-900">
+      <div className="mx-3 mt-1.5 flex items-center gap-2 rounded-[50px] border border-gray-300 bg-white/80 py-[3px] pl-1 pr-2.5 shadow-sm backdrop-blur-xl backdrop-saturate-150 sm:gap-3 dark:border-transparent dark:bg-tg-sidebar">
         {backHref && (
           <Link
             href={backHref}
-            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 dark:text-tg-textMuted dark:hover:bg-tg-panelAlt dark:hover:text-tg-text"
             aria-label={t('chat.back')}
           >
             <ArrowLeft size={18} />
@@ -284,24 +278,24 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
           <button
             type="button"
             onClick={onBack}
-            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 md:hidden dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            className="-ml-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 md:hidden dark:text-tg-textMuted dark:hover:bg-tg-panelAlt dark:hover:text-tg-text"
             aria-label={t('chat.backToList')}
           >
             <ArrowLeft size={18} />
           </button>
         )}
-        <Avatar src={conversation.contact.profilePictureUrl} name={name} size={38} />
+        <Avatar src={conversation.contact.profilePictureUrl} name={name} size={40} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold dark:text-gray-100">{name}</p>
+          <p className="truncate text-sm font-semibold dark:text-tg-text">{name}</p>
           {conversation.contact.username && (
-            <p className="truncate text-xs text-gray-600 dark:text-gray-400">@{conversation.contact.username}</p>
+            <p className="truncate text-xs text-gray-600 dark:text-tg-textMuted">@{conversation.contact.username}</p>
           )}
         </div>
         <button
           type="button"
           onClick={handleDelete}
           disabled={deleteMutation.isPending}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-gray-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-tg-textFaint dark:hover:bg-red-500/10 dark:hover:text-red-400"
           title={t('chat.deleteChat')}
         >
           {deleteMutation.isPending ? (
@@ -345,7 +339,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
 
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5">
         {messagesQuery.isLoading && (
-          <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-500">{t('common.loading')}</p>
+          <p className="py-6 text-center text-sm text-gray-500 dark:text-tg-textFaint">{t('common.loading')}</p>
         )}
         {messagesQuery.isError && (
           <p className="py-6 text-center text-sm text-red-500 dark:text-red-400">
@@ -353,20 +347,33 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
           </p>
         )}
         <div className="space-y-2">
-          {messagesQuery.data?.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              onReact={(msg, action) => reactMutation.mutate({ message: msg, action })}
-              reactPending={reactMutation.isPending}
-              onDelete={handleDeleteMessage}
-              deletePending={deleteMessageMutation.isPending}
-            />
-          ))}
+          {messagesQuery.data?.map((message, index, messages) => {
+            const prev = messages[index - 1];
+            const showDaySeparator =
+              !prev || new Date(prev.sentAt).toDateString() !== new Date(message.sentAt).toDateString();
+            return (
+              <div key={message.id}>
+                {showDaySeparator && (
+                  <div className="my-3 flex items-center justify-center">
+                    <span className="rounded-full bg-black/20 px-3 py-1 text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-tg-textFaint">
+                      {formatDaySeparator(message.sentAt)}
+                    </span>
+                  </div>
+                )}
+                <MessageBubble
+                  message={message}
+                  onReact={(msg, action) => reactMutation.mutate({ message: msg, action })}
+                  reactPending={reactMutation.isPending}
+                  onDelete={handleDeleteMessage}
+                  deletePending={deleteMessageMutation.isPending}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-gray-300 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+      <form onSubmit={handleSubmit} className="mx-3 mb-3 mt-1.5">
         {errorSource && (
           <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
             {getErrorMessage(errorSource)}
@@ -378,7 +385,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
             {t('chat.uploadPending')}
           </p>
         )}
-        <div className="flex items-end gap-2">
+        <div className="flex items-center gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -391,7 +398,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadMutation.isPending}
             title={t('chat.attachTitle')}
-            className="mb-0.5 rounded-full p-2 text-gray-600 transition hover:bg-gray-100 hover:text-brand-600 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-brand-400"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white/80 text-gray-600 shadow-sm backdrop-blur-xl backdrop-saturate-150 transition hover:text-brand-600 disabled:opacity-50 dark:border-transparent dark:bg-tg-sidebar dark:text-tg-textMuted dark:hover:text-brand-400"
           >
             <Paperclip size={19} />
           </button>
@@ -407,13 +414,13 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
             }}
             rows={1}
             placeholder={t('chat.messagePlaceholder')}
-            className="flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-500/20"
+            className="flex-1 resize-none rounded-[50px] border border-gray-300 bg-white/80 px-4 py-2.5 text-sm leading-5 text-gray-900 shadow-sm outline-none backdrop-blur-xl backdrop-saturate-150 transition focus:border-brand-500 dark:border-transparent dark:bg-tg-sidebar dark:text-tg-text dark:focus:border-tg-accent"
           />
           <button
             type="submit"
             disabled={!text.trim() || sendMutation.isPending}
             title={t('chat.sendTitle')}
-            className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-40"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-40"
           >
             {sendMutation.isPending ? (
               <Loader2 size={17} className="animate-spin" />

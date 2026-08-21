@@ -37,7 +37,7 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
       disabled={deletePending}
       onClick={() => onDelete(message)}
       title={t('messageBubble.deleteMessage')}
-      className={`mb-1 rounded-full p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:text-gray-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 ${
+      className={`mb-1 rounded-full p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:text-tg-textFaint dark:hover:bg-red-500/10 dark:hover:text-red-400 ${
         deletePending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
       }`}
     >
@@ -52,8 +52,8 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
         <div
           className={`rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
             isAdmin
-              ? 'rounded-br-sm bg-brand-600 text-white'
-              : 'rounded-bl-sm border border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
+              ? 'bg-brand-600 text-white dark:bg-tg-accent'
+              : 'border border-gray-300 bg-white text-gray-900 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text'
           }`}
         >
           {isHeartSticker && <span className="text-4xl leading-none">❤️</span>}
@@ -104,7 +104,7 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
               ) : isAudio ? (
                 <audio src={message.attachmentUrl} controls className="w-60" />
               ) : isTemplate && !message.text ? (
-                <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-textMuted">
                   <FileText size={14} className="shrink-0" />
                   <span>{t('messageBubble.templateLabel')}</span>
                 </div>
@@ -128,14 +128,14 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
 
           {/* Matn ham, media ham bolmagan xabar (masalan qollab-quvvatlanmaydigan tur) */}
           {!message.text && !message.attachmentUrl && !isHeartSticker && !isTemplate && (
-            <p className={`italic ${isAdmin ? 'text-brand-100' : 'text-gray-500 dark:text-gray-500'}`}>
+            <p className={`italic ${isAdmin ? 'text-brand-100' : 'text-gray-500 dark:text-tg-textFaint'}`}>
               {t('messageBubble.unsupported')}
             </p>
           )}
 
           <div
             className={`mt-1 flex items-center gap-1 text-[11px] ${
-              isAdmin ? 'text-brand-100' : 'text-gray-500 dark:text-gray-500'
+              isAdmin ? 'text-brand-100' : 'text-gray-500 dark:text-tg-textFaint'
             }`}
           >
             <span>{formatDateTime(message.sentAt)}</span>
@@ -152,7 +152,7 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
         {/* Bubble burchagidagi reaksiya belgisi */}
         {shownReaction && (
           <span
-            className={`absolute -bottom-2.5 flex h-5 items-center rounded-full border border-gray-300 bg-white px-1.5 text-xs shadow-sm dark:border-gray-700 dark:bg-gray-800 ${
+            className={`absolute -bottom-2.5 flex h-5 items-center rounded-full border border-gray-300 bg-white px-1.5 text-xs shadow-sm dark:border-tg-hover dark:bg-tg-panelAlt ${
               isAdmin ? 'right-2' : 'left-2'
             }`}
           >
@@ -171,7 +171,7 @@ export default function MessageBubble({ message, onReact, reactPending, onDelete
           className={`mb-1 rounded-full p-1.5 transition disabled:opacity-40 ${
             hasReacted
               ? 'text-red-500 opacity-100 hover:bg-red-500/10'
-              : 'text-gray-500 opacity-0 hover:bg-gray-100 hover:text-red-500 group-hover:opacity-100 dark:text-gray-500 dark:hover:bg-gray-800'
+              : 'text-gray-500 opacity-0 hover:bg-gray-100 hover:text-red-500 group-hover:opacity-100 dark:text-tg-textFaint dark:hover:bg-tg-panelAlt'
           }`}
         >
           <Heart size={15} fill={hasReacted ? 'currentColor' : 'none'} />

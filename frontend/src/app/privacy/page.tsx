@@ -27,9 +27,9 @@ const sections = [
 // Meta App Review uchun ochiq sahifa — login talab qilinmaydi.
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12 text-gray-800 dark:text-gray-200">
-      <h1 className="text-3xl font-bold dark:text-gray-50">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Effective date: August 10, 2026</p>
+    <main className="mx-auto max-w-3xl px-6 py-12 text-gray-800 dark:text-tg-text">
+      <h1 className="text-3xl font-bold dark:text-tg-text">Privacy Policy</h1>
+      <p className="mt-2 text-sm text-gray-600 dark:text-tg-textMuted">Effective date: August 10, 2026</p>
 
       <p className="mt-6 leading-relaxed">
         Message Assistant (&quot;we&quot;, &quot;our&quot;, &quot;the app&quot;) is a customer
@@ -39,8 +39,8 @@ export default function PrivacyPage() {
         information we collect, how we use and protect it, and the choices you have.
       </p>
 
-      <nav className="mt-8 rounded-lg border border-gray-300 bg-gray-50 p-4 text-sm dark:border-gray-800 dark:bg-gray-900">
-        <p className="mb-2 font-semibold text-gray-600 dark:text-gray-300">On this page</p>
+      <nav className="mt-8 rounded-lg border border-gray-300 bg-gray-50 p-4 text-sm dark:border-tg-border dark:bg-tg-panel">
+        <p className="mb-2 font-semibold text-gray-600 dark:text-tg-textMuted">On this page</p>
         <ol className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
           {sections.map((s) => (
             <li key={s.id}>

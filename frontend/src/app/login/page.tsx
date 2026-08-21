@@ -37,7 +37,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-5 py-8 dark:bg-gray-950">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-5 py-8 dark:bg-tg-bg dark:bg-[radial-gradient(circle_at_top_left,_rgba(82,136,193,0.12),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.08),_transparent_32%)]">
       <div className="fixed right-5 top-5">
         <LanguageSwitcher />
       </div>
@@ -47,15 +47,15 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex justify-center">
             <LogoMark width={170} height={58} />
           </div>
-          <p className="mt-2 text-base text-gray-600 dark:text-gray-400">{t('login.subtitle')}</p>
+          <p className="mt-2 text-base text-gray-600 dark:text-tg-textMuted">{t('login.subtitle')}</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-5 rounded-2xl border border-gray-300 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          className="space-y-5 rounded-2xl border border-gray-300 bg-white p-8 shadow-sm backdrop-blur-xl backdrop-saturate-150 dark:border-tg-border/70 dark:bg-tg-panel/[0.94]"
         >
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium dark:text-gray-200">
+            <label htmlFor="email" className="mb-2 block text-sm font-medium dark:text-tg-text">
               {t('common.email')}
             </label>
             <input
@@ -65,13 +65,13 @@ export default function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
               placeholder="admin@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-2 block text-sm font-medium dark:text-gray-200">
+            <label htmlFor="password" className="mb-2 block text-sm font-medium dark:text-tg-text">
               {t('login.password')}
             </label>
             <div className="relative">
@@ -82,13 +82,13 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 pr-12 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 pr-12 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-tg-hover dark:hover:text-tg-text"
                 aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                 aria-pressed={showPassword}
               >

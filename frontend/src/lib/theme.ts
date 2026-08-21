@@ -8,13 +8,9 @@ export function getStoredTheme(): Theme | null {
   return value === 'light' || value === 'dark' ? value : null;
 }
 
-function prefersDark(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
-
-// Saqlangan sozlama bo'lmasa, tizim (OS) afzalligiga qaraladi.
+// Saqlangan sozlama bo'lmasa, standart holat qorong'i tema (platformaning asosiy ko'rinishi).
 export function getActiveTheme(): Theme {
-  return getStoredTheme() ?? (prefersDark() ? 'dark' : 'light');
+  return getStoredTheme() ?? 'dark';
 }
 
 export function applyTheme(theme: Theme): void {
@@ -29,7 +25,7 @@ export const NO_FLASH_THEME_SCRIPT = `
 (function () {
   try {
     var stored = localStorage.getItem('${THEME_KEY}');
-    var isDark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var isDark = stored ? stored === 'dark' : true;
     if (isDark) document.documentElement.classList.add('dark');
   } catch (e) {}
 })();

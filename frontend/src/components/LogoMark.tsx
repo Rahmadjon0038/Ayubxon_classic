@@ -34,7 +34,7 @@ export default function LogoMark({ className = '', width = 120, height = 40, sho
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt="" className="absolute inset-0 h-full w-full object-contain object-center" />
       </div>
-      {showLabel && <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">InboxCrm</span>}
+      {showLabel && <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-tg-text">InboxCrm</span>}
     </div>
   );
 }

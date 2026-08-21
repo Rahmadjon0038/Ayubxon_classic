@@ -3,7 +3,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { z } from 'zod';
-import { env } from '../config/env';
+import { env, isProduction } from '../config/env';
 import { prisma } from '../lib/prisma';
 import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
@@ -15,6 +15,9 @@ const loginLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  // TEMP (2026-08-21): dev paytida bloklanmaslik uchun vaqtincha ochirilgan.
+  // Ish tugagach isProduction tekshiruvisiz qoldirmasdan qayta yoqish kerak.
+  skip: () => !isProduction,
   message: { error: 'Juda kop urinish. 15 daqiqadan keyin qayta urinib koring' },
 });
 

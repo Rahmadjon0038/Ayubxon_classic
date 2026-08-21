@@ -34,13 +34,13 @@ export default function HomePage() {
   const isAuthenticated = getToken();
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(168,139,250,0.14),_transparent_34%),radial-gradient(circle_at_bottom_left,_rgba(191,219,254,0.4),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.14),_transparent_26%),linear-gradient(to_bottom,_#f7fbff,_#ffffff)] text-slate-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(168,139,250,0.12),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(59,130,246,0.12),_transparent_22%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.08),_transparent_24%),linear-gradient(to_bottom,_#071121,_#020617)] dark:text-slate-100">
+    <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(168,139,250,0.14),_transparent_34%),radial-gradient(circle_at_bottom_left,_rgba(191,219,254,0.4),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.14),_transparent_26%),linear-gradient(to_bottom,_#f7fbff,_#ffffff)] text-slate-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(168,139,250,0.12),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(59,130,246,0.12),_transparent_22%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.08),_transparent_24%),linear-gradient(to_bottom,_#071121,_#020617)] dark:text-tg-text">
       <div className="pointer-events-none absolute inset-x-[-10%] top-[-8%] h-[320px] rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.9),_rgba(255,255,255,0))] blur-3xl dark:bg-[radial-gradient(circle,_rgba(148,163,184,0.12),_rgba(148,163,184,0))]" />
       <div className="pointer-events-none absolute bottom-[-12%] left-[-8%] h-[360px] w-[360px] rounded-full bg-violet-200/30 blur-3xl dark:bg-violet-500/10" />
       <div className="pointer-events-none absolute right-[-7%] top-[18%] h-[260px] w-[260px] rounded-full bg-sky-200/25 blur-3xl dark:bg-sky-500/10" />
 
       <div className="relative mx-auto flex min-h-screen max-w-[1680px] flex-col px-4 py-4 sm:px-6 lg:px-10">
-        <header className="rounded-[28px] border border-white/70 bg-white/75 px-3 py-3 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-950/55">
+        <header className="rounded-[28px] border border-white/70 bg-white/75 px-3 py-3 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-tg-hover/60 dark:bg-tg-panel/[0.94]">
           <div className="flex items-center justify-between">
             <LogoMark className="-ml-1" width={176} height={54} />
 
@@ -49,7 +49,7 @@ export default function HomePage() {
               <LanguageSwitcher />
               <Link
                 href={isAuthenticated ? '/inbox' : '/login'}
-                className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/90 px-4 py-1.5 text-sm font-semibold text-violet-700 shadow-[0_8px_20px_rgba(99,102,241,0.08)] transition hover:border-violet-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-violet-300 dark:hover:bg-slate-900"
+                className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/90 px-4 py-1.5 text-sm font-semibold text-violet-700 shadow-[0_8px_20px_rgba(99,102,241,0.08)] transition hover:border-violet-300 hover:bg-white dark:border-tg-hover dark:bg-tg-panelAlt/90 dark:text-violet-300 dark:hover:bg-tg-panelAlt"
               >
                 {t('home.signIn')}
                 <ArrowRight size={16} />
@@ -68,7 +68,7 @@ export default function HomePage() {
               {t('home.title')}
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl dark:text-slate-300">
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl dark:text-tg-textMuted">
               {t('home.subtitle')}
             </p>
 
@@ -87,13 +87,13 @@ export default function HomePage() {
             {features.map(({ icon: Icon, titleKey, bodyKey, iconClass }, index) => (
               <div
                 key={titleKey}
-                className={`px-6 py-8 text-center ${index < features.length - 1 ? 'border-b border-slate-200 md:border-b-0 md:border-r dark:border-slate-800' : ''}`}
+                className={`px-6 py-8 text-center ${index < features.length - 1 ? 'border-b border-slate-200 md:border-b-0 md:border-r dark:border-tg-border' : ''}`}
               >
                 <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-[1.25rem] ${iconClass}`}>
                   <Icon size={30} />
                 </div>
                 <h2 className="mt-5 text-xl font-bold text-slate-950 dark:text-white">{t(titleKey)}</h2>
-                <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-slate-600 dark:text-slate-400">
+                <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
                   {t(bodyKey)}
                 </p>
               </div>

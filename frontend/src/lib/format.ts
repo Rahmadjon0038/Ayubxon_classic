@@ -41,6 +41,22 @@ function formatLocalizedDate(date: Date, includeYear = false): string {
   return includeYear ? `${day} ${month} ${date.getFullYear()}` : `${day} ${month}`;
 }
 
+// Chatdagi "06 August" korinishidagi kun ajratuvchisi uchun (Telegram'dagi kabi).
+export function formatDaySeparator(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const locale = getActiveLocale();
+
+  if (date.toDateString() === now.toDateString()) return translate(locale, 'time.today');
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return translate(locale, 'time.yesterday');
+
+  const isCurrentYear = date.getFullYear() === now.getFullYear();
+  return formatLocalizedDate(date, !isCurrentYear);
+}
+
 export function formatRelativeTime(dateString: string | null): string {
   if (!dateString) return '';
 

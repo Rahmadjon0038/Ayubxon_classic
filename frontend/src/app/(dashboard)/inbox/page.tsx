@@ -9,13 +9,8 @@ import ConversationList from '@/components/ConversationList';
 import { useLocale } from '@/components/LocaleProvider';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import {
-  ConversationListItem,
-  InstagramAccount,
-  Message,
-  MessageUpdatedEvent,
-  NewMessageEvent,
-} from '@/lib/types';
+import { useInstagramAccount } from '@/lib/useInstagramAccount';
+import { ConversationListItem, Message, MessageUpdatedEvent, NewMessageEvent } from '@/lib/types';
 
 export default function InboxPage() {
   const { t } = useLocale();
@@ -24,13 +19,7 @@ export default function InboxPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const accountQuery = useQuery({
-    queryKey: ['instagram-account'],
-    queryFn: async () => {
-      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
-      return data.account;
-    },
-  });
+  const accountQuery = useInstagramAccount();
 
   const accountKey = accountQuery.data?.id ?? 'none';
 
@@ -124,11 +113,11 @@ export default function InboxPage() {
   }, [conversationsQuery.data, search]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full md:gap-2 lg:gap-3">
       {/* Mobilda faqat bittasi korinadi: suhbat tanlanmagan bolsa royxat, tanlangan bolsa chat.
-          md: dan boshlab ikkalasi doim yonma-yon turadi. */}
+          md: dan boshlab ikkalasi doim yonma-yon, alohida rounded panel sifatida turadi. */}
       <div
-        className={`w-full shrink-0 border-r border-gray-300 bg-white md:block md:w-80 dark:border-gray-800 dark:bg-gray-900 ${
+        className={`w-full shrink-0 overflow-hidden bg-white/80 backdrop-blur-xl backdrop-saturate-150 md:block md:w-80 md:rounded-2xl md:border md:border-gray-300 md:shadow-sm dark:bg-tg-sidebar dark:md:border-tg-border/70 ${
           selectedId ? 'hidden md:block' : 'block'
         }`}
       >
@@ -142,7 +131,9 @@ export default function InboxPage() {
           hasSearchResults={(conversationsQuery.data ?? []).length > 0 && filteredConversations.length === 0}
         />
       </div>
-      <div className={`flex-1 bg-gray-50 dark:bg-gray-950 ${selectedId ? 'block' : 'hidden md:block'}`}>
+      <div
+        className={`flex-1 overflow-hidden bg-gray-50 dark:bg-tg-bg md:rounded-2xl ${selectedId ? 'block' : 'hidden md:block'}`}
+      >
         {selected ? (
           <ChatWindow
             conversation={selected}
@@ -153,8 +144,8 @@ export default function InboxPage() {
             }}
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-500 dark:text-gray-500">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-500 dark:text-tg-textFaint">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-tg-panelAlt">
               <MessagesSquare size={28} strokeWidth={1.5} />
             </div>
             <p className="text-sm">{t('inbox.selectConversation')}</p>

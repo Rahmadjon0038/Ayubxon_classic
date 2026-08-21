@@ -14,7 +14,7 @@ interface Props {
 export default function RankedBarList({ items, color, emptyLabel }: Props) {
   if (items.length === 0) {
     return (
-      <div className="flex h-24 items-center justify-center text-xs text-gray-400 dark:text-gray-600">
+      <div className="flex h-24 items-center justify-center text-xs text-gray-400 dark:text-tg-textFaint">
         {emptyLabel}
       </div>
     );
@@ -27,10 +27,10 @@ export default function RankedBarList({ items, color, emptyLabel }: Props) {
       {items.map((item) => (
         <li key={item.label}>
           <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-            <span className="truncate text-gray-700 dark:text-gray-300">{item.label}</span>
-            <span className="shrink-0 font-medium text-gray-900 dark:text-gray-100">{item.value}</span>
+            <span className="truncate text-gray-700 dark:text-tg-textMuted">{item.label}</span>
+            <span className="shrink-0 font-medium text-gray-900 dark:text-tg-text">{item.value}</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-tg-panelAlt">
             <div
               className="h-full rounded-full"
               style={{ width: `${Math.max(4, (item.value / max) * 100)}%`, backgroundColor: color }}

@@ -19,7 +19,8 @@ import { useLocale } from '@/components/LocaleProvider';
 import { api, getErrorMessage } from '@/lib/api';
 import { contactDisplayName, formatRelativeTime } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
-import { ConversationListItem, InstagramAccount } from '@/lib/types';
+import { useInstagramAccount } from '@/lib/useInstagramAccount';
+import { ConversationListItem } from '@/lib/types';
 
 type BoardBucketId = 'new' | 'solved' | 'pending' | 'rejected';
 
@@ -34,25 +35,25 @@ const bucketConfig: Record<
 > = {
   new: {
     titleKey: 'leads.columnNew',
-    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-tg-panelAlt dark:text-tg-textMuted',
     titleClass: 'text-brand-600 dark:text-brand-400',
     accentClass: 'bg-brand-500',
   },
   solved: {
     titleKey: 'leads.columnInterested',
-    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-tg-panelAlt dark:text-tg-textMuted',
     titleClass: 'text-emerald-600 dark:text-emerald-400',
     accentClass: 'bg-emerald-500',
   },
   pending: {
     titleKey: 'leads.columnNotInterested',
-    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-tg-panelAlt dark:text-tg-textMuted',
     titleClass: 'text-amber-600 dark:text-amber-400',
     accentClass: 'bg-amber-500',
   },
   rejected: {
     titleKey: 'leads.columnRejected',
-    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-tg-panelAlt dark:text-tg-textMuted',
     titleClass: 'text-rose-600 dark:text-rose-400',
     accentClass: 'bg-rose-500',
   },
@@ -90,13 +91,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('');
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
-  const accountQuery = useQuery({
-    queryKey: ['instagram-account'],
-    queryFn: async () => {
-      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
-      return data.account;
-    },
-  });
+  const accountQuery = useInstagramAccount();
   const accountKey = accountQuery.data?.id ?? 'none';
 
   const conversationsQuery = useQuery({
@@ -245,16 +240,16 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-2.5 dark:bg-gray-950">
+    <div className="h-full overflow-y-auto bg-gray-50 p-2.5 dark:bg-tg-bg">
       <div className="w-full space-y-2.5">
-        <div className="flex flex-col gap-2 rounded-lg border border-gray-300 bg-white p-2 shadow-sm md:flex-row md:items-center md:justify-between dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col gap-2 rounded-lg border border-gray-300 bg-white p-2 shadow-sm md:flex-row md:items-center md:justify-between dark:border-tg-border dark:bg-tg-panel">
           <label className="relative block flex-1 md:max-w-xs">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-500" size={14} />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-tg-textFaint" size={14} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('leads.searchPlaceholder')}
-              className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-xs outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-600"
+              className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-xs outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:placeholder:text-gray-600"
             />
           </label>
 
@@ -287,7 +282,7 @@ export default function LeadsPage() {
                     e.preventDefault();
                     if (draggedId) handleDrop(draggedId, bucketId);
                   }}
-                  className="flex min-h-[220px] flex-col rounded-lg border border-gray-300 bg-white p-1.5 shadow-sm sm:min-h-[420px] xl:min-h-[560px] dark:border-gray-800 dark:bg-gray-900"
+                  className="flex min-h-[220px] flex-col rounded-lg border border-gray-300 bg-white p-1.5 shadow-sm sm:min-h-[420px] xl:min-h-[560px] dark:border-tg-border dark:bg-tg-panel"
                 >
                   <div className="mb-1.5 flex items-center justify-between gap-2 px-1 pt-0.5">
                     <div className="flex items-center gap-1.5">
@@ -301,7 +296,7 @@ export default function LeadsPage() {
 
                   <div className="flex flex-1 flex-col gap-1.5">
                     {items.length === 0 && (
-                      <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-gray-300 px-3 py-6 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-500">
+                      <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-gray-300 px-3 py-6 text-center text-xs text-gray-500 dark:border-tg-hover dark:text-tg-textFaint">
                         <MessageCircleMore size={15} className="mr-1.5" />
                         {t('leads.empty')}
                       </div>
@@ -322,16 +317,16 @@ export default function LeadsPage() {
                           }}
                           onDragEnd={() => setDraggedId(null)}
                           onClick={() => router.push(`/leads/${conversation.id}`)}
-                          className={`cursor-pointer rounded-md border border-gray-300 bg-white p-2 transition hover:border-gray-400 hover:shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 ${dragClass}`}
+                          className={`cursor-pointer rounded-md border border-gray-300 bg-white p-2 transition hover:border-gray-400 hover:shadow-sm dark:border-tg-border dark:bg-tg-panel dark:hover:border-tg-hover ${dragClass}`}
                         >
                           <div className="flex items-start gap-2">
                             <Avatar src={conversation.contact.profilePictureUrl} name={name} size={34} />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-1.5">
                                 <div className="min-w-0">
-                                  <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100">{name}</p>
+                                  <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-tg-text">{name}</p>
                                   {conversation.contact.username && (
-                                    <p className="truncate text-[11px] text-gray-600 dark:text-gray-400">
+                                    <p className="truncate text-[11px] text-gray-600 dark:text-tg-textMuted">
                                       @{conversation.contact.username}
                                     </p>
                                   )}
@@ -344,7 +339,7 @@ export default function LeadsPage() {
                                 )}
                               </div>
 
-                              <p className="mt-1 max-h-8 overflow-hidden text-xs text-gray-600 dark:text-gray-400">
+                              <p className="mt-1 max-h-8 overflow-hidden text-xs text-gray-600 dark:text-tg-textMuted">
                                 {lastMessagePreview(conversation, t)}
                               </p>
 
@@ -355,7 +350,7 @@ export default function LeadsPage() {
                                 </p>
                               )}
 
-                              <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-gray-500 dark:text-gray-500">
+                              <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-gray-500 dark:text-tg-textFaint">
                                 <span>{formatRelativeTime(conversation.lastMessageAt)}</span>
                                 <span className="flex items-center gap-1">
                                   {conversation.aiPaused && (
@@ -363,7 +358,7 @@ export default function LeadsPage() {
                                       {t('leads.operatorBadge')}
                                     </span>
                                   )}
-                                  <span className="rounded-full border border-gray-300 px-1.5 py-0.5 text-gray-600 dark:border-gray-700 dark:text-gray-400">
+                                  <span className="rounded-full border border-gray-300 px-1.5 py-0.5 text-gray-600 dark:border-tg-hover dark:text-tg-textMuted">
                                     {conversation.status === 'OPEN' ? t('leads.statusOpen') : t('leads.statusClosed')}
                                   </span>
                                 </span>
@@ -381,19 +376,19 @@ export default function LeadsPage() {
         </section>
 
         {conversationsQuery.isLoading && (
-          <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-gray-300 bg-white text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-500">
+          <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-gray-300 bg-white text-sm text-gray-500 shadow-sm dark:border-tg-border dark:bg-tg-panel dark:text-tg-textFaint">
             <Loader2 className="mr-2 animate-spin" size={16} />
             {t('common.loading')}
           </div>
         )}
 
         {!conversationsQuery.isLoading && visibleConversations.length === 0 && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500">
+          <div className="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600 shadow-sm dark:border-tg-border dark:bg-tg-panel dark:text-tg-textMuted">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-tg-panelAlt dark:text-tg-textFaint">
               <MessageCircleMore size={18} />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('leads.noResultsTitle')}</h3>
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{t('leads.noResultsBody')}</p>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-tg-text">{t('leads.noResultsTitle')}</h3>
+            <p className="mt-1 text-xs text-gray-600 dark:text-tg-textMuted">{t('leads.noResultsBody')}</p>
           </div>
         )}
       </div>
@@ -413,10 +408,10 @@ function StatChip({
   accent?: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs dark:border-gray-700 dark:bg-gray-800">
-      <span className={accent ?? 'text-gray-500 dark:text-gray-500'}>{icon}</span>
-      <span className="font-semibold text-gray-900 dark:text-gray-100">{value}</span>
-      <span className="text-gray-600 dark:text-gray-400">{label}</span>
+    <div className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs dark:border-tg-hover dark:bg-tg-panelAlt">
+      <span className={accent ?? 'text-gray-500 dark:text-tg-textFaint'}>{icon}</span>
+      <span className="font-semibold text-gray-900 dark:text-tg-text">{value}</span>
+      <span className="text-gray-600 dark:text-tg-textMuted">{label}</span>
     </div>
   );
 }

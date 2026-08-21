@@ -39,7 +39,7 @@ export default function Avatar({ src, name, size = 40 }: AvatarProps) {
 
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+      className="flex shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600 dark:bg-tg-hover dark:text-tg-textMuted"
       style={{ width: size, height: size }}
     >
       {initials || '?'}

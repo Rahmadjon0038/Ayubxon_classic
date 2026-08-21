@@ -324,27 +324,27 @@ export default function AiAssistantPage() {
   });
 
   const inputClass =
-    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800';
+    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800';
   const selectClass =
-    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-500 dark:focus:ring-slate-800';
+    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:focus:border-slate-500 dark:focus:ring-slate-800';
 
   const isLoading = branchesQuery.isLoading || groupsQuery.isLoading || promotionsQuery.isLoading;
   const isError = branchesQuery.isError || groupsQuery.isError || promotionsQuery.isError;
   const error = branchesQuery.error || groupsQuery.error || promotionsQuery.error;
 
   return (
-    <div className="min-h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 dark:bg-slate-950">
+    <div className="min-h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 dark:bg-tg-bg">
       <div className="mx-auto max-w-7xl space-y-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-400">
                 AI Assistant
               </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-tg-text">
                 Bilimlar bazasi
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
                 Filiallar asosiy ma&apos;lumot hisoblanadi. Guruhlar va aksiyalar alohida filialga bog&apos;lanadi.
               </p>
             </div>
@@ -357,7 +357,7 @@ export default function AiAssistantPage() {
                 className={`flex min-w-[200px] items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
                   aiEnabled
                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
-                    : 'border-slate-300 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                    : 'border-slate-300 bg-slate-50 text-slate-700 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text'
                 }`}
                 aria-pressed={aiEnabled}
                 aria-label={aiEnabled ? 'AI o‘chirish' : 'AI yoqish'}
@@ -370,7 +370,7 @@ export default function AiAssistantPage() {
                   className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
                     aiEnabled
                       ? 'border-emerald-500 bg-emerald-500'
-                      : 'border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-700'
+                      : 'border-slate-300 bg-slate-200 dark:border-tg-hover dark:bg-tg-hover'
                   }`}
                   aria-hidden="true"
                 >
@@ -391,7 +391,7 @@ export default function AiAssistantPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
               {TABS.map((tab) => {
@@ -404,7 +404,7 @@ export default function AiAssistantPage() {
                     className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
                       active
                         ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
-                        : 'border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-100'
+                        : 'border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-textMuted dark:hover:border-tg-hover dark:hover:text-tg-text'
                     }`}
                   >
                     <span>{tab.label}</span>
@@ -431,7 +431,7 @@ export default function AiAssistantPage() {
         </div>
 
         {isLoading && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-textMuted">
             Yuklanmoqda...
           </div>
         )}
@@ -754,11 +754,11 @@ export default function AiAssistantPage() {
 
       {deleteTarget && (
         <ModalShell title="O'chirishni tasdiqlash" onClose={() => setDeleteTarget(null)} maxWidth="max-w-lg">
-          <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
+          <p className="text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
             Ushbu yozuvni o&apos;chirmoqchimisiz? Bu amalni qaytarib bo&apos;lmaydi.
           </p>
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{deleteTarget.title}</p>
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-tg-border dark:bg-tg-panelAlt">
+            <p className="text-sm font-medium text-slate-900 dark:text-tg-text">{deleteTarget.title}</p>
           </div>
           {deleteMutation.isError && (
             <p className="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
@@ -769,7 +769,7 @@ export default function AiAssistantPage() {
             <button
               type="button"
               onClick={() => setDeleteTarget(null)}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover"
             >
               Bekor qilish
             </button>
@@ -802,11 +802,11 @@ function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{title}</h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-tg-text">{title}</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-tg-textMuted">{subtitle}</p>
         </div>
         <button
           type="button"
@@ -824,8 +824,8 @@ function SectionShell({
 
 function EmptyState({ onAdd, label }: { onAdd: () => void; label: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900">
-      <p className="text-sm text-slate-600 dark:text-slate-400">Hozircha yozuv yo&apos;q.</p>
+    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-tg-hover dark:bg-tg-panelAlt">
+      <p className="text-sm text-slate-600 dark:text-tg-textMuted">Hozircha yozuv yo&apos;q.</p>
       <button
         type="button"
         onClick={onAdd}
@@ -851,7 +851,7 @@ function Field({
 }) {
   return (
     <div className={className}>
-      <label className={`mb-1 block text-sm font-medium ${disabled ? 'text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+      <label className={`mb-1 block text-sm font-medium ${disabled ? 'text-slate-400' : 'text-slate-700 dark:text-tg-text'}`}>
         {label}
       </label>
       {children}
@@ -861,12 +861,12 @@ function Field({
 
 function StatusRow({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
-    <label className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+    <label className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-tg-border dark:bg-tg-panelAlt dark:text-tg-text">
       <span>Holati</span>
       <button
         type="button"
         onClick={onToggle}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${active ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${active ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-tg-hover'}`}
       >
         <span
           className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
@@ -897,7 +897,7 @@ function SaveBar({
       <button
         type="button"
         onClick={onCancel}
-        className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600"
+        className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover"
       >
         Bekor qilish
       </button>
@@ -925,13 +925,13 @@ function ModalShell({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-      <div className={`w-full ${maxWidth} rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-950`}>
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{title}</h3>
+      <div className={`w-full ${maxWidth} rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-tg-border dark:bg-tg-panel`}>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-tg-border">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-tg-text">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-tg-panelAlt dark:hover:text-tg-text"
           >
             <X size={18} />
           </button>
@@ -952,20 +952,20 @@ function BranchCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">{item.name}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-lg font-semibold text-slate-900 dark:text-tg-text">{item.name}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">
             {item.isActive ? 'Faol' : 'Faol emas'}
           </p>
         </div>
-        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
+        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
           Filial
         </span>
       </div>
 
-      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
         <a
           href={item.locationUrl}
           target="_blank"
@@ -985,19 +985,19 @@ function BranchCard({
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-        <p className="font-medium text-slate-500 dark:text-slate-500">Fan yo&apos;nalishlari</p>
+      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
+        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Fan yo&apos;nalishlari</p>
         <p className="mt-1 whitespace-pre-wrap">{item.subjectNames}</p>
       </div>
 
       {item.extraInfo && (
-        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-          <p className="font-medium text-slate-500 dark:text-slate-500">Qo&apos;shimcha ma&apos;lumot</p>
+        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
+          <p className="font-medium text-slate-500 dark:text-tg-textFaint">Qo&apos;shimcha ma&apos;lumot</p>
           <p className="mt-1 whitespace-pre-wrap">{item.extraInfo}</p>
         </div>
       )}
 
-      <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
         <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
       </div>
 
@@ -1005,7 +1005,7 @@ function BranchCard({
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
         >
           <PencilLine size={16} />
           Tahrirlash
@@ -1035,32 +1035,32 @@ function GroupCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">{item.subjectName}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.isActive ? 'Faol' : 'Faol emas'}</p>
+          <p className="text-lg font-semibold text-slate-900 dark:text-tg-text">{item.subjectName}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">{item.isActive ? 'Faol' : 'Faol emas'}</p>
         </div>
-        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
+        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
           Guruh
         </span>
       </div>
 
-      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
         <p>
-          <span className="font-medium text-slate-500 dark:text-slate-500">Filial:</span> {branchName}
+          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Filial:</span> {branchName}
         </p>
         <p>
-          <span className="font-medium text-slate-500 dark:text-slate-500">Kurs narxi:</span> {item.price}
+          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Kurs narxi:</span> {item.price}
         </p>
       </div>
 
-      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-        <p className="font-medium text-slate-500 dark:text-slate-500">Batafsil ma&apos;lumot</p>
+      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
+        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Batafsil ma&apos;lumot</p>
         <p className="mt-1 whitespace-pre-wrap">{item.details}</p>
       </div>
 
-      <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
         <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
       </div>
 
@@ -1068,7 +1068,7 @@ function GroupCard({
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
         >
           <PencilLine size={16} />
           Tahrirlash
@@ -1098,29 +1098,29 @@ function PromotionCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">{item.title}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.isActive ? 'Faol' : 'Faol emas'}</p>
+          <p className="text-lg font-semibold text-slate-900 dark:text-tg-text">{item.title}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">{item.isActive ? 'Faol' : 'Faol emas'}</p>
         </div>
-        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
+        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
           Aksiya
         </span>
       </div>
 
-      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
         <p>
-          <span className="font-medium text-slate-500 dark:text-slate-500">Filial:</span> {branchName}
+          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Filial:</span> {branchName}
         </p>
       </div>
 
-      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-        <p className="font-medium text-slate-500 dark:text-slate-500">Batafsil ma&apos;lumot</p>
+      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
+        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Batafsil ma&apos;lumot</p>
         <p className="mt-1 whitespace-pre-wrap">{item.details}</p>
       </div>
 
-      <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
         <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
       </div>
 
@@ -1128,7 +1128,7 @@ function PromotionCard({
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
         >
           <PencilLine size={16} />
           Tahrirlash

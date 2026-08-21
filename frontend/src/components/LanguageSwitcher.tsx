@@ -15,7 +15,7 @@ export default function LanguageSwitcher({ className = '', buttonClassName = '' 
 
   return (
     <div
-      className={`flex items-center gap-0.5 rounded-full border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-800 ${className}`}
+      className={`flex items-center gap-0.5 rounded-full border border-gray-300 bg-white p-1 dark:border-tg-hover dark:bg-tg-panelAlt ${className}`}
       role="group"
       aria-label={t('language.label')}
     >
@@ -28,7 +28,7 @@ export default function LanguageSwitcher({ className = '', buttonClassName = '' 
           className={`rounded-full px-2 py-1.5 text-xs font-semibold transition ${buttonClassName} ${
             locale === l
               ? 'bg-brand-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+              : 'text-gray-600 hover:bg-gray-100 dark:text-tg-textMuted dark:hover:bg-tg-hover'
           }`}
         >
           {LOCALE_CODES[l]}

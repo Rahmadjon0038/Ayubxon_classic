@@ -98,23 +98,23 @@ export default function AiAssistantLegacyPage() {
   };
 
   const inputClass =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-brand-500/20';
+    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20';
   const settings = settingsQuery.data?.settings;
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-6">
         <div>
-          <h1 className="text-lg font-semibold dark:text-gray-100">AI Assistent - Eski sahifa</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <h1 className="text-lg font-semibold dark:text-tg-text">AI Assistent - Eski sahifa</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-tg-textMuted">
             Bu sahifa eski markaz ma&apos;lumotlari formasi. Yangi sahifa uchun ma&apos;lumotlarni shu yerdan ko&apos;chirib olishingiz mumkin.
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col gap-3 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-tg-border dark:bg-tg-panel">
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">AI avtomatik javob</h2>
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-tg-textMuted">AI avtomatik javob</h2>
+            <p className="mt-1 text-xs text-gray-600 dark:text-tg-textMuted">
               Yoqilgan bo&apos;lsa, kelgan har bir DM&apos;ga AI darhol javob yozadi. O&apos;chirilgan bo&apos;lsa, xabarlar faqat inbox&apos;da ko&apos;rinadi va admin qo&apos;lda javob yozadi.
             </p>
           </div>
@@ -125,7 +125,7 @@ export default function AiAssistantLegacyPage() {
             onClick={handleToggle}
             disabled={settingsQuery.isLoading || toggleMutation.isPending}
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
-              aiEnabled ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'
+              aiEnabled ? 'bg-brand-600' : 'bg-gray-300 dark:bg-tg-hover'
             }`}
           >
             <span
@@ -137,7 +137,7 @@ export default function AiAssistantLegacyPage() {
         </div>
 
         {settingsQuery.isLoading && (
-          <p className="text-sm text-gray-500 dark:text-gray-500">{t('common.loading')}</p>
+          <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('common.loading')}</p>
         )}
 
         {settingsQuery.isError && (
@@ -149,19 +149,19 @@ export default function AiAssistantLegacyPage() {
         {!settingsQuery.isLoading && !settingsQuery.isError && (
           <form
             onSubmit={handleSubmit}
-            className="space-y-4 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-gray-800 dark:bg-gray-900"
+            className="space-y-4 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-tg-border dark:bg-tg-panel"
           >
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Markaz ma&apos;lumotlari</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-tg-textMuted">Markaz ma&apos;lumotlari</h2>
               {settings?.updatedAt && (
-                <span className="text-xs text-gray-500 dark:text-gray-500">
+                <span className="text-xs text-gray-500 dark:text-tg-textFaint">
                   Oxirgi yangilanish: {formatDateTime(settings.updatedAt)}
                 </span>
               )}
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+              <label className="mb-1 block text-sm font-medium dark:text-tg-text">
                 Markaz nomi <span className="text-red-500">*</span>
               </label>
               <input
@@ -176,7 +176,7 @@ export default function AiAssistantLegacyPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+              <label className="mb-1 block text-sm font-medium dark:text-tg-text">
                 Kurslar va narxlar <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -191,7 +191,7 @@ export default function AiAssistantLegacyPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+              <label className="mb-1 block text-sm font-medium dark:text-tg-text">
                 Manzil <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -206,7 +206,7 @@ export default function AiAssistantLegacyPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium dark:text-gray-200">
+              <label className="mb-1 block text-sm font-medium dark:text-tg-text">
                 Aloqa telefonlari <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -221,7 +221,7 @@ export default function AiAssistantLegacyPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium dark:text-gray-200">Aksiyalar va chegirmalar</label>
+              <label className="mb-1 block text-sm font-medium dark:text-tg-text">Aksiyalar va chegirmalar</label>
               <textarea
                 rows={4}
                 maxLength={4000}

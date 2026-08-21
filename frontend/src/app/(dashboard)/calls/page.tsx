@@ -10,7 +10,8 @@ import { api, getErrorMessage } from '@/lib/api';
 import { contactDisplayName, formatRelativeTime } from '@/lib/format';
 import { getMonthNames } from '@/lib/i18n';
 import { getSocket } from '@/lib/socket';
-import { CallStatus, ConversationListItem, InstagramAccount } from '@/lib/types';
+import { useInstagramAccount } from '@/lib/useInstagramAccount';
+import { CallStatus, ConversationListItem } from '@/lib/types';
 
 const bucketConfig: Record<
   CallStatus,
@@ -18,21 +19,21 @@ const bucketConfig: Record<
 > = {
   NEW: {
     titleKey: 'calls.columnNew',
-    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-tg-panelAlt dark:text-tg-textMuted',
     titleClass: 'text-brand-600 dark:text-brand-400',
     accentClass: 'bg-brand-500',
     Icon: Sparkles,
   },
   TALKED: {
     titleKey: 'calls.columnTalked',
-    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-tg-panelAlt dark:text-tg-textMuted',
     titleClass: 'text-emerald-600 dark:text-emerald-400',
     accentClass: 'bg-emerald-500',
     Icon: PhoneCall,
   },
   NOT_ANSWERED: {
     titleKey: 'calls.columnNotAnswered',
-    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    badgeClass: 'bg-gray-100 text-gray-700 dark:bg-tg-panelAlt dark:text-tg-textMuted',
     titleClass: 'text-rose-600 dark:text-rose-400',
     accentClass: 'bg-rose-500',
     Icon: PhoneMissed,
@@ -61,13 +62,7 @@ export default function CallsPage() {
   const [month, setMonth] = useState('all');
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
-  const accountQuery = useQuery({
-    queryKey: ['instagram-account'],
-    queryFn: async () => {
-      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
-      return data.account;
-    },
-  });
+  const accountQuery = useInstagramAccount();
   const accountKey = accountQuery.data?.id ?? 'none';
 
   const conversationsQuery = useQuery({
@@ -169,24 +164,24 @@ export default function CallsPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-2.5 dark:bg-gray-950">
+    <div className="h-full overflow-y-auto bg-gray-50 p-2.5 dark:bg-tg-bg">
       <div className="w-full space-y-2.5">
-        <div className="flex flex-col gap-2 rounded-lg border border-gray-300 bg-white p-2 shadow-sm md:flex-row md:items-center md:justify-between dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col gap-2 rounded-lg border border-gray-300 bg-white p-2 shadow-sm md:flex-row md:items-center md:justify-between dark:border-tg-border dark:bg-tg-panel">
           <div className="flex flex-1 flex-col gap-2 sm:flex-row">
             <label className="relative block flex-1 sm:max-w-xs">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-500" size={14} />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-tg-textFaint" size={14} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('calls.searchPlaceholder')}
-                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-xs outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-600"
+                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-xs outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:placeholder:text-gray-600"
               />
             </label>
 
             <select
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
             >
               <option value="all">{t('calls.monthAll')}</option>
               {monthOptions.map((key) => (
@@ -197,10 +192,10 @@ export default function CallsPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs dark:border-gray-700 dark:bg-gray-800">
-            <Phone size={12} className="text-gray-500 dark:text-gray-500" />
-            <span className="font-semibold text-gray-900 dark:text-gray-100">{visibleConversations.length}</span>
-            <span className="text-gray-600 dark:text-gray-400">{t('calls.statTotal')}</span>
+          <div className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs dark:border-tg-hover dark:bg-tg-panelAlt">
+            <Phone size={12} className="text-gray-500 dark:text-tg-textFaint" />
+            <span className="font-semibold text-gray-900 dark:text-tg-text">{visibleConversations.length}</span>
+            <span className="text-gray-600 dark:text-tg-textMuted">{t('calls.statTotal')}</span>
           </div>
         </div>
 
@@ -224,7 +219,7 @@ export default function CallsPage() {
                     e.preventDefault();
                     if (draggedId) handleDrop(draggedId, bucketId);
                   }}
-                  className="flex min-h-[220px] flex-col rounded-lg border border-gray-300 bg-white p-1.5 shadow-sm sm:min-h-[420px] xl:min-h-[560px] dark:border-gray-800 dark:bg-gray-900"
+                  className="flex min-h-[220px] flex-col rounded-lg border border-gray-300 bg-white p-1.5 shadow-sm sm:min-h-[420px] xl:min-h-[560px] dark:border-tg-border dark:bg-tg-panel"
                 >
                   <div className="mb-1.5 flex items-center justify-between gap-2 px-1 pt-0.5">
                     <div className="flex items-center gap-1.5">
@@ -238,7 +233,7 @@ export default function CallsPage() {
 
                   <div className="flex flex-1 flex-col gap-1.5">
                     {items.length === 0 && (
-                      <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-gray-300 px-3 py-6 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-500">
+                      <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-gray-300 px-3 py-6 text-center text-xs text-gray-500 dark:border-tg-hover dark:text-tg-textFaint">
                         <config.Icon size={15} className="mr-1.5" />
                         {t('calls.empty')}
                       </div>
@@ -259,14 +254,14 @@ export default function CallsPage() {
                           }}
                           onDragEnd={() => setDraggedId(null)}
                           onClick={() => router.push(`/calls/${conversation.id}`)}
-                          className={`cursor-pointer rounded-md border border-gray-300 bg-white p-2 transition hover:border-gray-400 hover:shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 ${dragClass}`}
+                          className={`cursor-pointer rounded-md border border-gray-300 bg-white p-2 transition hover:border-gray-400 hover:shadow-sm dark:border-tg-border dark:bg-tg-panel dark:hover:border-tg-hover ${dragClass}`}
                         >
                           <div className="flex items-start gap-2">
                             <Avatar src={conversation.contact.profilePictureUrl} name={name} size={34} />
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100">{name}</p>
+                              <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-tg-text">{name}</p>
                               {conversation.contact.username && (
-                                <p className="truncate text-[11px] text-gray-600 dark:text-gray-400">
+                                <p className="truncate text-[11px] text-gray-600 dark:text-tg-textMuted">
                                   @{conversation.contact.username}
                                 </p>
                               )}
@@ -276,14 +271,14 @@ export default function CallsPage() {
                                 {conversation.contact.phoneNumber}
                               </p>
 
-                              <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-600 dark:text-gray-400">
+                              <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-600 dark:text-tg-textMuted">
                                 <BookOpen size={11} className="shrink-0" />
                                 <span className="truncate">
                                   {conversation.interestedCourse || t('calls.noCourse')}
                                 </span>
                               </p>
 
-                              <p className="mt-1.5 text-[10px] text-gray-500 dark:text-gray-500">
+                              <p className="mt-1.5 text-[10px] text-gray-500 dark:text-tg-textFaint">
                                 {formatRelativeTime(conversation.lastMessageAt)}
                               </p>
                             </div>
@@ -299,26 +294,26 @@ export default function CallsPage() {
         </section>
 
         {conversationsQuery.isLoading && (
-          <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-gray-300 bg-white text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-500">
+          <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-gray-300 bg-white text-sm text-gray-500 shadow-sm dark:border-tg-border dark:bg-tg-panel dark:text-tg-textFaint">
             <Loader2 className="mr-2 animate-spin" size={16} />
             {t('common.loading')}
           </div>
         )}
 
         {!conversationsQuery.isLoading && withPhone.length === 0 && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500">
+          <div className="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600 shadow-sm dark:border-tg-border dark:bg-tg-panel dark:text-tg-textMuted">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-tg-panelAlt dark:text-tg-textFaint">
               <Phone size={18} />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('calls.noPhoneTitle')}</h3>
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{t('calls.noPhoneBody')}</p>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-tg-text">{t('calls.noPhoneTitle')}</h3>
+            <p className="mt-1 text-xs text-gray-600 dark:text-tg-textMuted">{t('calls.noPhoneBody')}</p>
           </div>
         )}
 
         {!conversationsQuery.isLoading && withPhone.length > 0 && visibleConversations.length === 0 && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('calls.noResultsTitle')}</h3>
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{t('calls.noResultsBody')}</p>
+          <div className="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600 shadow-sm dark:border-tg-border dark:bg-tg-panel dark:text-tg-textMuted">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-tg-text">{t('calls.noResultsTitle')}</h3>
+            <p className="mt-1 text-xs text-gray-600 dark:text-tg-textMuted">{t('calls.noResultsBody')}</p>
           </div>
         )}
       </div>

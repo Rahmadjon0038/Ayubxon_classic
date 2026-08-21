@@ -161,6 +161,7 @@ const en: Translations = {
   settings: {
     title: 'Settings',
     subtitle: 'Platform and admin information.',
+    appearance: 'Language & appearance',
     administrator: 'Administrator',
     createdAt: 'Created',
     system: 'System',
@@ -229,6 +230,7 @@ const en: Translations = {
     hoursAgo: '{{n}}h ago',
     daysAgo: '{{n}}d ago',
     yesterday: 'Yesterday',
+    today: 'Today',
     months: [
       'January',
       'February',

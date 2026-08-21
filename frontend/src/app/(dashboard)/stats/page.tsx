@@ -10,7 +10,8 @@ import StackedBreakdown from '@/components/stats/StackedBreakdown';
 import { currentMonthKey, monthFullLabel, shiftMonthKey } from '@/components/stats/chartUtils';
 import { api, getErrorMessage } from '@/lib/api';
 import { getMonthNames, getMonthShortNames } from '@/lib/i18n';
-import { InstagramAccount, StatsResponse } from '@/lib/types';
+import { useInstagramAccount } from '@/lib/useInstagramAccount';
+import { StatsResponse } from '@/lib/types';
 
 // Tasdiqlangan (CVD-xavfsiz) rang toplami — Lidlar/Qongiroqlar bolimlaridagi rang tiliga mos.
 const COLOR_VIOLET = '#7c3aed';
@@ -20,8 +21,8 @@ const COLOR_ROSE = '#e11d48';
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+    <div className="rounded-lg border border-gray-300 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
+      <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-tg-text">{title}</h2>
       {children}
     </div>
   );
@@ -37,13 +38,13 @@ function StatTile({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-gray-300 bg-white p-3.5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex items-center gap-3 rounded-lg border border-gray-300 bg-white p-3.5 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="truncate text-lg font-semibold text-gray-900 dark:text-gray-100">{value}</p>
-        <p className="truncate text-xs text-gray-600 dark:text-gray-400">{label}</p>
+        <p className="truncate text-lg font-semibold text-gray-900 dark:text-tg-text">{value}</p>
+        <p className="truncate text-xs text-gray-600 dark:text-tg-textMuted">{label}</p>
       </div>
     </div>
   );
@@ -67,17 +68,17 @@ function MonthPicker({
   const isCurrentMonth = selectedMonth === currentMonthKey();
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-1 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <button
         type="button"
         aria-label={prevMonthLabel}
         onClick={() => onChange(shiftMonthKey(selectedMonth, -1))}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
       >
         <ChevronLeft size={16} />
       </button>
 
-      <span className="min-w-[9rem] text-center text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
+      <span className="min-w-[9rem] text-center text-sm font-medium capitalize text-gray-900 dark:text-tg-text">
         {monthFullLabel(selectedMonth, monthNames)}
       </span>
 
@@ -86,7 +87,7 @@ function MonthPicker({
         aria-label={nextMonthLabel}
         onClick={() => onChange(shiftMonthKey(selectedMonth, 1))}
         disabled={isCurrentMonth}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:text-gray-400 dark:hover:bg-gray-800"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
       >
         <ChevronRight size={16} />
       </button>
@@ -110,13 +111,7 @@ export default function StatsPage() {
   const monthNamesShort = getMonthShortNames(locale);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
 
-  const accountQuery = useQuery({
-    queryKey: ['instagram-account'],
-    queryFn: async () => {
-      const { data } = await api.get<{ account: InstagramAccount | null }>('/instagram/account');
-      return data.account;
-    },
-  });
+  const accountQuery = useInstagramAccount();
   const accountKey = accountQuery.data?.id ?? 'none';
 
   const statsQuery = useQuery({
@@ -136,10 +131,10 @@ export default function StatsPage() {
       : 0;
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-2.5 dark:bg-gray-950">
+    <div className="h-full overflow-y-auto bg-gray-50 p-2.5 dark:bg-tg-bg">
       <div className="mx-auto w-full max-w-6xl space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-gray-500 dark:text-gray-500">{t('stats.selectedMonthHint')}</p>
+          <p className="text-xs text-gray-500 dark:text-tg-textFaint">{t('stats.selectedMonthHint')}</p>
           <MonthPicker
             selectedMonth={selectedMonth}
             onChange={setSelectedMonth}
@@ -157,7 +152,7 @@ export default function StatsPage() {
         )}
 
         {statsQuery.isLoading && (
-          <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-gray-300 bg-white text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-500">
+          <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-gray-300 bg-white text-sm text-gray-500 shadow-sm dark:border-tg-border dark:bg-tg-panel dark:text-tg-textFaint">
             <Loader2 className="mr-2 animate-spin" size={16} />
             {t('common.loading')}
           </div>
@@ -245,7 +240,7 @@ export default function StatsPage() {
               </Card>
 
               <Card title={t('stats.topCoursesTitle')}>
-                <div className="flex items-center gap-1.5 pb-1 text-[11px] text-gray-500 dark:text-gray-500">
+                <div className="flex items-center gap-1.5 pb-1 text-[11px] text-gray-500 dark:text-tg-textFaint">
                   <BookOpen size={12} />
                   {t('stats.topCoursesHint')}
                 </div>
