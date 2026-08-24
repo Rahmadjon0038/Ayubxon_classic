@@ -419,7 +419,7 @@ export default function AiAssistantPage() {
   const error = branchesQuery.error || groupsQuery.error || promotionsQuery.error;
 
   return (
-    <div className="min-h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 dark:bg-tg-bg">
+    <div className="h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 dark:bg-tg-bg">
       <div className="mx-auto max-w-7xl space-y-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
