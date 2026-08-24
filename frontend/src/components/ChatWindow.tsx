@@ -311,7 +311,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
       {conversation.contact.phoneNumber && (
         <a
           href={`tel:${conversation.contact.phoneNumber}`}
-          className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 sm:px-4 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+          className="mx-3 mt-2 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 shadow-sm transition hover:bg-emerald-100 hover:shadow dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
         >
           <Pin size={13} className="shrink-0" />
           <Phone size={13} className="shrink-0" />
