@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface AvatarProps {
   src: string | null;
@@ -55,25 +56,27 @@ export default function Avatar({ src, name, size = 40, enlargeOnClick = false }:
               : undefined
           }
         />
-        {expanded && (
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-6 backdrop-blur-sm"
-            onClick={(event) => {
-              event.stopPropagation();
-              setExpanded(false);
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt={name}
-              className="max-h-[85vh] max-w-[85vw] rounded-2xl object-contain shadow-2xl"
-            />
-            <p className="absolute bottom-8 left-1/2 -translate-x-1/2 text-sm font-medium text-white/90">
-              {name}
-            </p>
-          </div>
-        )}
+        {expanded &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-6 backdrop-blur-sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpanded(false);
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={name}
+                className="max-h-[85vh] max-w-[85vw] rounded-2xl object-contain shadow-2xl"
+              />
+              <p className="absolute bottom-8 left-1/2 -translate-x-1/2 text-sm font-medium text-white/90">
+                {name}
+              </p>
+            </div>,
+            document.body,
+          )}
       </>
     );
   }
