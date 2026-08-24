@@ -320,7 +320,7 @@ export default function LeadsPage() {
                           className={`cursor-pointer rounded-md border border-gray-300 bg-white p-2 transition hover:border-gray-400 hover:shadow-sm dark:border-tg-border dark:bg-tg-panel dark:hover:border-tg-hover ${dragClass}`}
                         >
                           <div className="flex items-start gap-2">
-                            <Avatar src={conversation.contact.profilePictureUrl} name={name} size={34} />
+                            <Avatar src={conversation.contact.profilePictureUrl} name={name} size={34} enlargeOnClick />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-1.5">
                                 <div className="min-w-0">

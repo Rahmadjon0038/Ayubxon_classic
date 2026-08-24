@@ -284,7 +284,7 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
             <ArrowLeft size={18} />
           </button>
         )}
-        <Avatar src={conversation.contact.profilePictureUrl} name={name} size={40} />
+        <Avatar src={conversation.contact.profilePictureUrl} name={name} size={40} enlargeOnClick />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold dark:text-tg-text">{name}</p>
           {conversation.contact.username && (

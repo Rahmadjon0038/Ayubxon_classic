@@ -81,7 +81,7 @@ export default function ConversationList({
                   : 'border-gray-200 hover:bg-gray-50 dark:border-tg-hover dark:hover:bg-tg-panelAlt'
               }`}
             >
-              <Avatar src={item.contact.profilePictureUrl} name={name} size={40} />
+              <Avatar src={item.contact.profilePictureUrl} name={name} size={40} enlargeOnClick />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-1.5">
