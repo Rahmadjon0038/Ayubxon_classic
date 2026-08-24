@@ -11,6 +11,7 @@ import authRoutes from './routes/auth';
 import conversationRoutes from './routes/conversations';
 import groupRoutes from './routes/groups';
 import instagramRoutes from './routes/instagram';
+import knowledgeImportRoutes from './routes/knowledgeImport';
 import promotionRoutes from './routes/promotions';
 import statsRoutes from './routes/stats';
 import webhookRoutes from './routes/webhooks';
@@ -75,6 +76,7 @@ export function createApp() {
   app.use('/api/knowledge-base/branches', branchRoutes);
   app.use('/api/knowledge-base/groups', groupRoutes);
   app.use('/api/knowledge-base/promotions', promotionRoutes);
+  app.use('/api/knowledge-base/import', knowledgeImportRoutes);
   app.use('/api/stats', statsRoutes);
 
   app.use(notFoundHandler);

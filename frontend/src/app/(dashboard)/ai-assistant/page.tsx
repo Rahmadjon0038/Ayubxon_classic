@@ -1,11 +1,50 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Clock3, EyeOff, MapPin, Plus, Search, Phone, PencilLine, Trash2, X } from 'lucide-react';
+import { Check, Clock3, EyeOff, FileJson, MapPin, Plus, Search, Phone, PencilLine, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, getErrorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { BranchInfo, GroupInfo, PromotionInfo, PromotionScope } from '@/lib/types';
+
+interface ImportResult {
+  academyNameUpdated: boolean;
+  branches: { created: number; updated: number };
+  groups: { created: number; updated: number; skipped: string[] };
+  promotions: { created: number; updated: number; skipped: string[] };
+}
+
+const IMPORT_TEMPLATE = `{
+  "academyName": "Taraqqiyot Teaching Center",
+  "branches": [
+    {
+      "name": "Boburshox filiali",
+      "locationUrl": "https://maps.google.com/?q=Boburshox+filiali",
+      "workingHours": "08:00-22:00",
+      "phoneNumber": "+998 99 695 55 50",
+      "subjectNames": "Ingliz tili, Matematika, Fizika",
+      "extraInfo": "Mo'ljal: Bolalar stomatologiyasi ro'parasida.",
+      "isActive": true
+    }
+  ],
+  "groups": [
+    {
+      "branchName": "Boburshox filiali",
+      "subjectName": "Ingliz tili",
+      "price": "Kattalar uchun: 420 000 so'm/oy\\nKichik yoshdagi o'quvchilar uchun: 360 000 so'm/oy",
+      "details": "Sinov darsi mavjud, zarur bo'lsa daraja aniqlash testi o'tkaziladi.",
+      "isActive": true
+    }
+  ],
+  "promotions": [
+    {
+      "scope": "ALL_BRANCHES",
+      "title": "2-3 fan bo'yicha chegirma",
+      "details": "2 yoki 3 ta fan bo'yicha bir vaqtda ta'lim oladigan o'quvchilarga chegirma berilishi mumkin.",
+      "isActive": true
+    }
+  ]
+}`;
 
 type SectionKey = 'branches' | 'groups' | 'promotions';
 type ModalKind = SectionKey | null;
@@ -88,6 +127,9 @@ export default function AiAssistantPage() {
   const [branchForm, setBranchForm] = useState<BranchFormState>(emptyBranchForm);
   const [groupForm, setGroupForm] = useState<GroupFormState>(emptyGroupForm);
   const [promotionForm, setPromotionForm] = useState<PromotionFormState>(emptyPromotionForm);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importParseError, setImportParseError] = useState<string | null>(null);
 
   const settingsQuery = useQuery({
     queryKey: ['academy-settings-ai'],
@@ -207,6 +249,21 @@ export default function AiAssistantPage() {
     },
   });
 
+  const importMutation = useMutation({
+    mutationFn: async (payload: unknown) => {
+      const { data } = await api.post<{ result: ImportResult }>('/knowledge-base/import', payload);
+      return data.result;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['knowledge-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['knowledge-groups'] }),
+        queryClient.invalidateQueries({ queryKey: ['knowledge-promotions'] }),
+        queryClient.invalidateQueries({ queryKey: ['academy-settings-ai'] }),
+      ]);
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async ({ kind, id }: { kind: SectionKey; id: string }) => {
       const endpointMap: Record<SectionKey, string> = {
@@ -259,6 +316,35 @@ export default function AiAssistantPage() {
     setModalKind(null);
     setEditingId(null);
     resetForms();
+  }
+
+  function openImport() {
+    setImportText('');
+    setImportParseError(null);
+    importMutation.reset();
+    setImportOpen(true);
+  }
+
+  function closeImport() {
+    setImportOpen(false);
+  }
+
+  function insertImportTemplate() {
+    setImportText(IMPORT_TEMPLATE);
+    setImportParseError(null);
+    importMutation.reset();
+  }
+
+  function handleImportSubmit() {
+    setImportParseError(null);
+    let payload: unknown;
+    try {
+      payload = JSON.parse(importText);
+    } catch {
+      setImportParseError("JSON formati noto'g'ri — matnni tekshirib qaytadan urinib ko'ring.");
+      return;
+    }
+    importMutation.mutate(payload);
   }
 
   function openCreate(kind: SectionKey) {
@@ -350,6 +436,14 @@ export default function AiAssistantPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={openImport}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover"
+              >
+                <FileJson size={16} />
+                JSON orqali to&apos;ldirish
+              </button>
               <button
                 type="button"
                 onClick={handleToggle}
@@ -749,6 +843,103 @@ export default function AiAssistantPage() {
               />
             </form>
           )}
+        </ModalShell>
+      )}
+
+      {importOpen && (
+        <ModalShell title="JSON orqali to'ldirish" onClose={closeImport} maxWidth="max-w-3xl">
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
+              Filiallar, guruhlar va aksiyalarni bittada qo&apos;shish uchun JSON yopishtiring va
+              &quot;Yuklash&quot;ni bosing. Mavjud filial/guruh/aksiya nomi bilan mos kelsa —
+              yangilanadi, aks holda yangi yozuv sifatida qo&apos;shiladi. Keyin har birini
+              alohida tahrirlashingiz mumkin.
+            </p>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700 dark:text-tg-text">JSON</label>
+              <button
+                type="button"
+                onClick={insertImportTemplate}
+                className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
+              >
+                Namunani joylashtirish
+              </button>
+            </div>
+            <textarea
+              value={importText}
+              onChange={(event) => setImportText(event.target.value)}
+              rows={16}
+              spellCheck={false}
+              placeholder="Bu yerga JSON yopishtiring..."
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 font-mono text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800"
+            />
+
+            {importParseError && (
+              <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                {importParseError}
+              </p>
+            )}
+
+            {importMutation.isError && (
+              <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                {getErrorMessage(importMutation.error)}
+              </p>
+            )}
+
+            {importMutation.isSuccess && importMutation.data && (
+              <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <p className="font-medium">Tayyor!</p>
+                <p>
+                  Filiallar: {importMutation.data.branches.created} yangi,{' '}
+                  {importMutation.data.branches.updated} yangilandi
+                </p>
+                <p>
+                  Guruhlar: {importMutation.data.groups.created} yangi,{' '}
+                  {importMutation.data.groups.updated} yangilandi
+                  {importMutation.data.groups.skipped.length > 0 &&
+                    `, ${importMutation.data.groups.skipped.length} o'tkazib yuborildi`}
+                </p>
+                <p>
+                  Aksiyalar: {importMutation.data.promotions.created} yangi,{' '}
+                  {importMutation.data.promotions.updated} yangilandi
+                  {importMutation.data.promotions.skipped.length > 0 &&
+                    `, ${importMutation.data.promotions.skipped.length} o'tkazib yuborildi`}
+                </p>
+                {(importMutation.data.groups.skipped.length > 0 ||
+                  importMutation.data.promotions.skipped.length > 0) && (
+                  <div className="mt-2 rounded-lg bg-white/60 p-3 text-xs text-emerald-900 dark:bg-black/20 dark:text-emerald-200">
+                    <p className="font-medium">O&apos;tkazib yuborilganlar (filial nomi mos kelmadi):</p>
+                    <ul className="mt-1 list-inside list-disc space-y-0.5">
+                      {[...importMutation.data.groups.skipped, ...importMutation.data.promotions.skipped].map(
+                        (line) => (
+                          <li key={line}>{line}</li>
+                        ),
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                type="button"
+                onClick={closeImport}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover"
+              >
+                Yopish
+              </button>
+              <button
+                type="button"
+                onClick={handleImportSubmit}
+                disabled={importMutation.isPending || importText.trim().length === 0}
+                className="rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+              >
+                {importMutation.isPending ? 'Yuklanmoqda...' : 'Yuklash'}
+              </button>
+            </div>
+          </div>
         </ModalShell>
       )}
 
