@@ -28,6 +28,21 @@ function getClient(): OpenAI | null {
 // "bera ol-" shaklida emas, "berishadi" shaklida tugaydi).
 const SELF_REFERENTIAL_HELP_PATTERN = /yordam\s*bera\s*ol(aman|ishim)/i;
 
+// LLM orqali qayta yozish (tarmoq xatosi, kvota va h.k. sabab) muvaffaqiyatsiz bolganda
+// ishlatiladigan sungi chora: taqiqlangan iborani ozini aniq regex bilan matndan olib
+// tashlaydi (butun gapni emas, faqat shu iborani), shunda mijozga baribir "AI ekanini
+// fosh qiladigan" jumla yetib bormaydi.
+const FORBIDDEN_HELP_QUESTION_PATTERN =
+  /\s*(?:[,.\-]\s*)?(?:sizga\s+|sizni\s+)?(?:qanday\s+)?yordam\s*bera\s*ol(?:aman|ishim)(?:\s*mumkin)?\s*\??/gi;
+
+function stripForbiddenSelfReferentialHelp(text: string): string {
+  return text
+    .replace(FORBIDDEN_HELP_QUESTION_PATTERN, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([.,!?])/g, '$1')
+    .trim();
+}
+
 async function rewriteWithoutForbiddenPhrase(client: OpenAI, original: string): Promise<string | null> {
   try {
     const completion = await client.chat.completions.create({
@@ -376,8 +391,15 @@ export async function generateAiReply(
       if (rewritten && !SELF_REFERENTIAL_HELP_PATTERN.test(rewritten)) {
         return rewritten;
       }
-      // Qayta yozish ham muvaffaqiyatsiz bolsa, baribir mazmunan togri bolgani uchun
-      // asl javobni yuboramiz — mijozni javobsiz qoldirishdan kora shu maqul.
+      // LLM orqali qayta yozish ham muvaffaqiyatsiz bolsa (yoki hali ham taqiqlangan
+      // ibora qolgan bolsa), iborani ozimiz regex bilan olib tashlaymiz — shu orqali bu
+      // jumla hech qachon mijozga yetib bormasligini kafolatlaymiz.
+      const stripped = stripForbiddenSelfReferentialHelp(reply);
+      if (stripped) {
+        return stripped;
+      }
+      // Hammasi olib tashlangandan keyin bosh qolib ketsa, mijozni javobsiz
+      // qoldirishdan kora asl javobni baribir yuboramiz.
     }
 
     return reply;
