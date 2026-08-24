@@ -1,4 +1,4 @@
-import { AcademySettings, BranchInfo, GroupInfo, KnowledgeBaseItem, PromotionInfo } from '@prisma/client';
+import { AcademySettings, BranchInfo, GroupInfo, PromotionInfo } from '@prisma/client';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../config/env';
@@ -91,27 +91,13 @@ function formatPromotionInfo(item: PromotionInfo, branchName: string): string {
   return parts.join('\n');
 }
 
-function formatLegacyKnowledgeBaseItem(item: KnowledgeBaseItem): string {
-  const parts = [
-    `Sarlavha: ${item.title}`,
-    `Kategoriya: ${item.category}`,
-    item.course ? `Tegishli kurs: ${item.course}` : null,
-    item.branch ? `Tegishli filial: ${item.branch}` : null,
-    `Holati: ${item.isActive ? 'Faol' : 'Faol emas'}`,
-    `Ma'lumot: ${item.details}`,
-  ].filter(Boolean);
-
-  return parts.join('\n');
-}
-
 function buildSystemPrompt(params: {
   settings: AcademySettings;
   branches: BranchInfo[];
   groups: GroupInfo[];
   promotions: PromotionInfo[];
-  legacyKnowledgeBaseItems: KnowledgeBaseItem[];
 }): string {
-  const { settings, branches, groups, promotions, legacyKnowledgeBaseItems } = params;
+  const { settings, branches, groups, promotions } = params;
   const branchMap = new Map(branches.map((branch) => [branch.id, branch.name]));
 
   const branchesBlock =
@@ -135,11 +121,6 @@ function buildSystemPrompt(params: {
           .join('\n\n')
       : "Hozircha aksiyalar kiritilmagan.";
 
-  const legacyBlock =
-    legacyKnowledgeBaseItems.length > 0
-      ? legacyKnowledgeBaseItems.map((item, index) => `${index + 1}. ${formatLegacyKnowledgeBaseItem(item)}`).join('\n\n')
-      : "Hozircha legacy bilimlar yo'q.";
-
   return `
 Siz InboxCRM tizimiga ulangan "${settings.academyName}" o'quv markazining rasmiy AI assistentisiz. Foydalanuvchilar Instagram DM orqali yozishmoqda.
 Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar tez-tez o'zgaradi, shuning uchun eski bilimlarni unuting:
@@ -153,22 +134,6 @@ ${groupsBlock}
 
 AKSIYALAR:
 ${promotionsBlock}
-
-MARKAZ HAQIDAGI QO'SHIMCHA SOZLAMALAR:
-Kurslar va narxlar:
-${settings.coursesAndPrices}
-
-Manzil:
-${settings.address}
-
-Telefonlar:
-${settings.phoneNumbers}
-
-Aksiyalar:
-${settings.promotions || "Hozircha faol aksiyalar yo'q."}
-
-LEGACY MA'LUMOTLAR:
-${legacyBlock}
 =================================
 
 Qoidalar:
@@ -314,15 +279,35 @@ Qoidalar:
     hazil aralash tarzda mavzuni markazga qaytaring (masalan "Bu qiziq savol 😄 lekin men
     faqat ${settings.academyName}ning kurslari va xizmatlari haqida gaplasha olaman. Sizni
     qaysi kurs qiziqtiradi?") — qo'pol yoki sovuq bo'lmang, lekin mavzudan chetga chiqmang.
-16. Agar mijozning ANIQ va markazga tegishli savoliga javob berish uchun sizga berilgan
-    ma'lumotlar yetarli bo'lmasa (masalan juda individual/maxsus holat, ma'lumotlar bazasida
-    yo'q narsa so'ralsa) — HECH QACHON taxmin qilib to'qib javob bermang va "tushunmadim" deb
-    ham qoldirmang. Buning o'rniga, operatorga ulanishni SAVOL/TAKLIF sifatida bering (majburlab
-    emas) — masalan "Bu savolga aniqroq javob berishi uchun sizni operatorimizga ulasammi?" yoki
-    shunga o'xshash tabiiy variant. Mijoz aniq rozilik bildirmaguncha ("ha", "mayli", "xop",
-    "ulang" kabi) o'zingizcha operatorga ulanganingizni aytmang — faqat taklif qiling va javobni
-    kuting. Mijoz keyingi xabarida rozilik bildirsa, shundagina "Albatta, hozir ulayman, biroz
-    kuting" kabi tasdiq bering.
+16. SIZ FAQAT SO'NGGI CHORA SIFATIDA TELEFON RAQAM SO'RAYSIZ — birinchi navbatda mijozning
+    savoliga ma'lumotlar bazasidagi ma'lumot bilan O'ZINGIZ to'liq javob berishga harakat qiling,
+    mijozni operatorni kutishga shoshiltirmang. Quyidagi holatlarda: (a) so'ralgan ma'lumot
+    ma'lumotlar bazasida umuman yo'q; (b) individual hisob-kitob yoki alohida baholash kerak;
+    (c) aniq bir guruh/dars jadvalini real vaqtda tekshirish kerak; (d) mijoz o'zi aniq
+    administrator/operator bilan gaplashishni so'ragan; (e) savol markazga tegishli-yu, lekin
+    siz uni ma'lumotlar bazasi asosida hal qila olmaysiz — HECH QACHON taxmin qilib to'qib javob
+    bermang, "tushunmadim" deb ham qoldirmang va OPERATORGA ULASHNI SAVOL/TAKLIF QILIB SO'RAMANG
+    (masalan "operatorimizga ulasammi?" kabi jumlalar TAQIQLANADI). Buning o'rniga, darhol va
+    to'g'ridan-to'g'ri, 3-qoidadagi kabi qisqa jumla bilan telefon raqamini so'rang — masalan
+    "Bu savol bo'yicha telefon raqamingizni qoldiring, administratorlarimiz siz bilan
+    bog'lanadi." (so'zlarni ozgina o'zgartirishingiz mumkin, lekin 1 ta jumladan oshmasin,
+    sabab-tushuntirish qo'shmang). Mijozning roziligini kutmang va "ulayman"/"ulaymiz" kabi
+    o'zingiz ulanish jarayonini boshlaganingizni bildiruvchi so'zlarni ishlatmang — faqat telefon
+    raqamini so'rang, xolos. Shu holatlar tashqarisida — oddiy savolga (narx, filial, kurs,
+    jadval, manzil, imtiyoz) ma'lumotlar bazasida javob bor ekan — operatorni yoki telefon
+    raqamini tilga olmasdan, to'g'ridan-to'g'ri o'zingiz javob bering.
+17. Mijoz suhbatni tugatish ohangidagi juda qisqa xabar yuborsa — masalan "rahmat", "xo'p
+    rahmat", "mayli", "xo'p", "tushunarli", "yaxshi", "bo'ldi" (hech qanday rad etish sababi
+    yoki yangi savol bo'lmasa, shunchaki tasdiqlash yoki minnatdorchilik bildirsa) — bunga FAQAT
+    juda qisqa (bir necha so'zli), iliq javob bering, masalan "Arzimaydi 😊" yoki "Mayli, kutib
+    qolamiz 😊". Bunday javobdan keyin telefon raqami so'ramang, yangi savol bermang va
+    suhbatni davom ettirishga urinmang — shu yerda tabiiy tugating. Buni 14-qoidadagi rad etish
+    holati bilan aralashtirmang: mijoz sabab aytib rad etsa 14-qoidaga, sababsiz shunchaki
+    tasdiqlasa shu qoidaga amal qiling.
+18. Mijoz allaqachon bergan ma'lumotni (yosh, filial, ism va h.k.) qayta so'ramang yoki
+    takrorlamang — suhbat tarixidan foydalaning. Javobingiz uzunligini mijozning xabar
+    uzunligi va uslubiga moslang: mijoz bir-ikki so'z yoki norasmiy uslubda yozsa, siz ham shunga
+    mos qisqa va erkin javob bering; faqat mijoz batafsil so'ragandagina batafsil yozing.
 `.trim();
 }
 
@@ -343,7 +328,7 @@ export async function generateAiReply(
   if (history.length === 0) return null;
 
   try {
-    const [branches, groups, promotions, legacyKnowledgeBaseItems] = await Promise.all([
+    const [branches, groups, promotions] = await Promise.all([
       prisma.branchInfo.findMany({
         where: { instagramAccountId: settings.instagramAccountId, isActive: true },
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
@@ -355,11 +340,6 @@ export async function generateAiReply(
         take: 50,
       }),
       prisma.promotionInfo.findMany({
-        where: { instagramAccountId: settings.instagramAccountId, isActive: true },
-        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-        take: 50,
-      }),
-      prisma.knowledgeBaseItem.findMany({
         where: { instagramAccountId: settings.instagramAccountId, isActive: true },
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
         take: 50,
@@ -378,7 +358,6 @@ export async function generateAiReply(
             branches,
             groups,
             promotions,
-            legacyKnowledgeBaseItems,
           }),
         },
         ...history,
