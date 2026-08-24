@@ -513,8 +513,21 @@ async function processMessagingEvent(
     },
   });
 
-  // Faqat kontaktdan kelgan (echo emas) matnli xabarlarga AI javob berishga harakat qilinadi.
-  if (!isEcho && normalizedText) {
+  // Mijoz shunchaki video/reel/rasm ulashsa yoki reaksiya bosса (bu funksiyaga reaksiya
+  // umuman kelmaydi, alohida processReactionEvent orqali ishlanadi) — bu haqiqiy savol
+  // emas, shuning uchun AI javob bermasligi kerak. attachmentType 'template' bo'lsa
+  // (masalan quick-reply tugmasi) undan chiqarilgan matn baribir haqiqiy mijoz signali
+  // hisoblanadi, shuning uchun bu holatga tegilmaydi.
+  const isMediaOnlyShare = Boolean(attachmentUrl) && attachmentType !== 'template' && !message.text?.trim();
+  if (isMediaOnlyShare) {
+    console.log(
+      `[webhook] Faqat media/reel ulashildi, matn yozilmagan — AI javob bermaydi (conversation=${conversation.id})`,
+    );
+  }
+
+  // Faqat kontaktdan kelgan (echo emas), haqiqiy matn signaliga ega xabarlarga AI javob
+  // berishga harakat qilinadi.
+  if (!isEcho && normalizedText && !isMediaOnlyShare) {
     await handleIncomingContactMessage({
       account,
       accessToken,
