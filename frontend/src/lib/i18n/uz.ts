@@ -10,6 +10,7 @@ const uz = {
   },
   nav: {
     leads: 'Lidlar',
+    ads: 'Reklamalar',
     inbox: 'Xabarlar',
     calls: "Qo'ng'iroqlar",
     stats: 'Statistika',

@@ -15,6 +15,15 @@ export interface NewLeadNotification {
   contactUsername: string | null;
 }
 
+export interface NewAdLeadNotification {
+  campaignTitle: string;
+  fullName: string;
+  phoneNumber: string;
+  email: string | null;
+  comment: string | null;
+  pageUrl: string | null;
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -69,6 +78,51 @@ export async function notifyNewLead(lead: NewLeadNotification): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     console.error(
       `[telegram] Lid xabarnomasini yuborishda xato (chat_id=${env.TELEGRAM_CHANNEL_ID}): ${message}${details ? ` — ${details}` : ''}`,
+    );
+  }
+}
+
+function buildAdLeadMessage(lead: NewAdLeadNotification): string {
+  const lines = [`<b>📣 ${escapeHtml(lead.campaignTitle)}</b>`, ''];
+  lines.push(`👤 <b>Ism:</b> ${escapeHtml(lead.fullName)}`);
+  lines.push(`📞 <b>Telefon:</b> ${escapeHtml(lead.phoneNumber)}`);
+  if (lead.email) {
+    lines.push(`✉️ <b>Email:</b> ${escapeHtml(lead.email)}`);
+  }
+  if (lead.comment) {
+    lines.push(`📝 <b>Izoh:</b> ${escapeHtml(lead.comment)}`);
+  }
+  if (lead.pageUrl) {
+    lines.push(`🔗 <b>Link:</b> ${escapeHtml(lead.pageUrl)}`);
+  }
+  return lines.join('\n');
+}
+
+export async function notifyNewAdLead(lead: NewAdLeadNotification): Promise<void> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) {
+    console.warn('[telegram] TELEGRAM_BOT_TOKEN yoki TELEGRAM_CHANNEL_ID sozlanmagan, reklama lid xabarnomasi otkazib yuborildi');
+    return;
+  }
+
+  console.log(`[telegram] Reklama lid xabarnomasi yuborilmoqda (chat_id=${env.TELEGRAM_CHANNEL_ID}, telefon=${lead.phoneNumber})`);
+
+  try {
+    const response = await axios.post(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: env.TELEGRAM_CHANNEL_ID,
+      text: buildAdLeadMessage(lead),
+      parse_mode: 'HTML',
+    });
+
+    if (response.data?.ok) {
+      console.log(`[telegram] Reklama lid xabarnomasi muvaffaqiyatli yuborildi (chat_id=${env.TELEGRAM_CHANNEL_ID})`);
+    } else {
+      console.error(`[telegram] Telegram "ok:false" qaytardi (reklama lead): ${JSON.stringify(response.data)}`);
+    }
+  } catch (err) {
+    const details = axios.isAxiosError(err) && err.response ? JSON.stringify(err.response.data) : undefined;
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[telegram] Reklama lid xabarnomasini yuborishda xato: ${message}${details ? ` — ${details}` : ''}`,
     );
   }
 }

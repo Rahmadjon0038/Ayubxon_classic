@@ -37,6 +37,8 @@ model InstagramAccount {
   branches        BranchInfo[]
   groups          GroupInfo[]
   promotions      PromotionInfo[]
+  adCampaigns     AdCampaign[]
+  adLeads         AdLead[]
 }
 
 // Har bir Instagram biznes akkaunti (o'quv markazi) uchun AI'ga o'rgatiladigan
@@ -127,6 +129,45 @@ model PromotionInfo {
   @@index([instagramAccountId, branchId])
   @@index([instagramAccountId, updatedAt])
   @@index([instagramAccountId, isActive])
+}
+
+model AdCampaign {
+  id                 String   @id @default(cuid())
+  instagramAccountId String
+  title              String
+  slug               String   @unique
+  description        String?
+  formTitle          String?
+  formSubtitle       String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  leads   AdLead[]
+
+  @@index([instagramAccountId, updatedAt])
+  @@index([instagramAccountId, isActive])
+}
+
+model AdLead {
+  id                 String   @id @default(cuid())
+  instagramAccountId String
+  adCampaignId       String
+  fullName           String
+  phoneNumber        String
+  email              String?
+  comment            String?
+  pageUrl            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  account  InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  campaign AdCampaign       @relation(fields: [adCampaignId], references: [id], onDelete: Cascade)
+
+  @@index([instagramAccountId, createdAt])
+  @@index([adCampaignId, createdAt])
+  @@index([instagramAccountId, phoneNumber])
 }
 
 model KnowledgeBaseItem {

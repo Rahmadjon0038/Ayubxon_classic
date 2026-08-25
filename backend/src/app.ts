@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import academySettingsRoutes from './routes/academySettings';
 import branchRoutes from './routes/branches';
 import authRoutes from './routes/auth';
+import adCampaignRoutes from './routes/adCampaigns';
 import conversationRoutes from './routes/conversations';
 import groupRoutes from './routes/groups';
 import instagramRoutes from './routes/instagram';
@@ -71,6 +72,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/instagram', instagramRoutes);
   app.use('/api/webhooks', webhookRoutes);
+  app.use('/api/ad-campaigns', adCampaignRoutes);
   app.use('/api/conversations', conversationRoutes);
   app.use('/api/academy-settings', academySettingsRoutes);
   app.use('/api/knowledge-base/branches', branchRoutes);

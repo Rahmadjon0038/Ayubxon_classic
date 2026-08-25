@@ -72,6 +72,33 @@ export interface PromotionInfo {
   updatedAt: string;
 }
 
+export interface AdCampaign {
+  id: string;
+  instagramAccountId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  formTitle: string | null;
+  formSubtitle: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  leadCount?: number;
+}
+
+export interface AdLead {
+  id: string;
+  instagramAccountId: string;
+  adCampaignId: string;
+  fullName: string;
+  phoneNumber: string;
+  email: string | null;
+  comment: string | null;
+  pageUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface KnowledgeBaseItem {
   id: string;
   instagramAccountId: string;

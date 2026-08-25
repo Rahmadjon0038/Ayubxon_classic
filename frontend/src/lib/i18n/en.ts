@@ -9,6 +9,7 @@ const en: Translations = {
   },
   nav: {
     leads: 'Leads',
+    ads: 'Ads',
     inbox: 'Inbox',
     calls: 'Calls',
     stats: 'Stats',

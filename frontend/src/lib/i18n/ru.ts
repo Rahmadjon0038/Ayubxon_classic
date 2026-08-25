@@ -9,6 +9,7 @@ const ru: Translations = {
   },
   nav: {
     leads: 'Лиды',
+    ads: 'Реклама',
     inbox: 'Входящие',
     calls: 'Звонки',
     stats: 'Статистика',
