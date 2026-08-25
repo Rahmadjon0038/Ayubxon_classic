@@ -76,10 +76,10 @@ export interface AdCampaign {
   id: string;
   instagramAccountId: string;
   title: string;
-  slug: string;
-  description: string | null;
-  formTitle: string | null;
-  formSubtitle: string | null;
+  metaPageId: string | null;
+  metaPageName: string | null;
+  metaFormId: string | null;
+  metaFormName: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -90,11 +90,15 @@ export interface AdLead {
   id: string;
   instagramAccountId: string;
   adCampaignId: string;
+  metaLeadId: string;
+  metaPageId: string | null;
+  metaFormId: string | null;
   fullName: string;
-  phoneNumber: string;
+  phoneNumber: string | null;
   email: string | null;
   comment: string | null;
-  pageUrl: string | null;
+  rawFields: Record<string, string[]> | null;
+  leadCreatedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

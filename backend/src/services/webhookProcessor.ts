@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { downloadContactAvatar, isLocalUploadUrl } from '../lib/avatar';
 import { downloadRemoteMedia } from '../lib/media';
 import { extractPhoneNumber } from '../lib/phone';
-import { notifyNewLead } from '../bot/telegramNotifier';
+import { notifyNewAdLead, notifyNewLead } from '../bot/telegramNotifier';
 import {
   analyzeConversation,
   ChatTurn,
@@ -18,6 +18,7 @@ import {
   getConnectedAccount,
   getConnectedAccountByInstagramId,
 } from './accountService';
+import { fetchLeadDetails } from './metaLeadAds';
 import { emitMessageUpdated, emitNewMessage } from './socketService';
 
 // Instagram webhook payloadining bizga kerakli qismi.
@@ -61,7 +62,16 @@ const messagingEventSchema = z
 const changeSchema = z
   .object({
     field: z.string().optional(),
-    value: messagingEventSchema.optional(),
+    value: z.unknown().optional(),
+  })
+  .passthrough();
+
+const leadgenValueSchema = z
+  .object({
+    form_id: z.string().optional(),
+    leadgen_id: z.string().optional(),
+    page_id: z.string().optional(),
+    created_time: z.union([z.number(), z.string()]).optional(),
   })
   .passthrough();
 
@@ -82,6 +92,7 @@ const webhookPayloadSchema = z
   .passthrough();
 
 type MessagingEvent = z.infer<typeof messagingEventSchema>;
+type LeadgenChangeValue = z.infer<typeof leadgenValueSchema>;
 
 async function resolveWebhookAccount(
   event: MessagingEvent,
@@ -188,6 +199,11 @@ function collectMeaningfulStrings(
   });
 }
 
+function isGenericTemplateArtifact(text: string): boolean {
+  const normalized = text.toLowerCase().replace(/\s+/g, ' ').trim();
+  return ['template', 'shablon', 'quick reply', 'postback', 'button'].includes(normalized);
+}
+
 function isInstagramPermalink(rawUrl: string): boolean {
   try {
     return new URL(rawUrl).hostname.endsWith('instagram.com');
@@ -250,23 +266,218 @@ async function resolveIncomingAttachment(
   return { attachmentType: rawType, attachmentUrl: rawUrl, attachmentThumbnailUrl: null, attachmentText: null };
 }
 
+function normalizeLeadFieldMap(fieldData: { name?: string; values?: string[] }[] | undefined): Record<string, string[]> {
+  const map: Record<string, string[]> = {};
+  for (const field of fieldData ?? []) {
+    const key = field.name?.trim();
+    if (!key) continue;
+    const values = (field.values ?? []).map((value) => value.trim()).filter(Boolean);
+    if (!values.length) continue;
+    map[key] = values;
+  }
+  return map;
+}
+
+function pickLeadValue(fieldMap: Record<string, string[]>, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const direct = fieldMap[key];
+    if (direct?.length) return direct[0];
+    const lower = fieldMap[key.toLowerCase()];
+    if (lower?.length) return lower[0];
+  }
+  return null;
+}
+
+function toLeadDate(value: string | number | undefined): Date | null {
+  if (value === undefined) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const millis = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+  const date = new Date(millis);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+async function resolveMetaCampaignForLead(
+  instagramAccountId: string,
+  pageId: string | null,
+  formId: string | null,
+): Promise<Awaited<ReturnType<typeof prisma.adCampaign.findFirst>> & { account: InstagramAccount } | null> {
+  const byForm = formId
+    ? await prisma.adCampaign.findFirst({
+        where: { instagramAccountId, metaFormId: formId },
+        include: { account: true },
+      })
+    : null;
+  if (byForm) return byForm;
+
+  const byPage = pageId
+    ? await prisma.adCampaign.findFirst({
+        where: { instagramAccountId, metaPageId: pageId },
+        include: { account: true },
+      })
+    : null;
+  if (byPage) {
+    if (!byPage.metaFormId && formId) {
+      const updated = await prisma.adCampaign.update({
+        where: { id: byPage.id },
+        data: { metaFormId: formId },
+        include: { account: true },
+      });
+      return updated;
+    }
+    return byPage;
+  }
+
+  return null;
+}
+
+async function createFallbackMetaCampaign(
+  instagramAccountId: string,
+  pageId: string | null,
+  formId: string | null,
+): Promise<Awaited<ReturnType<typeof prisma.adCampaign.create>> & { account: InstagramAccount }> {
+  const title = formId ? `Meta lead form ${formId.slice(0, 8)}` : `Meta lead ${pageId?.slice(0, 8) ?? 'unknown'}`;
+  return prisma.adCampaign.create({
+    data: {
+      instagramAccountId,
+      title,
+      metaPageId: pageId,
+      metaFormId: formId,
+      isActive: true,
+    },
+    include: { account: true },
+  });
+}
+
+async function processMetaLeadChange(changeValue: LeadgenChangeValue, entryBusinessId?: string): Promise<void> {
+  const leadgenId = changeValue.leadgen_id?.trim();
+  if (!leadgenId) return;
+
+  const pageId = changeValue.page_id?.trim() || entryBusinessId?.trim() || null;
+  const formId = changeValue.form_id?.trim() || null;
+  const leadCreatedAt = toLeadDate(changeValue.created_time);
+
+  const account = await getConnectedAccount();
+  if (!account) {
+    console.warn('[webhook] Meta lead olindi, lekin ulangan akkaunt topilmadi');
+    return;
+  }
+
+  let campaign = await resolveMetaCampaignForLead(account.id, pageId, formId);
+  if (!campaign) {
+    campaign = await createFallbackMetaCampaign(account.id, pageId, formId);
+  }
+
+  const accessToken = campaign.account.encryptedAccessToken
+    ? getAccessToken(campaign.account)
+    : getAccessToken(account);
+
+  const leadDetails = await fetchLeadDetails(accessToken, leadgenId);
+  const rawFields = normalizeLeadFieldMap(leadDetails?.field_data);
+  const rawFieldsValue = leadDetails?.field_data ? rawFields : undefined;
+  const nameFallback = [pickLeadValue(rawFields, 'first_name'), pickLeadValue(rawFields, 'last_name')]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const fullName =
+    pickLeadValue(rawFields, 'full_name', 'name', 'fullName', 'first_name') ?? (nameFallback || 'Meta lead');
+  const phoneNumber =
+    pickLeadValue(rawFields, 'phone_number', 'phone', 'mobile', 'whatsapp_number') ??
+    extractPhoneNumber(
+      [
+        pickLeadValue(rawFields, 'phone_number', 'phone', 'mobile', 'whatsapp_number'),
+        pickLeadValue(rawFields, 'primary_phone'),
+      ]
+        .filter(Boolean)
+        .join(' '),
+    );
+  const email = pickLeadValue(rawFields, 'email', 'mail') ?? null;
+  const comment =
+    pickLeadValue(rawFields, 'comment', 'message', 'question', 'notes', 'note') ??
+    null;
+
+  const created = await prisma.adLead.upsert({
+    where: { metaLeadId: leadgenId },
+    update: {
+      metaPageId: pageId,
+      metaFormId: formId,
+      fullName,
+      phoneNumber,
+      email,
+      comment,
+      rawFields: rawFieldsValue,
+      leadCreatedAt,
+      adCampaignId: campaign.id,
+      instagramAccountId: account.id,
+    },
+    create: {
+      instagramAccountId: account.id,
+      adCampaignId: campaign.id,
+      metaLeadId: leadgenId,
+      metaPageId: pageId,
+      metaFormId: formId,
+      fullName,
+      phoneNumber,
+      email,
+      comment,
+      rawFields: rawFieldsValue,
+      leadCreatedAt,
+    },
+  });
+
+  notifyNewAdLead({
+    campaignTitle: campaign.title,
+    pageName: campaign.metaPageName,
+    formName: campaign.metaFormName,
+    leadId: created.metaLeadId,
+    fullName: created.fullName,
+    phoneNumber: created.phoneNumber ?? 'Ko\'rsatilmagan',
+    email: created.email,
+    comment: created.comment,
+  }).catch(() => {});
+
+  console.log(
+    `[webhook] Meta lead saqlandi (leadgen=${leadgenId.slice(0, 24)}…, campaign=${campaign.id})`,
+  );
+}
+
 export async function processWebhookPayload(rawPayload: unknown): Promise<void> {
   const parsed = webhookPayloadSchema.safeParse(rawPayload);
   if (!parsed.success) {
     console.warn('[webhook] Payload strukturasi notogri, otkazib yuborildi');
     return;
   }
-  if (parsed.data.object !== 'instagram') {
+  if (!['instagram', 'page'].includes(parsed.data.object)) {
     console.warn(`[webhook] Notanish object turi: ${parsed.data.object}, otkazib yuborildi`);
     return;
   }
 
   for (const entry of parsed.data.entry) {
+    if (parsed.data.object === 'page') {
+      const leadChanges = (entry.changes ?? []).filter((change) => change.field === 'leadgen');
+      console.log(
+        `[webhook] Page lead event qabul qilindi (entry: ${entry.id ?? '-'}, changes: ${leadChanges.length})`,
+      );
+
+      for (const change of leadChanges) {
+        const parsedChange = leadgenValueSchema.safeParse(change.value);
+        if (!parsedChange.success) continue;
+
+        try {
+          await processMetaLeadChange(parsedChange.data, entry.id);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[webhook] Meta leadni qayta ishlashda xato: ${message}`);
+        }
+      }
+      continue;
+    }
+
     const events = [
       ...(entry.messaging ?? []),
       ...(entry.changes ?? [])
         .filter((c) => c.field === 'messages' && c.value)
-        .map((c) => c.value!),
+        .map((c) => c.value as MessagingEvent),
     ];
 
     console.log(`[webhook] Event qabul qilindi (entry: ${entry.id ?? '-'}, xabarlar: ${events.length})`);
@@ -416,6 +627,9 @@ async function processMessagingEvent(
   const resolvedAttachment = await resolveIncomingAttachment(message.attachments?.[0], accessToken);
   const resolvedText = resolvedAttachment.attachmentText?.trim() || null;
   let normalizedText = message.text?.trim() || resolvedText;
+  if (normalizedText && isGenericTemplateArtifact(normalizedText)) {
+    normalizedText = null;
+  }
   let attachmentType = resolvedAttachment.attachmentType;
   let attachmentUrl = resolvedAttachment.attachmentUrl;
 

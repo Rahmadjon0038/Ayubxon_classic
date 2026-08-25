@@ -106,13 +106,77 @@ function formatPromotionInfo(item: PromotionInfo, branchName: string): string {
   return parts.join('\n');
 }
 
+function normalizeForMatch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function collectKnownMentions(history: ChatTurn[], items: string[]): string[] {
+  const haystack = history.map((turn) => normalizeForMatch(turn.content)).join(' ');
+  const seen = new Set<string>();
+  const matches: string[] = [];
+
+  for (const item of items) {
+    const normalized = normalizeForMatch(item);
+    if (!normalized || seen.has(normalized)) continue;
+    if (haystack.includes(normalized)) {
+      seen.add(normalized);
+      matches.push(item);
+    }
+  }
+
+  return matches;
+}
+
+function buildConversationMemoryBlock(params: {
+  history: ChatTurn[];
+  branches: BranchInfo[];
+  groups: GroupInfo[];
+}): string {
+  const mentionedBranches = collectKnownMentions(
+    params.history,
+    params.branches.map((branch) => branch.name),
+  );
+  const mentionedCourses = collectKnownMentions(
+    params.history,
+    params.groups.map((group) => group.subjectName),
+  );
+
+  return [
+    '=== SUHBATDAN ANIQLANGAN KONTEKST ===',
+    mentionedBranches.length > 0
+      ? `Aytilgan filiallar: ${mentionedBranches.join(', ')}`
+      : 'Aytilgan filiallar: aniqlanmagan',
+    mentionedCourses.length > 0
+      ? `Aytilgan fan/kurslar: ${mentionedCourses.join(', ')}`
+      : 'Aytilgan fan/kurslar: aniqlanmagan',
+    'Bu bo‘limdagi ma’lumotlar avval aytilgan deb hisoblanadi. Ularni qayta so‘ramang, ayniqsa filial yoki kurs allaqachon tilga olingan bo‘lsa.',
+    '=====================================',
+  ].join('\n');
+}
+
+function sanitizeAiReply(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/\\([*_[\]{}()#>])/g, '$1')
+    .replace(/^\s*[-*]\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function buildSystemPrompt(params: {
   settings: AcademySettings;
   branches: BranchInfo[];
   groups: GroupInfo[];
   promotions: PromotionInfo[];
+  history: ChatTurn[];
 }): string {
-  const { settings, branches, groups, promotions } = params;
+  const { settings, branches, groups, promotions, history } = params;
   const branchMap = new Map(branches.map((branch) => [branch.id, branch.name]));
 
   const branchesBlock =
@@ -140,6 +204,8 @@ function buildSystemPrompt(params: {
 Siz InboxCRM tizimiga ulangan "${settings.academyName}" o'quv markazining rasmiy AI assistentisiz. Foydalanuvchilar Instagram DM orqali yozishmoqda.
 Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar tez-tez o'zgaradi, shuning uchun eski bilimlarni unuting:
 
+${buildConversationMemoryBlock({ history, branches, groups })}
+
 === AKTUAL MA'LUMOTLAR BAZASI ===
 FILIALLAR:
 ${branchesBlock}
@@ -153,6 +219,8 @@ ${promotionsBlock}
 
 Qoidalar:
 0. Filiallar asosiy ma'lumot. Guruhlar filialga bog'langan. Aksiyalar bitta filialga yoki barcha filiallarga tegishli bo'lishi mumkin. Bir mavzu bo'yicha bir nechta karta bo'lishi mumkin, lekin eng aniq va oxirgi faol ma'lumot ustun.
+   Agar mijoz filial/manzil so'rasa, avval filiallar nomini sanab o'ting va qaysi filial qulayligini so'rang. Bunday savolda kursni so'ramang.
+   Agar mijoz allaqachon filial yoki kursni yozgan bo'lsa, uni qayta so'ramang. Yuqoridagi "SUHBATDAN ANIQLANGAN KONTEKST" bo'limini ustun deb qabul qiling.
 1. Yo'q kurslarni to'qib chiqarmang (No hallucinations).
 2. Narx yoki filial haqida so'ralganda buni bosqichma-bosqich aniqlab boring — bitta xabarda
    barcha kurslar, narxlar yoki filiallarni birga tashlamang. Tartib: avval qaysi kurs
@@ -180,6 +248,10 @@ Qoidalar:
    420 000, kichiklar uchun 360 000 so'm. Yana qanday ma'lumot kerak?" deb ikkala narxni birdan
    tashlab, yosh so'ramasdan, keyin umumiy robotcha savol bilan yakunlash — bu 2-qoidani ham,
    8-qoidadagi "robotcha yakunlovchi savol bermaslik" talabini ham buzadi.
+   "Dars vaqtlari va guruhlar haqida ma'lumot bermoqchimisiz?" yoki shunga o'xshash umumiy
+   follow-up savollarni HЕCH QACHON bermang. Agar dars vaqti haqida aniq ma'lumot ma'lumotlar
+   bazasida bo'lsa, uni to'g'ridan-to'g'ri bering. Agar aniq jadval real vaqtda yo'q bo'lsa va
+   mijoz ro'yxatdan o'tishga yaqin bo'lsa, faqat telefon raqamini so'rang.
 3. FAQAT telefon raqamini so'rang — ISM SO'RAMANG (faqat telefon kifoya). Buni ham FAQAT mijoz
    chindan ham yozilishga/ro'yxatdan o'tishga qiziqish bildirganda so'rang (masalan "qanday
    yozilsam bo'ladi", "ro'yxatdan o'tmoqchiman", "narxi mos keladi, olaman" kabi aniq signal
@@ -373,13 +445,14 @@ export async function generateAiReply(
             branches,
             groups,
             promotions,
+            history,
           }),
         },
         ...history,
       ],
     });
 
-    const reply = completion.choices[0]?.message?.content?.trim();
+    const reply = sanitizeAiReply(completion.choices[0]?.message?.content?.trim() ?? '');
     if (!reply) {
       console.warn('[ai] OpenAI bosh javob qaytardi, xabar yuborilmadi');
       return null;

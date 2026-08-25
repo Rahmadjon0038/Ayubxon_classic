@@ -17,11 +17,13 @@ export interface NewLeadNotification {
 
 export interface NewAdLeadNotification {
   campaignTitle: string;
+  pageName: string | null;
+  formName: string | null;
   fullName: string;
   phoneNumber: string;
   email: string | null;
   comment: string | null;
-  pageUrl: string | null;
+  leadId: string;
 }
 
 function escapeHtml(value: string): string {
@@ -84,6 +86,11 @@ export async function notifyNewLead(lead: NewLeadNotification): Promise<void> {
 
 function buildAdLeadMessage(lead: NewAdLeadNotification): string {
   const lines = [`<b>📣 ${escapeHtml(lead.campaignTitle)}</b>`, ''];
+  if (lead.pageName || lead.formName) {
+    const parts = [lead.pageName ? escapeHtml(lead.pageName) : null, lead.formName ? escapeHtml(lead.formName) : null].filter(Boolean);
+    lines.push(`🧩 <b>Manba:</b> ${parts.join(' / ') || 'Meta Lead Form'}`);
+  }
+  lines.push(`🆔 <b>Lead ID:</b> ${escapeHtml(lead.leadId)}`);
   lines.push(`👤 <b>Ism:</b> ${escapeHtml(lead.fullName)}`);
   lines.push(`📞 <b>Telefon:</b> ${escapeHtml(lead.phoneNumber)}`);
   if (lead.email) {
@@ -91,9 +98,6 @@ function buildAdLeadMessage(lead: NewAdLeadNotification): string {
   }
   if (lead.comment) {
     lines.push(`📝 <b>Izoh:</b> ${escapeHtml(lead.comment)}`);
-  }
-  if (lead.pageUrl) {
-    lines.push(`🔗 <b>Link:</b> ${escapeHtml(lead.pageUrl)}`);
   }
   return lines.join('\n');
 }

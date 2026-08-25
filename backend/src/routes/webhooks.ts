@@ -9,8 +9,12 @@ interface RawBodyRequest extends Request {
   rawBody?: Buffer;
 }
 
+function getVerifyToken(): string | undefined {
+  return env.META_VERIFY_TOKEN ?? env.INSTAGRAM_VERIFY_TOKEN;
+}
+
 // Meta webhook verification (Callback URL tasdiqlash).
-router.get('/instagram', async (req, res) => {
+router.get(['/instagram', '/meta-leads'], async (req, res) => {
   const mode = req.query['hub.mode'];
   const verifyToken = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
@@ -19,7 +23,7 @@ router.get('/instagram', async (req, res) => {
     mode === 'subscribe' &&
     typeof verifyToken === 'string' &&
     typeof challenge === 'string' &&
-    verifyToken === process.env.META_VERIFY_TOKEN
+    verifyToken === getVerifyToken()
   ) {
     console.log('[webhook] Verification muvaffaqiyatli');
     return res.status(200).send(challenge);
@@ -49,8 +53,8 @@ function isSignatureValid(req: RawBodyRequest): boolean {
   }
 }
 
-// Instagram webhook eventlari shu yerga keladi.
-router.post('/instagram', (req: RawBodyRequest, res) => {
+// Instagram va Meta leadgen webhook eventlari shu yerga keladi.
+router.post(['/instagram', '/meta-leads'], (req: RawBodyRequest, res) => {
   if (!isSignatureValid(req)) {
     console.warn('[webhook] Imzo notogri, event rad etildi');
     return res.sendStatus(401);

@@ -135,10 +135,10 @@ model AdCampaign {
   id                 String   @id @default(cuid())
   instagramAccountId String
   title              String
-  slug               String   @unique
-  description        String?
-  formTitle          String?
-  formSubtitle       String?
+  metaPageId        String?
+  metaPageName      String?
+  metaFormId        String?  @unique
+  metaFormName      String?
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -154,11 +154,15 @@ model AdLead {
   id                 String   @id @default(cuid())
   instagramAccountId String
   adCampaignId       String
+  metaLeadId         String   @unique
+  metaPageId         String?
+  metaFormId         String?
   fullName           String
-  phoneNumber        String
+  phoneNumber        String?
   email              String?
   comment            String?
-  pageUrl            String?
+  rawFields          Json?
+  leadCreatedAt      DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
