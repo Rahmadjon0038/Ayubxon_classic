@@ -32,5 +32,6 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 4000
 
-# Schema DBga qollanadi (MVP: db push), keyin server ishga tushadi.
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/index.js"]
+# Schema DBga qollanadi, keyin server ishga tushadi.
+# accept-data-loss: bu image yangi schema'ga moslashganda eski public ads ustunlarini olib tashlaydi.
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/index.js"]

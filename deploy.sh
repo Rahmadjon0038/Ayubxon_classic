@@ -101,6 +101,7 @@ echo
 log "Deploy tugadi! ✓"
 log "Frontend (local):  http://127.0.0.1:${FRONTEND_PORT}"
 log "Backend (local):   http://127.0.0.1:${BACKEND_PORT}/api/health"
-log "Webhook URL (Meta Dashboard uchun): \$BACKEND_DOMEN/api/webhooks/instagram"
+log "Webhook URL (Instagram DM):      \$BACKEND_DOMEN/api/webhooks/instagram"
+log "Webhook URL (Meta Lead Ads):     \$BACKEND_DOMEN/api/webhooks/meta-leads"
 log "Holat:  docker compose ps"
 log "Loglar: docker compose logs -f backend"
