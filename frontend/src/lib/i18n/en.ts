@@ -140,6 +140,9 @@ const en: Translations = {
     backToList: 'Back to list',
     deleteChat: 'Delete chat',
     deleteConfirm: 'Are you sure you want to delete this chat? This action cannot be undone.',
+    clearAiMemory: 'Clear AI memory',
+    clearAiMemoryConfirm:
+      "Make the AI forget its previous conversation with this customer and treat them as new? Chat messages won't be deleted, only the AI's context is cleared.",
     operatorBanner: 'Operator requested — AI is not replying automatically in this conversation.',
     resumeAi: 'Resume AI',
     uploadPending: 'Uploading file...',

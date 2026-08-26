@@ -247,6 +247,32 @@ router.patch('/:id/status', validateBody(leadStatusSchema), async (req, res, nex
   }
 });
 
+// AI xotirasini tozalash: shu paytdan oldingi xabarlar endi AI'ga kontekst sifatida
+// yuborilmaydi (getConversationHistory'da filtrlanadi) — chatdagi eski xabarlar o'zi turadi,
+// faqat AI mijozni "yangi odam" sifatida qayta boshlaydi.
+router.post('/:id/clear-ai-memory', async (req, res, next) => {
+  try {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+    if (!conversation) throw new AppError('Suhbat topilmadi', 404);
+
+    // Kutilayotgan (hali yuborilmagan) AI javobi eski kontekst asosida bo'lishi mumkin —
+    // bekor qilamiz, keyingi mijoz xabaridan boshlab yangi (tozalangan) tarix ishlatiladi.
+    cancelPendingAiTurn(conversation.id);
+
+    const updated = await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { aiMemoryResetAt: new Date() },
+    });
+
+    return res.json({ aiMemoryResetAt: updated.aiMemoryResetAt });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     const conversation = await prisma.conversation.findUnique({

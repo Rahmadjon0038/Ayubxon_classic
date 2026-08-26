@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Paperclip, Phone, Pin, SendHorizontal, Trash2, UserRound } from 'lucide-react';
+import { ArrowLeft, Eraser, Loader2, Paperclip, Phone, Pin, SendHorizontal, Trash2, UserRound } from 'lucide-react';
 import Avatar from './Avatar';
 import { useLocale } from './LocaleProvider';
 import MessageBubble from './MessageBubble';
@@ -191,6 +191,14 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
     },
   });
 
+  // AI xotirasini tozalash: shu paytdan oldingi xabarlar endi AI'ga kontekst sifatida
+  // yuborilmaydi — chatdagi xabarlar o'zi turadi, faqat AI mijozni "yangi odam" deb boshlaydi.
+  const clearAiMemoryMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/conversations/${conversation.id}/clear-ai-memory`);
+    },
+  });
+
   const deleteMessageMutation = useMutation({
     mutationFn: async (message: Message) => {
       await api.delete(`/conversations/${conversation.id}/messages/${message.id}`);
@@ -246,13 +254,22 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
           ? deleteMessageMutation.error
           : deleteMutation.isError
             ? deleteMutation.error
-            : null;
+            : clearAiMemoryMutation.isError
+              ? clearAiMemoryMutation.error
+              : null;
 
   const handleDelete = () => {
     if (deleteMutation.isPending) return;
     const confirmed = window.confirm(t('chat.deleteConfirm'));
     if (!confirmed) return;
     deleteMutation.mutate();
+  };
+
+  const handleClearAiMemory = () => {
+    if (clearAiMemoryMutation.isPending) return;
+    const confirmed = window.confirm(t('chat.clearAiMemoryConfirm'));
+    if (!confirmed) return;
+    clearAiMemoryMutation.mutate();
   };
 
   const handleDeleteMessage = (message: Message) => {
@@ -291,6 +308,19 @@ export default function ChatWindow({ conversation, onDeleted, backHref, onBack }
             <p className="truncate text-xs text-gray-600 dark:text-tg-textMuted">@{conversation.contact.username}</p>
           )}
         </div>
+        <button
+          type="button"
+          onClick={handleClearAiMemory}
+          disabled={clearAiMemoryMutation.isPending}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-amber-50 hover:text-amber-600 disabled:opacity-50 dark:text-tg-textFaint dark:hover:bg-amber-500/10 dark:hover:text-amber-400"
+          title={t('chat.clearAiMemory')}
+        >
+          {clearAiMemoryMutation.isPending ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Eraser size={16} />
+          )}
+        </button>
         <button
           type="button"
           onClick={handleDelete}

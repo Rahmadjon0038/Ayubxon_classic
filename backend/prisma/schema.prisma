@@ -265,6 +265,11 @@ model Conversation {
   // aiPausedAt'dan beri belgilangan vaqt o'tmaguncha (avtomatik qayta yoqilish).
   aiPaused           Boolean            @default(false)
   aiPausedAt         DateTime?
+  // Admin "AI xotirasini tozalash" tugmasini bosgan vaqt — shu vaqtdan OLDINGI xabarlar AI'ga
+  // kontekst sifatida yuborilmaydi (getConversationHistory), shunda AI mijozni "yangi odam"
+  // sifatida qayta boshlaydi. Xabarlarning o'zi chatda saqlanib qoladi, faqat AI'ning
+  // "xotirasi" tozalanadi.
+  aiMemoryResetAt    DateTime?
   lastMessageAt      DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt

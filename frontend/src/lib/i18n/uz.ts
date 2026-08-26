@@ -141,6 +141,9 @@ const uz = {
     backToList: "Ro'yxatga qaytish",
     deleteChat: "Chatni o'chirish",
     deleteConfirm: "Bu chatni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.",
+    clearAiMemory: "AI xotirasini tozalash",
+    clearAiMemoryConfirm:
+      "AI shu mijoz bilan bo'lgan oldingi suhbatni unutib, uni yangi odam sifatida qabul qilsinmi? Chatdagi xabarlar o'chmaydi, faqat AI'ning konteksti tozalanadi.",
     operatorBanner: "Operator so'ralgan — AI bu suhbatda avtomatik javob bermayapti.",
     resumeAi: "AI'ni qayta yoqish",
     uploadPending: 'Fayl yuborilmoqda...',

@@ -764,8 +764,19 @@ interface MaybeSendAiReplyParams {
 // "Qaysi filial yaqin?" degan savoldan keyin mijoz shunchaki "Davlatobod" deb yozsa ham,
 // AI bu nimaga javob ekanini tarixdan tushunadi.
 async function getConversationHistory(conversationId: string, limit = 12): Promise<ChatTurn[]> {
+  // Admin "AI xotirasini tozalash" tugmasini bosgan bo'lsa, shu vaqtdan oldingi xabarlar AI
+  // kontekstiga kirmaydi — shunda AI mijozni suhbatni hali boshlamagan "yangi odam" deb biladi.
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { aiMemoryResetAt: true },
+  });
+
   const messages = await prisma.message.findMany({
-    where: { conversationId, text: { not: null } },
+    where: {
+      conversationId,
+      text: { not: null },
+      ...(conversation?.aiMemoryResetAt ? { sentAt: { gt: conversation.aiMemoryResetAt } } : {}),
+    },
     orderBy: { sentAt: 'desc' },
     take: limit,
   });
