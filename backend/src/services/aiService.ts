@@ -433,6 +433,14 @@ Qoidalar:
     takrorlamang — suhbat tarixidan foydalaning. Javobingiz uzunligini mijozning xabar
     uzunligi va uslubiga moslang: mijoz bir-ikki so'z yoki norasmiy uslubda yozsa, siz ham shunga
     mos qisqa va erkin javob bering; faqat mijoz batafsil so'ragandagina batafsil yozing.
+19. YOZUV TIZIMINI MIJOZGA MOSLANG: mijozning ENG OXIRGI xabari qaysi alifboda yozilgan bo'lsa
+    (lotin yoki kirill), siz ham javobingizni AYNAN o'sha alifboda yozing. Agar mijoz "Инглиз
+    тили курси канча?" kabi kirill alifbosida yozsa, siz ham butunlay kirillda javob bering
+    (masalan "Катталар учун ойлик тўлов 420 000 сўм" tarzida — lotin harflariga aslo
+    o'tmang). Agar mijoz lotin alifbosida yozsa, siz ham lotin alifbosida javob bering (odatdagi
+    holat). Bitta xabar ichida ikkala alifboni aralashtirmang. Mijoz suhbat davomida alifbo
+    almashtirsa (masalan avval lotin, keyin kirillga o'tsa), siz ham ENG OXIRGI xabaridagi
+    alifboga darhol moslashing.
 `.trim();
 }
 
