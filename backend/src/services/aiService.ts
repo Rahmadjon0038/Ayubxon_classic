@@ -158,8 +158,18 @@ function buildConversationMemoryBlock(params: {
   ].join('\n');
 }
 
+// Model 2-qoidadagi "narxni bazadagi so'z bilan bering" talabiga rioya qilmay, "X so'm/oy"
+// tarzida o'zicha qisqartirib qo'yishi mumkin (bu format mijozga yoqmasligi aniqlangan) —
+// shuning uchun kod darajasida har doim "oylik to'lov X so'm" formatiga qaytaramiz, prompt
+// ko'rsatmasiga ishonib qolmaymiz.
+const PRICE_SOM_PER_OY_PATTERN = /(\d[\d\s]*\d|\d)\s*so['’]?m\s*\/\s*oy/gi;
+
+function normalizePriceWording(text: string): string {
+  return text.replace(PRICE_SOM_PER_OY_PATTERN, (_match, digits: string) => `oylik to'lov ${digits.trim()} so'm`);
+}
+
 function sanitizeAiReply(text: string): string {
-  return text
+  return normalizePriceWording(text)
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/`([^`]*)`/g, '$1')
     .replace(/\\([*_[\]{}()#>])/g, '$1')
