@@ -22,18 +22,19 @@ function getClient(): OpenAI | null {
 }
 
 // Prompt qoidasi (8-band) buni taqiqlaydi, lekin model har doim ham 100% rioya qilavermaydi
-// (kuzatilgan: "yordam bera olaman" / "yordam bera olishim mumkin"). Shuning uchun kod
-// darajasida ham tekshirib, aniqlansa qayta yozdiramiz — bu "administratorlarimiz yordam
-// berishadi" kabi INSON xodimga ishora qiladigan, muammosiz jumlalarga tegmaydi (chunki ular
-// "bera ol-" shaklida emas, "berishadi" shaklida tugaydi).
-const SELF_REFERENTIAL_HELP_PATTERN = /yordam\s*bera\s*ol(aman|ishim)/i;
+// (kuzatilgan: "yordam bera olaman", "yordam bera olishim mumkin", "yordam bera olsam",
+// "yordam berishga tayyorman" kabi variantlar — fe'l shakli har xil bo'lishi mumkin). Shuning
+// uchun kod darajasida ham tekshirib, aniqlansa qayta yozdiramiz — bu "administratorlarimiz
+// yordam berishadi" kabi INSON xodimga ishora qiladigan, muammosiz jumlalarga tegmaydi (chunki
+// ular "bera ol-"/"berishga tayyor-" shaklida emas, "berishadi" shaklida tugaydi).
+const SELF_REFERENTIAL_HELP_PATTERN = /yordam\s*bera\s*ol\w*|yordam\s*berishga\s*tayyor\w*/i;
 
 // LLM orqali qayta yozish (tarmoq xatosi, kvota va h.k. sabab) muvaffaqiyatsiz bolganda
 // ishlatiladigan sungi chora: taqiqlangan iborani ozini aniq regex bilan matndan olib
 // tashlaydi (butun gapni emas, faqat shu iborani), shunda mijozga baribir "AI ekanini
 // fosh qiladigan" jumla yetib bormaydi.
 const FORBIDDEN_HELP_QUESTION_PATTERN =
-  /\s*(?:[,.\-]\s*)?(?:sizga\s+|sizni\s+)?(?:qanday\s+)?yordam\s*bera\s*ol(?:aman|ishim)(?:\s*mumkin)?\s*\??/gi;
+  /\s*(?:[,.\-]\s*)?(?:sizga\s+|sizni\s+)?(?:yana\s+)?(?:biror\s+narsa\s+(?:bilan\s+)?)?(?:qanday\s+|doimo\s+|har\s*doim\s+)?yordam\s*(?:bera\s*ol\w*(?:\s*mumkin)?|berishga\s*tayyor\w*)\s*\??/gi;
 
 function stripForbiddenSelfReferentialHelp(text: string): string {
   return text
@@ -54,7 +55,8 @@ async function rewriteWithoutForbiddenPhrase(client: OpenAI, original: string): 
           role: 'system',
           content:
             'Siz matn muharrirsiz. Berilgan Instagram DM xabarini xuddi shu ma\'no va ohangda, ' +
-            'lekin "yordam bera olaman", "yordam bera olishim mumkin" kabi robotga xos ' +
+            'lekin "yordam bera olaman", "yordam bera olishim mumkin", "yordam bera olsam", ' +
+            '"yordam berishga tayyorman" kabi robotga xos, o\'zini yordamchi sifatida tanishtiruvchi ' +
             'jumlalarsiz, tabiiy o\'zbek tilida qayta yozing. Markdown ishlatmang. Faqat qayta ' +
             'yozilgan xabar matnini qaytaring, boshqa hech narsa yozmang.',
         },
@@ -336,8 +338,10 @@ Qoidalar:
    yoki "avtomatik tizim" deb hech qachon tanishtirmang va bu haqda so'ralmasa gapirmang.
 8. O'zingiz haqingizda (ya'ni "MEN sizga yordam bera olaman/olishim mumkin" tarzida, birinchi
    shaxsda, o'zingizni yordam beruvchi qilib) HECH QACHON gapirmang — "Sizga qanday yordam bera
-   olaman?", "Sizga qanday yordam bera olishim mumkin?", "Xush kelibsiz, savolingiz bormi?",
-   "Boshqa savolingiz bormi?" va bularning har qanday parafrazi TAQIQLANADI, xabarning na
+   olaman?", "Sizga qanday yordam bera olishim mumkin?", "Yana biror narsa bilan yordam bera
+   olsam, ayting", "Doimo yordam berishga tayyorman", "Xush kelibsiz, savolingiz bormi?",
+   "Boshqa savolingiz bormi?" va bularning har qanday parafrazi (fe'lning "olaman", "olishim",
+   "olsam", "tayyorman" kabi qaysi shakli ishlatilishidan qat'i nazar) TAQIQLANADI, xabarning na
    boshida, na oxirida ishlatilmasin — bu darhol robot/shablon ekanini bildirib qo'yadi.
    ("Administratorlarimiz yordam berishadi" kabi INSON xodimlarga ishora qilingan gaplar
    muammo emas — taqiq faqat SIZNING o'zingiz haqingizdagi bunday jumlalarga tegishli.) Mijoz
