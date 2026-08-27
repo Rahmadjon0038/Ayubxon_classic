@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================
-# Instagram DM Platform — server deploy skripti (Ubuntu)
+# Ayubxon Classic — Instagram DM Platform server deploy skripti (Ubuntu)
 #
 # Ishlatish:
-#   1. Loyihani serverga yuklang (git clone yoki scp)
-#   2. cd instagram-dm-platform
+#   1. Loyihani serverga yuklang (git clone yoki scp) — boshqa mavjud loyihalar
+#      bilan aralashmasligi uchun ALOHIDA papkaga, masalan ~/ayubxon-classic
+#   2. cd ayubxon-classic
 #   3. sudo bash deploy.sh
 #
 # Skript nima qiladi:
