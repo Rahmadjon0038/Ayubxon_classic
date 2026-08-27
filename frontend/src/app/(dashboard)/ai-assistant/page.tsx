@@ -15,7 +15,7 @@ interface ImportResult {
 }
 
 const IMPORT_TEMPLATE = `{
-  "academyName": "Taraqqiyot Teaching Center",
+  "academyName": "Ayubxon Classic",
   "branches": [
     {
       "name": "Boburshox filiali",
@@ -30,17 +30,17 @@ const IMPORT_TEMPLATE = `{
   "groups": [
     {
       "branchName": "Boburshox filiali",
-      "subjectName": "Ingliz tili",
-      "price": "Kattalar uchun: 420 000 so'm/oy\\nKichik yoshdagi o'quvchilar uchun: 360 000 so'm/oy",
-      "details": "Sinov darsi mavjud, zarur bo'lsa daraja aniqlash testi o'tkaziladi.",
+      "subjectName": "Klassik kostyum",
+      "price": "1 200 000 so'm",
+      "details": "Mato: shirst. Ranglari: qora, kulrang, ko'k. O'lchamlari: 46-56.",
       "isActive": true
     }
   ],
   "promotions": [
     {
       "scope": "ALL_BRANCHES",
-      "title": "2-3 fan bo'yicha chegirma",
-      "details": "2 yoki 3 ta fan bo'yicha bir vaqtda ta'lim oladigan o'quvchilarga chegirma berilishi mumkin.",
+      "title": "Kostyum + shim to'plamiga chegirma",
+      "details": "Kostyum va shimni birga xarid qilganda 10% chegirma beriladi.",
       "isActive": true
     }
   ]
@@ -85,7 +85,7 @@ interface PromotionFormState {
 
 const TABS: { key: SectionKey; label: string; desc: string }[] = [
   { key: 'branches', label: 'Filiallar', desc: 'Asosiy ma\'lumotlar' },
-  { key: 'groups', label: 'Guruhlar', desc: 'Filialga bog\'langan guruhlar' },
+  { key: 'groups', label: 'Mahsulotlar', desc: 'Filialga bog\'langan mahsulotlar' },
   { key: 'promotions', label: 'Aksiyalar', desc: 'Chegirmalar va maxsus takliflar' },
 ];
 
@@ -564,13 +564,13 @@ export default function AiAssistantPage() {
 
             {activeTab === 'groups' && (
               <SectionShell
-                title="Guruhlar"
-                subtitle="Har bir guruh filialga bog'lanadi. Fan nomi, kurs narxi va batafsil ma'lumot alohida yoziladi."
+                title="Mahsulotlar"
+                subtitle="Har bir mahsulot filialga bog'lanadi. Mahsulot nomi, narxi va batafsil ma'lumot alohida yoziladi."
                 onAdd={() => openCreate('groups')}
-                addLabel="Yangi guruh qo'shish"
+                addLabel="Yangi mahsulot qo'shish"
               >
                 {filteredGroups.length === 0 ? (
-                  <EmptyState onAdd={() => openCreate('groups')} label="Guruh qo'shish" />
+                  <EmptyState onAdd={() => openCreate('groups')} label="Mahsulot qo'shish" />
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {filteredGroups.map((group) => (
@@ -724,24 +724,24 @@ export default function AiAssistantPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Fan nomi *">
+                <Field label="Mahsulot nomi *">
                   <input
                     type="text"
                     required
                     value={groupForm.subjectName}
                     onChange={(event) => setGroupForm({ ...groupForm, subjectName: event.target.value })}
                     className={inputClass}
-                    placeholder="Arab tili"
+                    placeholder="Klassik kostyum"
                   />
                 </Field>
-                <Field label="Kurs narxi *">
+                <Field label="Narxi *">
                   <input
                     type="text"
                     required
                     value={groupForm.price}
                     onChange={(event) => setGroupForm({ ...groupForm, price: event.target.value })}
                     className={inputClass}
-                    placeholder="420 000 so'm/oy"
+                    placeholder="1 200 000 so'm"
                   />
                 </Field>
                 <Field label="Batafsil ma'lumot *" className="md:col-span-2">
@@ -751,7 +751,7 @@ export default function AiAssistantPage() {
                     value={groupForm.details}
                     onChange={(event) => setGroupForm({ ...groupForm, details: event.target.value })}
                     className={inputClass}
-                    placeholder="Guruh haqidagi barcha savollarga javob beradigan batafsil ma'lumot. Jadval, yosh, daraja, sinov darsi va boshqa eslatmalar."
+                    placeholder="Mahsulot haqidagi barcha savollarga javob beradigan batafsil ma'lumot: o'lchamlar, rang, mato turi, mavjudligi va boshqa eslatmalar."
                   />
                 </Field>
               </div>
@@ -850,8 +850,8 @@ export default function AiAssistantPage() {
         <ModalShell title="JSON orqali to'ldirish" onClose={closeImport} maxWidth="max-w-3xl">
           <div className="space-y-4">
             <p className="text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
-              Filiallar, guruhlar va aksiyalarni bittada qo&apos;shish uchun JSON yopishtiring va
-              &quot;Yuklash&quot;ni bosing. Mavjud filial/guruh/aksiya nomi bilan mos kelsa —
+              Filiallar, mahsulotlar va aksiyalarni bittada qo&apos;shish uchun JSON yopishtiring
+              va &quot;Yuklash&quot;ni bosing. Mavjud filial/mahsulot/aksiya nomi bilan mos kelsa —
               yangilanadi, aks holda yangi yozuv sifatida qo&apos;shiladi. Keyin har birini
               alohida tahrirlashingiz mumkin.
             </p>
@@ -895,7 +895,7 @@ export default function AiAssistantPage() {
                   {importMutation.data.branches.updated} yangilandi
                 </p>
                 <p>
-                  Guruhlar: {importMutation.data.groups.created} yangi,{' '}
+                  Mahsulotlar: {importMutation.data.groups.created} yangi,{' '}
                   {importMutation.data.groups.updated} yangilandi
                   {importMutation.data.groups.skipped.length > 0 &&
                     `, ${importMutation.data.groups.skipped.length} o'tkazib yuborildi`}
@@ -1233,7 +1233,7 @@ function GroupCard({
           <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">{item.isActive ? 'Faol' : 'Faol emas'}</p>
         </div>
         <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
-          Guruh
+          Mahsulot
         </span>
       </div>
 
@@ -1242,7 +1242,7 @@ function GroupCard({
           <span className="font-medium text-slate-500 dark:text-tg-textFaint">Filial:</span> {branchName}
         </p>
         <p>
-          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Kurs narxi:</span> {item.price}
+          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Narxi:</span> {item.price}
         </p>
       </div>
 

@@ -1,11 +1,11 @@
-# Instagram DM Platform
+# Ayubxon Classic — Instagram DM Platform
 
-Instagram Professional (Business) akkauntga kelgan Direct xabarlarini qabul qilish, ko'rish va admin panel orqali qo'lda javob berish uchun MVP platforma.
+Instagram Professional (Business) akkauntga kelgan Direct xabarlarini qabul qilish, ko'rish va admin panel orqali qo'lda (yoki AI yordamida avtomatik) javob berish uchun platforma. Hozirgi sozlamalar "Ayubxon Classic" kiyim-kechak do'koni (kostyum va shim) uchun moslashtirilgan.
 
 **Stack:** Next.js + TypeScript + Tailwind + TanStack Query (frontend) · Node.js + Express + Prisma + PostgreSQL + Socket.IO (backend) · Docker (deployment)
 
 ```
-instagram-dm-platform/
+Ayubxon_classic/
   frontend/          # Next.js admin panel
   backend/           # Express API + webhook + Socket.IO
   docker-compose.yml
@@ -117,7 +117,7 @@ docker compose exec backend node dist/scripts/createAdmin.js admin@example.com S
 Loyihani serverga yuklang (git clone yoki scp), keyin:
 
 ```bash
-cd instagram-dm-platform
+cd Ayubxon_classic
 cp .env.example .env
 nano .env    # FRONTEND_URL, NEXT_PUBLIC_API_URL, INSTAGRAM_APP_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
 

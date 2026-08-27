@@ -1,8 +1,8 @@
 {
-  "name": "instagram-dm-backend",
+  "name": "ayubxon-classic-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "Instagram DM boshqaruv platformasi — backend API",
+  "description": "Ayubxon Classic — Instagram DM boshqaruv platformasi (backend API)",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
