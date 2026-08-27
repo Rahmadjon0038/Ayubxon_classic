@@ -9,6 +9,7 @@ import {
   analyzeConversation,
   ChatTurn,
   detectHandoverRequest,
+  detectJobInquiry,
   generateAiReply,
   pickHandoverAcknowledgement,
 } from './aiService';
@@ -700,6 +701,17 @@ async function processMessagingEvent(
 
   if (detectedPhone) {
     const settings = await prisma.academySettings.findUnique({ where: { instagramAccountId: account.id } });
+    // Mijoz kursga emas, ISH O'RNIGA (vakansiya) qiziqib yozgan bo'lsa (masalan "Turk tili
+    // bo'yicha bo'sh ish o'rni bormi" yoki umuman boshqacha so'z bilan — "sizlarda o'qituvchi
+    // kerakmi" kabi), keyinroq qoldirgan telefon raqami oddiy kurs lidi sifatida Telegramga
+    // tushib, sotuvchilarni chalg'itmasligi uchun tekshiramiz. Aniqlash AI orqali (suhbat
+    // MA'NOSIGA qarab, aniq so'zga bog'liq bo'lmagan holda) amalga oshadi; AI ishlamay qolsa
+    // (kalit sozlanmagan/xato), tezkor kalit-so'z regexi zaxira sifatida ishlatiladi.
+    const recentHistory = await getConversationHistory(conversation.id);
+    const jobInquiryAnalysis = await analyzeConversation(recentHistory);
+    const isJobInquiry =
+      jobInquiryAnalysis?.isJobInquiry ??
+      recentHistory.some((turn) => turn.role === 'user' && detectJobInquiry(turn.content));
     notifyNewLead({
       academyName: settings?.academyName ?? account.name ?? account.username,
       phoneNumber: detectedPhone,
@@ -709,6 +721,7 @@ async function processMessagingEvent(
       preferredTime: conversation.preferredTime,
       contactName: updatedConversation.contact.name,
       contactUsername: updatedConversation.contact.username,
+      isJobInquiry,
     }).catch(() => {});
   }
 
@@ -1032,6 +1045,9 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
     });
 
     if (shouldNotifyLead && analysis?.phoneNumber) {
+      const isJobInquiry =
+        analysis.isJobInquiry ||
+        analysisHistory.some((turn) => turn.role === 'user' && detectJobInquiry(turn.content));
       notifyNewLead({
         academyName: settings.academyName,
         phoneNumber: analysis.phoneNumber,
@@ -1041,6 +1057,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
         preferredTime: analysis.preferredTime,
         contactName: updatedConversation.contact.name,
         contactUsername: updatedConversation.contact.username,
+        isJobInquiry,
       }).catch(() => {});
     }
 

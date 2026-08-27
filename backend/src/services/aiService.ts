@@ -548,6 +548,7 @@ export interface ConversationAnalysis {
   interestedCourse: string | null;
   interestedBranch: string | null;
   preferredTime: string | null;
+  isJobInquiry: boolean;
 }
 
 const analysisSchema = z.object({
@@ -559,6 +560,7 @@ const analysisSchema = z.object({
   interestedCourse: z.string().nullable(),
   interestedBranch: z.string().nullable(),
   preferredTime: z.string().nullable(),
+  isJobInquiry: z.boolean(),
 });
 
 // Tezkor, OpenAI'siz aniqlash: mijozning ENG OXIRGI xabarida operator/inson so'ralganini
@@ -571,6 +573,18 @@ const HANDOVER_REQUEST_PATTERN =
 
 export function detectHandoverRequest(text: string): boolean {
   return HANDOVER_REQUEST_PATTERN.test(text);
+}
+
+// Mijoz kursga emas, ISH O'RNIGA (vakansiya/xodimlikka) qiziqib yozganini aniqlash uchun.
+// Bunday xabarlardan keyin qoldirilgan telefon raqami kurs lidiga o'xshab Telegramga
+// yuborilib, sotuvchilarni chalg'itmasligi kerak — shuning uchun notifyNewLead shu belgidan
+// foydalanib xabarni alohida (vakansiya) sifatida belgilaydi. `.?` apostrofning turli
+// ko'rinishlarini (', ‘, ʻ) va uni tushirib yozishni ham qamrab oladi.
+const JOB_INQUIRY_PATTERN =
+  /(ish\s*o.?rni|ish\s*joyi|bo.?sh\s*ish|bo.?sh\s*o.?rin|vakansiya|ishga\s*qabul|ishga\s*ol|xodim\s*kerak|hodim\s*kerak|ishga\s*kirish|ish\s*bormi|ishga\s*joylash|иш\s*ўрни|иш\s*жойи|бўш\s*иш|бўш\s*ўрин|вакансия|ишга\s*қабул|ходим\s*керак|хизматчи\s*керак|работ[а-я]*\s*(есть|бор)|нужен\s*сотрудник|сотрудник\s*нужен)/i;
+
+export function detectJobInquiry(text: string): boolean {
+  return JOB_INQUIRY_PATTERN.test(text);
 }
 
 function getLatestUserMessage(history: ChatTurn[]): string {
@@ -651,11 +665,11 @@ export function pickHandoverAcknowledgement(): string {
 const ANALYSIS_SYSTEM_PROMPT = `
 Siz "InboxCRM" tizimi uchun ishlaydigan suhbat tahlilchisisiz. Sizga Instagram DM orqali
 o'quv markazi va mijoz o'rtasidagi suhbat tarixi beriladi ("Mijoz:" — kontakt, "Admin:" — markaz
-tomonidan yozilgan javob, inson yoki AI farqi yo'q). Vazifangiz — shu suhbatni sakkizta mezon
+tomonidan yozilgan javob, inson yoki AI farqi yo'q). Vazifangiz — shu suhbatni to'qqizta mezon
 bo'yicha tasniflab, FAQAT quyidagi JSON formatida javob berish (boshqa hech qanday matn, izoh
 yoki markdown qo'shmang):
 
-{"leadTemperature": "HOT" | "WARM" | "COLD", "talkStatus": "TALKED" | "NOT_TALKED", "courseDecision": "WILL_WRITE" | "WILL_NOT_WRITE", "handoverRequested": true | false, "phoneNumber": string | null, "interestedCourse": string | null, "interestedBranch": string | null, "preferredTime": string | null}
+{"leadTemperature": "HOT" | "WARM" | "COLD", "talkStatus": "TALKED" | "NOT_TALKED", "courseDecision": "WILL_WRITE" | "WILL_NOT_WRITE", "handoverRequested": true | false, "phoneNumber": string | null, "interestedCourse": string | null, "interestedBranch": string | null, "preferredTime": string | null, "isJobInquiry": true | false}
 
 Mezonlar:
 
@@ -733,10 +747,23 @@ Mezonlar:
      bo'lsa, o'z holicha qisqa qaytaring.
    - Agar mijoz aniq vaqt aytmagan bo'lsa, null qaytaring — taxmin qilib to'qimang.
 
+9. isJobInquiry (mijoz O'QUVCHI sifatida emas, XODIM/ISHGA KIRISH maqsadida yozganmi):
+   - true: mijoz markazda ISHLASH, o'qituvchi/xodim bo'lish, vakansiya, bo'sh ish o'rni haqida
+     so'ragan yoki o'zini ishga taklif qilgan bo'lsa — buni ANIQ so'zlarga emas, xabarning UMUMIY
+     MA'NOSIGA qarab aniqlang. Masalan: "ish o'rni bormi", "vakansiya bormi", "sizlarda o'qituvchi
+     kerakmi", "men turk tili o'rgataman, ishga olasizlarmi", "CV yubora olamanmi", "maosh qancha
+     bo'ladi (ishga oid kontekstda)", "necha soat ishlash kerak bo'ladi", "hodim sifatida qabul
+     qilasizlarmi" — bularning barchasi turlicha so'z bilan aytilgan bo'lsa ham MA'NOSI bir xil:
+     mijoz ISHGA KIRMOQCHI, kursga YOZILMOQCHI EMAS.
+   - false: mijoz o'zi yoki farzandi/qarindoshi uchun kursga yozilish, narx, jadval, filial haqida
+     so'ragan barcha oddiy holatlarda — bu ustun ODATDA false bo'ladi.
+   - Diqqat: "kurs bormi", "narxi qancha" kabi O'QUVCHI sifatidagi so'rovlar bilan adashtirmang —
+     faqat mijoz aniq ISHLASH/XODIM/VAKANSIYA ma'nosida yozgandagina true qaytaring.
+
 Faqat suhbat tarixidagi haqiqiy dalillarga tayaning, taxmin qilib to'qib chiqarmang. Suhbat juda
 qisqa yoki noaniq bo'lsa, xavfsiz standart qiymatlardan foydalaning: leadTemperature="WARM",
 talkStatus mos holatga qarab, courseDecision="WILL_WRITE", handoverRequested=false, phoneNumber=null,
-interestedCourse=null, interestedBranch=null, preferredTime=null.
+interestedCourse=null, interestedBranch=null, preferredTime=null, isJobInquiry=false.
 `.trim();
 
 function formatHistoryForAnalysis(history: ChatTurn[]): string {
@@ -759,7 +786,7 @@ export async function analyzeConversation(history: ChatTurn[]): Promise<Conversa
     const completion = await client.chat.completions.create({
       model: AI_MODEL,
       temperature: 0,
-      max_tokens: 150,
+      max_tokens: 200,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },

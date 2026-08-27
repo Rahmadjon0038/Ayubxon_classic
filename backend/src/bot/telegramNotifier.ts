@@ -13,6 +13,9 @@ export interface NewLeadNotification {
   preferredTime: string | null;
   contactName: string | null;
   contactUsername: string | null;
+  // true bo'lsa, mijoz kursga emas, ISH O'RNIGA (vakansiya) qiziqib yozgan — xabar shunga
+  // qarab alohida (kurs lidi bilan aralashmaydigan) ko'rinishda chiqariladi.
+  isJobInquiry?: boolean;
 }
 
 export interface NewAdLeadNotification {
@@ -31,6 +34,20 @@ function escapeHtml(value: string): string {
 }
 
 function buildMessage(lead: NewLeadNotification): string {
+  if (lead.isJobInquiry) {
+    const lines = [
+      `<b>💼 ${escapeHtml(lead.academyName)} — vakansiya so'ralmoqda</b>`,
+      '',
+      "⚠️ <i>Diqqat: bu — kurs lidi EMAS, mijoz ISH O'RNI (vakansiya) haqida so'ragan!</i>",
+      `📞 <b>Telefon:</b> ${escapeHtml(lead.phoneNumber)}`,
+    ];
+    const jobContactLabel = lead.contactName || lead.contactUsername;
+    if (jobContactLabel) {
+      lines.push(`👤 <b>Instagram:</b> ${escapeHtml(jobContactLabel)}`);
+    }
+    return lines.join('\n');
+  }
+
   const title = lead.branch ? escapeHtml(lead.branch) : `${escapeHtml(lead.academyName)} — yangi lid`;
 
   const lines = [`<b>📍 ${title}</b>`, ''];
