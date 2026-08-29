@@ -379,9 +379,9 @@ export default function AiAssistantPage() {
   const error = branchesQuery.error || groupsQuery.error;
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 dark:bg-tg-bg">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-4">
+    <div className="h-full overflow-y-auto bg-slate-50 p-0.5 sm:p-6 dark:bg-tg-bg">
+      <div className="mx-auto max-w-7xl space-y-2 sm:space-y-4">
+        <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-4">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -431,7 +431,7 @@ export default function AiAssistantPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-5">
+        <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
               {TABS.map((tab) => {
@@ -473,13 +473,13 @@ export default function AiAssistantPage() {
         </div>
 
         {isLoading && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-textMuted">
+          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-textMuted">
             Yuklanmoqda...
           </div>
         )}
 
         {isError && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
             {getErrorMessage(error)}
           </div>
         )}
@@ -487,8 +487,8 @@ export default function AiAssistantPage() {
         {!isLoading && !isError && (
           <>
             {activeTab === 'branches' && (
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-5">
-                <div className="mb-5">
+              <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-5">
+                <div className="mb-4">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-tg-text">Do&apos;kon</h2>
                   <p className="mt-1 text-sm text-slate-600 dark:text-tg-textMuted">
                     Nomi, tavsifi, manzili, ish vaqti, egasining telefon raqami va rasmlari shu yerda saqlanadi.
@@ -640,7 +640,7 @@ export default function AiAssistantPage() {
                 {filteredGroups.length === 0 ? (
                   <EmptyState onAdd={openCreateGroup} label="Mahsulot qo'shish" />
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-2 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                     {filteredGroups.map((group) => (
                       <GroupCard
                         key={group.id}
@@ -858,8 +858,8 @@ function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-tg-border dark:bg-tg-panel">
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <section>
+      <div className="mb-3 flex flex-col gap-3 px-0.5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-tg-text">{title}</h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-tg-textMuted">{subtitle}</p>
@@ -880,7 +880,7 @@ function SectionShell({
 
 function EmptyState({ onAdd, label }: { onAdd: () => void; label: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-tg-hover dark:bg-tg-panelAlt">
+    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-tg-hover dark:bg-tg-panelAlt">
       <p className="text-sm text-slate-600 dark:text-tg-textMuted">Hozircha yozuv yo&apos;q.</p>
       <button
         type="button"
@@ -988,7 +988,7 @@ function ModalShell({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/45 px-4 py-6 backdrop-blur-sm sm:items-center">
       <div
-        className={`flex max-h-[calc(100vh-3rem)] w-full ${maxWidth} flex-col rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-tg-border dark:bg-tg-panel`}
+        className={`flex max-h-[calc(100vh-3rem)] w-full ${maxWidth} flex-col rounded-lg border border-slate-200 bg-white shadow-lg dark:border-tg-border dark:bg-tg-panel`}
       >
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-tg-border">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-tg-text">{title}</h3>
@@ -1018,7 +1018,7 @@ function GroupCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-tg-border dark:bg-tg-panel">
+    <article className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-tg-border dark:bg-tg-panel">
       {item.videoThumbnailUrl && (
         <a href={item.videoUrl ?? undefined} target="_blank" rel="noreferrer" className="block shrink-0">
           <img
@@ -1029,7 +1029,7 @@ function GroupCard({
         </a>
       )}
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="line-clamp-1 text-lg font-semibold text-slate-900 dark:text-tg-text">
@@ -1059,12 +1059,12 @@ function GroupCard({
           )}
         </div>
 
-        <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
+        <div className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-700 dark:border-tg-border dark:text-tg-textMuted">
           <p className="font-medium text-slate-500 dark:text-tg-textFaint">Ma&apos;lumot</p>
           <p className="mt-1 whitespace-pre-wrap">{item.details}</p>
         </div>
 
-        <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
+        <div className="mt-3 text-xs text-slate-500 dark:text-tg-textMuted">
           <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
         </div>
 

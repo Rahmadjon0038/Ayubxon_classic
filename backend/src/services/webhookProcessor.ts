@@ -226,10 +226,13 @@ function isInstagramPermalink(rawUrl: string): boolean {
 // Instagram post/reel havolasidan barqaror qismini (shortcode) ajratib oladi — havolalar
 // query parametr, "www." prefiksi yoki oxirgi "/" bilan farq qilishi mumkin, shuning uchun
 // to'g'ridan-to'g'ri satr solishtirish ishonchli emas.
+// "reel" (yagona post/reel havolasi) va "reels" (Instagram ayrim kontekstlarda ko'plik
+// shaklda ham beradi) ikkalasini ham qamrab olamiz — qaysi birini qoldirib ketish link
+// mos kelmay qolishiga (demak AI mahsulotni tanimay qolishiga) olib kelishi mumkin.
 function extractInstagramShortcode(rawUrl: string): string | null {
   try {
     const { pathname } = new URL(rawUrl);
-    const match = pathname.match(/\/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/);
+    const match = pathname.match(/\/(?:reels?|p|tv)\/([A-Za-z0-9_-]+)/);
     return match ? match[1] : null;
   } catch {
     return null;
@@ -239,11 +242,38 @@ function extractInstagramShortcode(rawUrl: string): string | null {
 // Mijoz linkni tabiiy "Yuborish" (Send) tugmasi orqali emas, qo'lda nusxalab, oddiy matn
 // sifatida yozib yuborishi ham mumkin — bunday holatda attachment kelmaydi, faqat matn
 // ichida URL bo'ladi. Shuni ham topib olamiz.
-const INSTAGRAM_URL_IN_TEXT_PATTERN = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|p|tv)\/[A-Za-z0-9_-]+[^\s]*/i;
+const INSTAGRAM_URL_IN_TEXT_PATTERN = /https?:\/\/(?:www\.)?instagram\.com\/(?:reels?|p|tv)\/[A-Za-z0-9_-]+[^\s]*/i;
 
 function findInstagramUrlInText(text: string): string | null {
   const match = text.match(INSTAGRAM_URL_IN_TEXT_PATTERN);
   return match ? match[0] : null;
+}
+
+// Xavfsizlik zaxirasi: attachment yoki matnda topilmasa, butun webhook event ichida
+// (Meta payloadi ba'zan kutilmagan/ichma-ich maydonlarda link yuborishi mumkin) Instagram
+// post/reel havolasini qidiradi.
+function findInstagramUrlAnywhere(value: unknown, seen = new WeakSet<object>()): string | null {
+  if (typeof value === 'string') {
+    return findInstagramUrlInText(value);
+  }
+  if (!value || typeof value !== 'object') return null;
+  if (seen.has(value as object)) return null;
+  seen.add(value as object);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findInstagramUrlAnywhere(item, seen);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  for (const item of Object.values(value as Record<string, unknown>)) {
+    const found = findInstagramUrlAnywhere(item, seen);
+    if (found) return found;
+  }
+
+  return null;
 }
 
 // Mijoz Instagramda ulashgan/messages qilgan post/reel havolasini shu akkauntning faol
@@ -539,10 +569,10 @@ function isPriceOnlyComment(text: string): boolean {
 // bular ommaviy (hamma ko'radigan) kommentariyalar, shuning uchun tabiiy va turlicha bo'lishi
 // muhim.
 const PRICE_COMMENT_REPLIES = [
+  "Assalomu alaykum! Direct'dan yozing, batafsil ma'lumot beramiz 🙌",
   "Assalomu alaykum! Narxlar va batafsil ma'lumot uchun Direct'ga yozing 😊",
-  "Salom! Iltimos, Direct'dan yozing, batafsil ma'lumot beramiz 🙌",
-  "Assalomu alaykum, narx haqida Direct orqali batafsil aytamiz — yozing 😊",
-  "Salom! Direct'ga yozib qoldiring, sizga tez orada javob beramiz 😊",
+  "Assalomu alaykum, Direct orqali yozing — batafsil ma'lumot beramiz 😊",
+  "Assalomu alaykum! Direct'ga yozib qoldiring, tez orada javob beramiz 😊",
 ];
 
 function pickPriceCommentReply(): string {
@@ -586,6 +616,11 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[webhook] Kommentariyaga javob yozishda xato: ${message}`);
+    // Javob HAQIQATDA yuborilmadi — "band qilingan" belgisini bekor qilamiz, shunda Meta
+    // shu eventni qayta yuborsa (yoki xato vaqtinchalik bo'lsa), keyingi urinish o'tkazib
+    // yuborilmaydi. Aks holda bir marta muvaffaqiyatsiz bo'lgan comment abadiy "javob
+    // berilgan" deb hisoblanib qolar edi.
+    await prisma.repliedComment.delete({ where: { commentId } }).catch(() => {});
   }
 }
 
@@ -812,15 +847,19 @@ async function processMessagingEvent(
   // qilamiz — topilsa, keyingi qisqa savollarda ("narxi qancha?") AI aynan shu mahsulotni
   // nazarda tutadi.
   const candidateProductUrl =
-    attachmentUrl && isInstagramPermalink(attachmentUrl)
-      ? attachmentUrl
-      : normalizedText
-        ? findInstagramUrlInText(normalizedText)
-        : null;
+    (attachmentUrl && isInstagramPermalink(attachmentUrl) ? attachmentUrl : null) ??
+    (normalizedText ? findInstagramUrlInText(normalizedText) : null) ??
+    findInstagramUrlAnywhere(event);
   const matchedGroupId =
     !isEcho && candidateProductUrl ? await findGroupIdByVideoUrl(account.id, candidateProductUrl) : null;
   if (matchedGroupId) {
     console.log(`[webhook] Xabar mahsulotga moslashtirildi (conversation=${conversation.id}, group=${matchedGroupId})`);
+  } else if (candidateProductUrl && !isEcho) {
+    // Link topildi, lekin hech bir faol mahsulotning videoUrl'iga mos kelmadi — kelajakda
+    // shu holatni tekshirish uchun (masalan link mahsulotga hali qo'shilmagan yoki eskirgan).
+    console.log(
+      `[webhook] Instagram link topildi, lekin mahsulotga mos kelmadi (conversation=${conversation.id}, url=${candidateProductUrl})`,
+    );
   }
 
   let saved;
