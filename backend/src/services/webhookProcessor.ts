@@ -584,6 +584,16 @@ function isPriceOnlyComment(text: string): boolean {
   return core.length > 0 && core.length <= MAX_PRICE_CORE_LENGTH && PRICE_ROOT_PATTERN.test(core);
 }
 
+// Odamlar mahsulot postiga qiziqish bildirish uchun ko'pincha shunchaki "+" (yoki "+1",
+// "++", "+++++🔥🔥🔥" va h.k. — istalgancha soni, ko'pincha oxirida olov/yurak kabi
+// emoji bilan) deb komment qoldiradi — bu ham narx savoli bilan bir xil maqsadda ("menga
+// ma'lumot kerak") ishlatiladi, shuning uchun xuddi shunday ishlov beriladi.
+const PLUS_INTEREST_PATTERN = /^[+➕]+\d{0,2}\s*(?:\p{Extended_Pictographic}️?\s*)*$/u;
+
+function isPlusInterestComment(text: string): boolean {
+  return PLUS_INTEREST_PATTERN.test(text.trim());
+}
+
 // Har safar bir xil bo'lmasligi uchun bir nechta variant orasidan tasodifiy tanlanadi —
 // bular ommaviy (hamma ko'radigan) kommentariyalar, shuning uchun tabiiy va turlicha bo'lishi
 // muhim.
@@ -594,16 +604,28 @@ const PRICE_COMMENT_REPLIES = [
   "Assalomu alaykum! Direct'ga yozib qoldiring, tez orada javob beramiz 😊",
 ];
 
-function pickPriceCommentReply(): string {
-  return PRICE_COMMENT_REPLIES[Math.floor(Math.random() * PRICE_COMMENT_REPLIES.length)];
+// Mahsulot aniqlanib, private DM orqali batafsil ma'lumot ALLAQACHON yuborilgan bo'lsa,
+// ommaviy javobda "Direct'ga yozing" deb qayta so'ramaymiz (bu chalkash — mijoz allaqachon
+// DM oldi) — buning o'rniga DM'ni tekshirishni aytamiz.
+const PRICE_COMMENT_REPLIES_AFTER_DM = [
+  "Assalomu alaykum! Batafsil ma'lumotni Direct'ingizga yubordik, tekshirib ko'ring 📩",
+  "Assalomu alaykum! Direct'ingizga batafsil ma'lumot yubordik 😊",
+  "Assalomu alaykum, Direct'ingizni tekshiring — batafsil ma'lumot yuborildi 📩",
+  "Assalomu alaykum! Sizga Direct orqali batafsil ma'lumot yubordik 😊",
+];
+
+function pickPriceCommentReply(privateReplySent: boolean): string {
+  const pool = privateReplySent ? PRICE_COMMENT_REPLIES_AFTER_DM : PRICE_COMMENT_REPLIES;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// Post/reel ostidagi "narxi?" kabi qisqa kommentariyalarga avtomatik javob yozadi — bu
-// kommentariyaning o'zida narx aytilmaydi (bir nechta o'lcham/rangda narx farq qilishi
-// mumkin), shuning uchun mijoz Direct'ga yo'naltiriladi (aniqlashning o'zi oddiy regex
-// asosida — tezroq va ishonchliroq, AI shart emas). Bundan tashqari, komment ANIQ qaysi
-// mahsulot postiga yozilgani aniqlansa, private DM orqali (Instagramning "Private Reply"
-// imkoniyati bilan) AI generatsiya qilgan narx/malumot ham QO'SHIMCHA yuboriladi.
+// Post/reel ostidagi "narxi?" yoki "+" kabi qisqa qiziqish bildiruvchi kommentariyalarga
+// avtomatik javob yozadi — bu kommentariyaning o'zida narx aytilmaydi (bir nechta o'lcham/
+// rangda narx farq qilishi mumkin), shuning uchun mijoz Direct'ga yo'naltiriladi. Bundan
+// tashqari, komment ANIQ qaysi mahsulot postiga yozilgani aniqlansa, private DM orqali
+// (Instagramning "Private Reply" imkoniyati bilan) AI generatsiya qilgan narx/malumot ham
+// yuboriladi — bu holda ommaviy javob matni ham shunga mos ravishda ("Direct'ga yozing" emas,
+// "Direct'ingizga yubordik") tanlanadi.
 async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: string): Promise<void> {
   const commentId = value.id?.trim();
   const text = value.text?.trim();
@@ -619,7 +641,7 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
   // O'zimizning (yoki admin qo'lda yozgan) kommentariyamizga qayta javob yozib yubormaslik.
   if (fromId && fromId === account.instagramAccountId) return;
   if (!account.aiEnabled) return;
-  if (!isPriceOnlyComment(text)) return;
+  if (!isPriceOnlyComment(text) && !isPlusInterestComment(text)) return;
 
   // Meta webhookni ba'zan takror yuborishi mumkin — shu comment'ga avval javob yozgan
   // bo'lsak, unique constraint buni ushlab qoladi va jim o'tkazib yuboramiz.
@@ -632,8 +654,41 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
 
   const accessToken = getAccessToken(account);
 
+  // Avval, komment ANIQ qaysi mahsulot postiga yozilgani aniqlansa (media.id orqali
+  // shortcode'ini GroupInfo.videoUrl bilan solishtirib), private DM orqali AI generatsiya
+  // qilgan narx/malumot yuboriladi — shundan KEYIN ommaviy javob matni shu natijaga qarab
+  // tanlanadi. Bu qadamda har qanday xato (mos mahsulot topilmadi, Meta xato qaytardi va
+  // h.k.) jim o'tkazib yuboriladi — DM yuborilmagan deb hisoblanib, ommaviy javob odatdagi
+  // ("Direct'ga yozing") matn bilan davom etadi.
+  let privateReplySent = false;
+  const mediaId = value.media?.id?.trim();
+  if (mediaId) {
+    try {
+      const shortcode = await fetchMediaShortcode(accessToken, mediaId);
+      const matchedGroupId = shortcode ? await findGroupIdByShortcode(account.id, shortcode) : null;
+      if (matchedGroupId) {
+        const replyText = await generateAiReply(
+          account.id,
+          account.name || account.username,
+          [{ role: 'user', content: text }],
+          matchedGroupId,
+        );
+        if (replyText) {
+          await sendPrivateReply(accessToken, commentId, replyText);
+          privateReplySent = true;
+          console.log(
+            `[webhook] Private reply yuborildi (comment=${commentId.slice(0, 24)}…, group=${matchedGroupId})`,
+          );
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[webhook] Private reply yuborishda xato (comment=${commentId.slice(0, 24)}…): ${message}`);
+    }
+  }
+
   try {
-    await replyToComment(accessToken, commentId, pickPriceCommentReply());
+    await replyToComment(accessToken, commentId, pickPriceCommentReply(privateReplySent));
     console.log(`[webhook] Narx kommentariyasiga javob yozildi (comment=${commentId.slice(0, 24)}…)`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -641,39 +696,9 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
     // Javob HAQIQATDA yuborilmadi — "band qilingan" belgisini bekor qilamiz, shunda Meta
     // shu eventni qayta yuborsa (yoki xato vaqtinchalik bo'lsa), keyingi urinish o'tkazib
     // yuborilmaydi. Aks holda bir marta muvaffaqiyatsiz bo'lgan comment abadiy "javob
-    // berilgan" deb hisoblanib qolar edi.
+    // berilgan" deb hisoblanib qolar edi. (Private reply Metada bir martalik bo'lgani uchun
+    // qayta urinishda takror yuborilmaydi — xato bo'lsa jim o'tkazib yuboriladi.)
     await prisma.repliedComment.delete({ where: { commentId } }).catch(() => {});
-    return;
-  }
-
-  // Komment ANIQ qaysi mahsulot postiga yozilgani aniqlansa (media.id orqali shortcode'ini
-  // GroupInfo.videoUrl bilan solishtirib), qo'shimcha ravishda PRIVATE DM orqali ham narx/
-  // malumot yuboriladi — yuqoridagi ommaviy javobni ALMASHTIRMAYDI, faqat qo'shimcha. Bu
-  // qadamda har qanday xato (mos mahsulot topilmadi, Meta xato qaytardi va h.k.) jim
-  // o'tkazib yuboriladi — ommaviy javob allaqachon muvaffaqiyatli yuborilgan.
-  const mediaId = value.media?.id?.trim();
-  if (!mediaId) return;
-
-  try {
-    const shortcode = await fetchMediaShortcode(accessToken, mediaId);
-    const matchedGroupId = shortcode ? await findGroupIdByShortcode(account.id, shortcode) : null;
-    if (!matchedGroupId) return;
-
-    const replyText = await generateAiReply(
-      account.id,
-      account.name || account.username,
-      [{ role: 'user', content: text }],
-      matchedGroupId,
-    );
-    if (!replyText) return;
-
-    await sendPrivateReply(accessToken, commentId, replyText);
-    console.log(
-      `[webhook] Private reply yuborildi (comment=${commentId.slice(0, 24)}…, group=${matchedGroupId})`,
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[webhook] Private reply yuborishda xato (comment=${commentId.slice(0, 24)}…): ${message}`);
   }
 }
 
