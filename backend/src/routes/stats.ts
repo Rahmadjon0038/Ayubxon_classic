@@ -41,11 +41,10 @@ router.get('/', async (req, res, next) => {
     if (!account) {
       return res.json({
         selectedMonth,
-        totals: { totalConversations: 0, totalWithPhone: 0, totalMessages: 0, talkedCount: 0 },
+        totals: { totalConversations: 0, totalProductInquiries: 0, totalMessages: 0, talkedCount: 0 },
         monthlyLeads: months.map((month) => ({ month, count: 0 })),
         monthlyMessages: months.map((month) => ({ month, contact: 0, admin: 0 })),
         leadTemperature: { HOT: 0, WARM: 0, COLD: 0 },
-        callStatus: { NEW: 0, TALKED: 0, NOT_ANSWERED: 0 },
         topCourses: [],
       });
     }
@@ -53,13 +52,12 @@ router.get('/', async (req, res, next) => {
     // Yuqoridagi 4 ta plitka va pastdagi kartalar — tanlangan oy uchun.
     const monthFilter = { createdAt: { gte: monthStart, lt: monthEnd } };
 
-    const [totalConversations, totalWithPhone, totalMessages, talkedCount] = await Promise.all([
+    const [totalConversations, totalProductInquiries, totalMessages, talkedCount] = await Promise.all([
       prisma.conversation.count({ where: { instagramAccountId: account.id, ...monthFilter } }),
-      prisma.contact.count({
-        where: {
-          phoneNumber: { not: null },
-          conversations: { some: { instagramAccountId: account.id, ...monthFilter } },
-        },
+      // Mijoz Instagramda ulashilgan/orqali yozgan bitta reel/postga moslashtirilgan
+      // suhbatlar soni — "Bilimlar bazasi"dagi mahsulot postlariga qiziqish o'lchovi.
+      prisma.conversation.count({
+        where: { instagramAccountId: account.id, referencedGroupId: { not: null }, ...monthFilter },
       }),
       prisma.message.count({
         where: { conversation: { instagramAccountId: account.id }, sentAt: { gte: monthStart, lt: monthEnd } },
@@ -110,16 +108,8 @@ router.get('/', async (req, res, next) => {
     const leadTemperature = { HOT: 0, WARM: 0, COLD: 0 };
     for (const g of leadTempGroups) leadTemperature[g.leadTemperature] = g._count._all;
 
-    const callStatusGroups = await prisma.conversation.groupBy({
-      by: ['callStatus'],
-      where: { instagramAccountId: account.id, contact: { phoneNumber: { not: null } }, ...monthFilter },
-      _count: { _all: true },
-    });
-    const callStatus = { NEW: 0, TALKED: 0, NOT_ANSWERED: 0 };
-    for (const g of callStatusGroups) callStatus[g.callStatus] = g._count._all;
-
-    // interestedCourse erkin matn va bir nechta kurs vergul bilan yozilgan bolishi mumkin
-    // (masalan "Matematika, Ingliz tili") — shuning uchun JS tomonda ajratib sanaymiz.
+    // interestedCourse erkin matn va bir nechta mahsulot vergul bilan yozilgan bolishi mumkin
+    // (masalan "Kostyum, Shim") — shuning uchun JS tomonda ajratib sanaymiz.
     const courseRows = await prisma.conversation.findMany({
       where: { instagramAccountId: account.id, interestedCourse: { not: null }, ...monthFilter },
       select: { interestedCourse: true },
@@ -138,11 +128,10 @@ router.get('/', async (req, res, next) => {
 
     return res.json({
       selectedMonth,
-      totals: { totalConversations, totalWithPhone, totalMessages, talkedCount },
+      totals: { totalConversations, totalProductInquiries, totalMessages, talkedCount },
       monthlyLeads,
       monthlyMessages,
       leadTemperature,
-      callStatus,
       topCourses,
     });
   } catch (err) {

@@ -605,19 +605,18 @@ Mezonlar:
    - Agar mijoz raqam yozmagan bo'lsa, yoki gap boshqa birovning raqami haqida bo'lsa (masalan
      "do'stimning raqami"), null qaytaring — taxmin qilib to'qimang.
 
-6. interestedCourse (mijoz qiziqish bildirgan fan/kurs nomi):
-   - Agar mijoz suhbat davomida aniq bitta (yoki bir nechta) fan/kurs nomini aytgan yoki shu
+6. interestedCourse (mijoz qiziqish bildirgan mahsulot nomi):
+   - Agar mijoz suhbat davomida aniq bitta (yoki bir nechta) mahsulot nomini aytgan yoki shu
      haqida so'ragan bo'lsa, o'sha nomni qisqa, o'z holicha (mijoz qanday atagan bo'lsa,
-     tuzatib, katta harf bilan) qaytaring — masalan "Matematika", "Ingliz tili", "Frontend dasturlash".
-   - Bir nechta fan/kurs aytilgan bo'lsa, vergul bilan ajratib barchasini yozing.
-   - Agar mijoz aniq fan/kurs nomini aytmagan (masalan faqat "narxlaringiz qancha" deb umumiy
+     tuzatib, katta harf bilan) qaytaring — masalan "Kostyum", "Ko'ylak", "Shim".
+   - Bir nechta mahsulot aytilgan bo'lsa, vergul bilan ajratib barchasini yozing.
+   - Agar mijoz aniq mahsulot nomini aytmagan (masalan faqat "narxlaringiz qancha" deb umumiy
      so'ragan) bo'lsa, null qaytaring — taxmin qilib to'qimang.
 
-7. interestedBranch (mijoz yozilmoqchi bo'lgan yoki qulay deb aytgan filial nomi):
-   - Agar mijoz suhbat davomida aniq bitta filial nomini aytgan yoki tanlagan bo'lsa (masalan
-     "Boburshox", "Chorsu", "Davlatobod" yoki ma'lumotlar bazasida ko'rsatilgan boshqa filial
-     nomi), o'sha nomni qaytaring.
-   - Agar mijoz filial nomini aytmagan yoki hali aniq tanlamagan bo'lsa, null qaytaring —
+7. interestedBranch (mijoz sotib olmoqchi bo'lgan yoki qulay deb aytgan do'kon nomi):
+   - Agar mijoz suhbat davomida aniq bitta do'kon nomini aytgan yoki tanlagan bo'lsa (ma'lumotlar
+     bazasida ko'rsatilgan do'kon nomlaridan biri), o'sha nomni qaytaring.
+   - Agar mijoz do'kon nomini aytmagan yoki hali aniq tanlamagan bo'lsa, null qaytaring —
      taxmin qilib to'qimang.
 
 8. preferredTime (mijoz qulay deb aytgan dars vaqti/oralig'i):

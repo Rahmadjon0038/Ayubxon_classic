@@ -101,8 +101,6 @@ export interface Message {
   createdAt: string;
 }
 
-export type CallStatus = 'NEW' | 'TALKED' | 'NOT_ANSWERED';
-
 export interface ConversationListItem {
   id: string;
   contact: Contact;
@@ -111,9 +109,7 @@ export interface ConversationListItem {
   leadTemperature: 'HOT' | 'WARM' | 'COLD';
   talkStatus: 'TALKED' | 'NOT_TALKED';
   courseDecision: 'WILL_WRITE' | 'WILL_NOT_WRITE';
-  // Qo'ng'iroqlar bo'limi uchun: telefon orqali bog'lanish holati.
-  callStatus: CallStatus;
-  // AI suhbatdan aniqlagan, mijoz qiziqish bildirgan fan/kurs nomi.
+  // AI suhbatdan aniqlagan, mijoz qiziqish bildirgan mahsulot nomi.
   interestedCourse: string | null;
   // Handover Protocol: true bo'lsa, mijoz operator so'ragan (yoki admin qo'lda to'xtatgan) —
   // AI shu suhbatda avtomatik javob bermaydi.
@@ -128,14 +124,13 @@ export interface StatsResponse {
   selectedMonth: string;
   totals: {
     totalConversations: number;
-    totalWithPhone: number;
+    totalProductInquiries: number;
     totalMessages: number;
     talkedCount: number;
   };
   monthlyLeads: { month: string; count: number }[];
   monthlyMessages: { month: string; contact: number; admin: number }[];
   leadTemperature: { HOT: number; WARM: number; COLD: number };
-  callStatus: { NEW: number; TALKED: number; NOT_ANSWERED: number };
   topCourses: { course: string; count: number }[];
 }
 

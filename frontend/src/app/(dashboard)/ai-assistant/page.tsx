@@ -3,14 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Check,
-  Clock3,
   EyeOff,
   FileJson,
   ImagePlus,
-  MapPin,
   Plus,
   Search,
-  Phone,
   PencilLine,
   Trash2,
   Video,
@@ -53,7 +50,7 @@ const IMPORT_TEMPLATE = `{
 }`;
 
 type SectionKey = 'branches' | 'groups';
-type ModalKind = SectionKey | null;
+type ModalKind = 'groups' | null;
 
 interface SettingsResponse {
   aiEnabled: boolean;
@@ -156,8 +153,29 @@ export default function AiAssistantPage() {
 
   const branches = branchesQuery.data ?? [];
   const groups = groupsQuery.data ?? [];
+  // Bitta biznesda bitta do'kon bo'ladi — ro'yxat emas, shuning uchun birinchi (yagona)
+  // yozuv bevosita formaga yuklanadi.
+  const existingBranch = branches[0] ?? null;
 
   const branchMap = useMemo(() => new Map(branches.map((branch) => [branch.id, branch])), [branches]);
+
+  const [branchFormHydrated, setBranchFormHydrated] = useState(false);
+  useEffect(() => {
+    if (branchFormHydrated || branchesQuery.isLoading) return;
+    if (existingBranch) {
+      setBranchForm({
+        name: existingBranch.name,
+        locationUrl: existingBranch.locationUrl,
+        workingHours: existingBranch.workingHours,
+        phoneNumber: existingBranch.phoneNumber,
+        description: existingBranch.description,
+        photoUrls: existingBranch.photoUrls,
+        extraInfo: existingBranch.extraInfo ?? '',
+        isActive: existingBranch.isActive,
+      });
+    }
+    setBranchFormHydrated(true);
+  }, [existingBranch, branchesQuery.isLoading, branchFormHydrated]);
 
   const photoUploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -198,8 +216,8 @@ export default function AiAssistantPage() {
         isActive: branchForm.isActive,
       };
 
-      if (editingId) {
-        const { data } = await api.put<{ item: BranchInfo }>(`/knowledge-base/branches/${editingId}`, payload);
+      if (existingBranch) {
+        const { data } = await api.put<{ item: BranchInfo }>(`/knowledge-base/branches/${existingBranch.id}`, payload);
         return data.item;
       }
 
@@ -208,7 +226,6 @@ export default function AiAssistantPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['knowledge-branches'] });
-      closeModal();
     },
   });
 
@@ -289,16 +306,10 @@ export default function AiAssistantPage() {
     });
   };
 
-  function resetForms() {
-    setBranchForm(emptyBranchForm);
-    setGroupForm(emptyGroupForm);
-    photoUploadMutation.reset();
-  }
-
   function closeModal() {
     setModalKind(null);
     setEditingId(null);
-    resetForms();
+    setGroupForm(emptyGroupForm);
   }
 
   function openImport() {
@@ -330,45 +341,22 @@ export default function AiAssistantPage() {
     importMutation.mutate(payload);
   }
 
-  function openCreate(kind: SectionKey) {
+  function openCreateGroup() {
     setEditingId(null);
-    setModalKind(kind);
-    resetForms();
+    setModalKind('groups');
+    setGroupForm(emptyGroupForm);
   }
 
-  function openEdit(kind: SectionKey, item: BranchInfo | GroupInfo) {
-    setEditingId(item.id);
-    setModalKind(kind);
-    if (kind === 'branches') {
-      const branch = item as BranchInfo;
-      setBranchForm({
-        name: branch.name,
-        locationUrl: branch.locationUrl,
-        workingHours: branch.workingHours,
-        phoneNumber: branch.phoneNumber,
-        description: branch.description,
-        photoUrls: branch.photoUrls,
-        extraInfo: branch.extraInfo ?? '',
-        isActive: branch.isActive,
-      });
-    }
-    if (kind === 'groups') {
-      const group = item as GroupInfo;
-      setGroupForm({
-        branchId: group.branchId,
-        videoUrl: group.videoUrl ?? '',
-        details: group.details,
-        isActive: group.isActive,
-      });
-    }
+  function openEditGroup(group: GroupInfo) {
+    setEditingId(group.id);
+    setModalKind('groups');
+    setGroupForm({
+      branchId: group.branchId,
+      videoUrl: group.videoUrl ?? '',
+      details: group.details,
+      isActive: group.isActive,
+    });
   }
-
-  const filteredBranches = branches.filter((item) => {
-    const haystack = [item.name, item.locationUrl, item.workingHours, item.phoneNumber, item.description, item.extraInfo ?? '']
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(search.trim().toLowerCase());
-  });
 
   const filteredGroups = groups.filter((item) => {
     const branchName = branchMap.get(item.branchId)?.name ?? '';
@@ -475,19 +463,21 @@ export default function AiAssistantPage() {
               })}
             </div>
 
-            <div className="relative w-full lg:max-w-sm">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Qidirish..."
-                className={`${inputClass} pl-10`}
-              />
-            </div>
+            {activeTab === 'groups' && (
+              <div className="relative w-full lg:max-w-sm">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Qidirish..."
+                  className={`${inputClass} pl-10`}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -506,38 +496,149 @@ export default function AiAssistantPage() {
         {!isLoading && !isError && (
           <>
             {activeTab === 'branches' && (
-              <SectionShell
-                title="Do'kon"
-                subtitle="Nomi, tavsifi, manzili, ish vaqti, egasining telefon raqami va rasmlari shu yerda saqlanadi."
-                onAdd={() => openCreate('branches')}
-                addLabel="Yangi do'kon qo'shish"
-              >
-                {filteredBranches.length === 0 ? (
-                  <EmptyState onAdd={() => openCreate('branches')} label="Do'kon qo'shish" />
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {filteredBranches.map((branch) => (
-                      <BranchCard
-                        key={branch.id}
-                        item={branch}
-                        onEdit={() => openEdit('branches', branch)}
-                        onDelete={() => setDeleteTarget({ kind: 'branches', id: branch.id, title: branch.name })}
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-5">
+                <div className="mb-5">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-tg-text">Do&apos;kon</h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-tg-textMuted">
+                    Nomi, tavsifi, manzili, ish vaqti, egasining telefon raqami va rasmlari shu yerda saqlanadi.
+                  </p>
+                </div>
+
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    branchSaveMutation.mutate();
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Nomi *">
+                      <input
+                        type="text"
+                        required
+                        value={branchForm.name}
+                        onChange={(event) => setBranchForm({ ...branchForm, name: event.target.value })}
+                        className={inputClass}
+                        placeholder="Ayubxon Classic"
                       />
-                    ))}
+                    </Field>
+                    <Field label="Joylashuv linki *">
+                      <input
+                        type="url"
+                        required
+                        value={branchForm.locationUrl}
+                        onChange={(event) => setBranchForm({ ...branchForm, locationUrl: event.target.value })}
+                        className={inputClass}
+                        placeholder="https://maps.google.com/..."
+                      />
+                    </Field>
+                    <Field label="Ish vaqti *">
+                      <input
+                        type="text"
+                        required
+                        value={branchForm.workingHours}
+                        onChange={(event) => setBranchForm({ ...branchForm, workingHours: event.target.value })}
+                        className={inputClass}
+                        placeholder="09:00 - 20:00"
+                      />
+                    </Field>
+                    <Field label="Egasining telefon raqami *">
+                      <input
+                        type="text"
+                        required
+                        value={branchForm.phoneNumber}
+                        onChange={(event) => setBranchForm({ ...branchForm, phoneNumber: event.target.value })}
+                        className={inputClass}
+                        placeholder="+998 99 123 45 67"
+                      />
+                    </Field>
+                    <Field label="Do'kon haqida ma'lumot *" className="sm:col-span-2">
+                      <textarea
+                        required
+                        rows={3}
+                        value={branchForm.description}
+                        onChange={(event) => setBranchForm({ ...branchForm, description: event.target.value })}
+                        className={inputClass}
+                        placeholder="Erkaklar va ayollar uchun sifatli tayyor kiyim-kechak sotuvchi do'kon."
+                      />
+                    </Field>
+                    <Field label="Qo'shimcha ma'lumot" className="sm:col-span-2">
+                      <textarea
+                        rows={4}
+                        value={branchForm.extraInfo}
+                        onChange={(event) => setBranchForm({ ...branchForm, extraInfo: event.target.value })}
+                        className={inputClass}
+                        placeholder="Do'kon haqida bilish kerak bo'lgan boshqa qo'shimcha ma'lumotlar."
+                      />
+                    </Field>
+                    <Field label={`Rasmlar (ko'pi bilan ${MAX_PHOTOS} ta)`} className="sm:col-span-2">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {branchForm.photoUrls.map((url) => (
+                          <div
+                            key={url}
+                            className="group relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 dark:border-tg-hover"
+                          >
+                            <img src={url} alt="Do'kon rasmi" className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(url)}
+                              className="absolute right-1 top-1 rounded-full bg-slate-950/70 p-1 text-white transition hover:bg-rose-600"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        {branchForm.photoUrls.length < MAX_PHOTOS && (
+                          <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-slate-400 hover:text-slate-600 dark:border-tg-hover dark:text-tg-textMuted dark:hover:border-tg-hover">
+                            {photoUploadMutation.isPending ? (
+                              <span className="text-[10px]">Yuklanmoqda...</span>
+                            ) : (
+                              <>
+                                <ImagePlus size={18} />
+                                <span className="text-[10px]">Rasm qo&apos;shish</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={handlePhotoSelect}
+                              disabled={photoUploadMutation.isPending}
+                            />
+                          </label>
+                        )}
+                      </div>
+                      {photoUploadMutation.isError && (
+                        <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+                          {getErrorMessage(photoUploadMutation.error)}
+                        </p>
+                      )}
+                    </Field>
                   </div>
-                )}
-              </SectionShell>
+
+                  <StatusRow
+                    active={branchForm.isActive}
+                    onToggle={() => setBranchForm({ ...branchForm, isActive: !branchForm.isActive })}
+                  />
+
+                  <SaveBar
+                    pending={branchSaveMutation.isPending}
+                    error={branchSaveMutation.isError ? getErrorMessage(branchSaveMutation.error) : null}
+                    success={branchSaveMutation.isSuccess ? 'Saqlandi ✓' : null}
+                  />
+                </form>
+              </section>
             )}
 
             {activeTab === 'groups' && (
               <SectionShell
                 title="Mahsulotlar"
                 subtitle="Instagram video linki va mahsulot haqidagi erkin matnli ma'lumot (rang, o'lcham, narx va h.k.) shu yerda saqlanadi."
-                onAdd={() => openCreate('groups')}
+                onAdd={openCreateGroup}
                 addLabel="Yangi mahsulot qo'shish"
               >
                 {filteredGroups.length === 0 ? (
-                  <EmptyState onAdd={() => openCreate('groups')} label="Mahsulot qo'shish" />
+                  <EmptyState onAdd={openCreateGroup} label="Mahsulot qo'shish" />
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {filteredGroups.map((group) => (
@@ -545,7 +646,7 @@ export default function AiAssistantPage() {
                         key={group.id}
                         item={group}
                         branchName={branchMap.get(group.branchId)?.name ?? "Do'kon topilmadi"}
-                        onEdit={() => openEdit('groups', group)}
+                        onEdit={() => openEditGroup(group)}
                         onDelete={() =>
                           setDeleteTarget({ kind: 'groups', id: group.id, title: firstLine(group.details, 'Mahsulot') })
                         }
@@ -559,142 +660,15 @@ export default function AiAssistantPage() {
         )}
       </div>
 
-      {modalKind && (
-        <ModalShell title={editingId ? 'Tahrirlash' : 'Yangi yozuv qo\'shish'} onClose={closeModal}>
-          {modalKind === 'branches' && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                branchSaveMutation.mutate();
-              }}
-              className="space-y-4"
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Nomi *">
-                  <input
-                    type="text"
-                    required
-                    value={branchForm.name}
-                    onChange={(event) => setBranchForm({ ...branchForm, name: event.target.value })}
-                    className={inputClass}
-                    placeholder="Ayubxon Classic"
-                  />
-                </Field>
-                <Field label="Joylashuv linki *">
-                  <input
-                    type="url"
-                    required
-                    value={branchForm.locationUrl}
-                    onChange={(event) => setBranchForm({ ...branchForm, locationUrl: event.target.value })}
-                    className={inputClass}
-                    placeholder="https://maps.google.com/..."
-                  />
-                </Field>
-                <Field label="Ish vaqti *">
-                  <input
-                    type="text"
-                    required
-                    value={branchForm.workingHours}
-                    onChange={(event) => setBranchForm({ ...branchForm, workingHours: event.target.value })}
-                    className={inputClass}
-                    placeholder="09:00 - 20:00"
-                  />
-                </Field>
-                <Field label="Egasining telefon raqami *">
-                  <input
-                    type="text"
-                    required
-                    value={branchForm.phoneNumber}
-                    onChange={(event) => setBranchForm({ ...branchForm, phoneNumber: event.target.value })}
-                    className={inputClass}
-                    placeholder="+998 99 123 45 67"
-                  />
-                </Field>
-                <Field label="Do'kon haqida ma'lumot *" className="md:col-span-2">
-                  <textarea
-                    required
-                    rows={3}
-                    value={branchForm.description}
-                    onChange={(event) => setBranchForm({ ...branchForm, description: event.target.value })}
-                    className={inputClass}
-                    placeholder="Erkaklar va ayollar uchun sifatli tayyor kiyim-kechak sotuvchi do'kon."
-                  />
-                </Field>
-                <Field label="Qo'shimcha ma'lumot" className="md:col-span-2">
-                  <textarea
-                    rows={4}
-                    value={branchForm.extraInfo}
-                    onChange={(event) => setBranchForm({ ...branchForm, extraInfo: event.target.value })}
-                    className={inputClass}
-                    placeholder="Do'kon haqida bilish kerak bo'lgan boshqa qo'shimcha ma'lumotlar."
-                  />
-                </Field>
-                <Field label={`Rasmlar (ko'pi bilan ${MAX_PHOTOS} ta)`} className="md:col-span-2">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {branchForm.photoUrls.map((url) => (
-                      <div
-                        key={url}
-                        className="group relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 dark:border-tg-hover"
-                      >
-                        <img src={url} alt="Do'kon rasmi" className="h-full w-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removePhoto(url)}
-                          className="absolute right-1 top-1 rounded-full bg-slate-950/70 p-1 text-white transition hover:bg-rose-600"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    {branchForm.photoUrls.length < MAX_PHOTOS && (
-                      <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-slate-400 hover:text-slate-600 dark:border-tg-hover dark:text-tg-textMuted dark:hover:border-tg-hover">
-                        {photoUploadMutation.isPending ? (
-                          <span className="text-[10px]">Yuklanmoqda...</span>
-                        ) : (
-                          <>
-                            <ImagePlus size={18} />
-                            <span className="text-[10px]">Rasm qo&apos;shish</span>
-                          </>
-                        )}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={handlePhotoSelect}
-                          disabled={photoUploadMutation.isPending}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {photoUploadMutation.isError && (
-                    <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">
-                      {getErrorMessage(photoUploadMutation.error)}
-                    </p>
-                  )}
-                </Field>
-              </div>
-
-              <StatusRow
-                active={branchForm.isActive}
-                onToggle={() => setBranchForm({ ...branchForm, isActive: !branchForm.isActive })}
-              />
-
-              <SaveBar
-                pending={branchSaveMutation.isPending}
-                error={branchSaveMutation.isError ? getErrorMessage(branchSaveMutation.error) : null}
-                onCancel={closeModal}
-              />
-            </form>
-          )}
-
-          {modalKind === 'groups' && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                groupSaveMutation.mutate();
-              }}
-              className="space-y-4"
-            >
+      {modalKind === 'groups' && (
+        <ModalShell title={editingId ? 'Tahrirlash' : 'Yangi mahsulot qo\'shish'} onClose={closeModal}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              groupSaveMutation.mutate();
+            }}
+            className="space-y-4"
+          >
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Do'kon *" className="md:col-span-2">
                   <select
@@ -742,8 +716,7 @@ export default function AiAssistantPage() {
                 error={groupSaveMutation.isError ? getErrorMessage(groupSaveMutation.error) : null}
                 onCancel={closeModal}
               />
-            </form>
-          )}
+          </form>
         </ModalShell>
       )}
 
@@ -960,32 +933,42 @@ function StatusRow({ active, onToggle }: { active: boolean; onToggle: () => void
 function SaveBar({
   pending,
   error,
+  success,
   onCancel,
 }: {
   pending: boolean;
   error: string | null;
-  onCancel: () => void;
+  success?: string | null;
+  onCancel?: () => void;
 }) {
   return (
     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
-      {error && (
-        <p className="mr-auto rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+      {error ? (
+        <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 sm:mr-auto">
           {error}
         </p>
+      ) : (
+        success && (
+          <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 sm:mr-auto">
+            {success}
+          </p>
+        )
       )}
-      <button
-        type="button"
-        onClick={onCancel}
-        className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover"
-      >
-        Bekor qilish
-      </button>
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover"
+        >
+          Bekor qilish
+        </button>
+      )}
       <button
         type="submit"
         disabled={pending}
         className="rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
       >
-        Saqlash
+        {pending ? 'Saqlanmoqda...' : 'Saqlash'}
       </button>
     </div>
   );
@@ -1003,9 +986,11 @@ function ModalShell({
   maxWidth?: string;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-      <div className={`w-full ${maxWidth} rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-tg-border dark:bg-tg-panel`}>
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-tg-border">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/45 px-4 py-6 backdrop-blur-sm sm:items-center">
+      <div
+        className={`flex max-h-[calc(100vh-3rem)] w-full ${maxWidth} flex-col rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-tg-border dark:bg-tg-panel`}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-tg-border">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-tg-text">{title}</h3>
           <button
             type="button"
@@ -1015,103 +1000,9 @@ function ModalShell({
             <X size={18} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="overflow-y-auto p-5">{children}</div>
       </div>
     </div>
-  );
-}
-
-function BranchCard({
-  item,
-  onEdit,
-  onDelete,
-}: {
-  item: BranchInfo;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-lg font-semibold text-slate-900 dark:text-tg-text">{item.name}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">
-            {item.isActive ? 'Faol' : 'Faol emas'}
-          </p>
-        </div>
-        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
-          Do'kon
-        </span>
-      </div>
-
-      {item.photoUrls.length > 0 && (
-        <div className="mt-4 flex gap-2">
-          {item.photoUrls.map((url) => (
-            <img
-              key={url}
-              src={url}
-              alt={item.name}
-              className="h-20 w-20 rounded-lg border border-slate-200 object-cover dark:border-tg-hover"
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
-        <a
-          href={item.locationUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-start gap-2 break-all text-sky-600 hover:underline dark:text-sky-400"
-        >
-          <MapPin size={16} className="mt-0.5 shrink-0" />
-          <span>{item.locationUrl}</span>
-        </a>
-        <div className="flex gap-2">
-          <Clock3 size={16} className="mt-0.5 shrink-0 text-slate-400" />
-          <span>{item.workingHours}</span>
-        </div>
-        <div className="flex gap-2">
-          <Phone size={16} className="mt-0.5 shrink-0 text-slate-400" />
-          <span>{item.phoneNumber}</span>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
-        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Do&apos;kon haqida</p>
-        <p className="mt-1 whitespace-pre-wrap">{item.description}</p>
-      </div>
-
-      {item.extraInfo && (
-        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
-          <p className="font-medium text-slate-500 dark:text-tg-textFaint">Qo&apos;shimcha ma&apos;lumot</p>
-          <p className="mt-1 whitespace-pre-wrap">{item.extraInfo}</p>
-        </div>
-      )}
-
-      <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
-        <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
-        >
-          <PencilLine size={16} />
-          Tahrirlash
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700 transition hover:border-rose-300 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
-        >
-          <Trash2 size={16} />
-          O&apos;chirish
-        </button>
-      </div>
-    </article>
   );
 }
 

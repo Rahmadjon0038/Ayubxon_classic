@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, BookOpen, Loader2, MessagesSquare, Phone, PhoneCall, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, MessagesSquare, PhoneCall, Shirt, Tag, Users } from 'lucide-react';
 import { useLocale } from '@/components/LocaleProvider';
 import MonthlyBarChart from '@/components/stats/MonthlyBarChart';
 import RankedBarList from '@/components/stats/RankedBarList';
@@ -162,7 +162,7 @@ export default function StatsPage() {
           <>
             <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
               <StatTile label={t('stats.totalLeads')} value={stats.totals.totalConversations} icon={<Users size={17} />} />
-              <StatTile label={t('stats.totalWithPhone')} value={stats.totals.totalWithPhone} icon={<Phone size={17} />} />
+              <StatTile label={t('stats.totalProductInquiries')} value={stats.totals.totalProductInquiries} icon={<Tag size={17} />} />
               <StatTile label={t('stats.totalMessages')} value={stats.totals.totalMessages} icon={<MessagesSquare size={17} />} />
               <StatTile label={t('stats.talkedRate')} value={`${talkedPct}%`} icon={<PhoneCall size={17} />} />
             </div>
@@ -211,7 +211,7 @@ export default function StatsPage() {
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
               <Card title={t('stats.temperatureTitle')}>
                 <StackedBreakdown
                   emptyLabel={t('stats.noData')}
@@ -223,26 +223,10 @@ export default function StatsPage() {
                 />
               </Card>
 
-              <Card title={t('stats.callStatusTitle')}>
-                <StackedBreakdown
-                  emptyLabel={t('stats.noData')}
-                  segments={[
-                    { key: 'NEW', label: t('stats.callNew'), color: COLOR_VIOLET, value: stats.callStatus.NEW },
-                    { key: 'TALKED', label: t('stats.callTalked'), color: COLOR_EMERALD, value: stats.callStatus.TALKED },
-                    {
-                      key: 'NOT_ANSWERED',
-                      label: t('stats.callNotAnswered'),
-                      color: COLOR_ROSE,
-                      value: stats.callStatus.NOT_ANSWERED,
-                    },
-                  ]}
-                />
-              </Card>
-
-              <Card title={t('stats.topCoursesTitle')}>
+              <Card title={t('stats.topProductsTitle')}>
                 <div className="flex items-center gap-1.5 pb-1 text-[11px] text-gray-500 dark:text-tg-textFaint">
-                  <BookOpen size={12} />
-                  {t('stats.topCoursesHint')}
+                  <Shirt size={12} />
+                  {t('stats.topProductsHint')}
                 </div>
                 <RankedBarList
                   items={stats.topCourses.map((c) => ({ label: c.course, value: c.count }))}

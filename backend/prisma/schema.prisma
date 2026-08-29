@@ -226,15 +226,6 @@ enum CourseDecision {
   WILL_NOT_WRITE
 }
 
-// Qo'ng'iroqlar bo'limi uchun: telefon raqam qoldirgan lidga admin qo'ng'iroq
-// qilganmi-yo'qmi holatini kuzatish. talkStatus (chatda gaplashildimi) dan farqli —
-// bu aynan TELEFON orqali bog'lanish holatini bildiradi.
-enum CallStatus {
-  NEW
-  TALKED
-  NOT_ANSWERED
-}
-
 model Conversation {
   id                 String             @id @default(cuid())
   instagramAccountId String
@@ -244,11 +235,11 @@ model Conversation {
   leadTemperature    LeadTemperature    @default(WARM)
   talkStatus         TalkStatus         @default(NOT_TALKED)
   courseDecision     CourseDecision     @default(WILL_WRITE)
-  callStatus         CallStatus         @default(NEW)
-  // AI suhbatdan aniqlagan, mijoz qiziqish bildirgan fan/kurs nomi (erkin matn,
-  // mijozning o'z so'zlari asosida) — Qo'ng'iroqlar bo'limida korsatish uchun.
+  // AI suhbatdan aniqlagan, mijoz qiziqish bildirgan mahsulot nomi (erkin matn,
+  // mijozning o'z so'zlari asosida) — statistikada "Eng ko'p qiziqilgan mahsulotlar"
+  // uchun ishlatiladi.
   interestedCourse   String?
-  // AI suhbatdan aniqlagan, mijoz yozilmoqchi bo'lgan filial nomi (erkin matn).
+  // AI suhbatdan aniqlagan, mijoz yozilmoqchi bo'lgan do'kon nomi (erkin matn).
   interestedBranch   String?
   // AI suhbatdan aniqlagan, mijoz qulay deb aytgan dars vaqti/oralig'i (erkin matn,
   // masalan "8:00 dan 10:00 gacha").

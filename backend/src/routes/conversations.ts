@@ -139,7 +139,6 @@ router.get('/', async (_req, res, next) => {
         leadTemperature: c.leadTemperature,
         talkStatus: c.talkStatus,
         courseDecision: c.courseDecision,
-        callStatus: c.callStatus,
         interestedCourse: c.interestedCourse,
         aiPaused: c.aiPaused,
         aiPausedAt: c.aiPausedAt,
@@ -172,7 +171,6 @@ router.get('/:id', async (req, res, next) => {
         leadTemperature: conversation.leadTemperature,
         talkStatus: conversation.talkStatus,
         courseDecision: conversation.courseDecision,
-        callStatus: conversation.callStatus,
         interestedCourse: conversation.interestedCourse,
         aiPaused: conversation.aiPaused,
         aiPausedAt: conversation.aiPausedAt,
@@ -190,8 +188,6 @@ const leadStatusSchema = z.object({
   leadTemperature: z.enum(['HOT', 'WARM', 'COLD']).optional(),
   talkStatus: z.enum(['TALKED', 'NOT_TALKED']).optional(),
   courseDecision: z.enum(['WILL_WRITE', 'WILL_NOT_WRITE']).optional(),
-  // Qo'ng'iroqlar bo'limi uchun: telefon orqali bog'lanish holati.
-  callStatus: z.enum(['NEW', 'TALKED', 'NOT_ANSWERED']).optional(),
   status: z.enum(['OPEN', 'CLOSED']).optional(),
   // Handover Protocol: admin bu yerdan qo'lda operator rejimiga o'tkazishi yoki AI'ni qayta
   // yoqishi mumkin (masalan mijoz operator so'ragandan keyin ChatWindow'dagi tugma orqali).
@@ -233,7 +229,6 @@ router.patch('/:id/status', validateBody(leadStatusSchema), async (req, res, nex
         leadTemperature: updated.leadTemperature,
         talkStatus: updated.talkStatus,
         courseDecision: updated.courseDecision,
-        callStatus: updated.callStatus,
         interestedCourse: updated.interestedCourse,
         aiPaused: updated.aiPaused,
         aiPausedAt: updated.aiPausedAt,
