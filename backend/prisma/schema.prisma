@@ -80,6 +80,9 @@ model BranchInfo {
   description       String
   // Do'kon rasmlari (1-2 dona) — public /uploads havolalari sifatida saqlanadi.
   photoUrls         String[] @default([])
+  // Do'konning Telegram guruhi/kanali havolasi (ixtiyoriy) — mijoz so'raganda AI shu
+  // linkni beradi.
+  telegramGroupUrl  String?
   extraInfo         String?
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
@@ -99,6 +102,9 @@ model GroupInfo {
   instagramAccountId  String
   branchId          String
   videoUrl          String?
+  // videoUrl'dan Instagram oEmbed orqali olingan, ozimizga yuklab olingan preview rasm —
+  // admin platformada mahsulot videosini Instagram'ga chiqmasdan tanib olishi uchun.
+  videoThumbnailUrl String?
   details           String
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())

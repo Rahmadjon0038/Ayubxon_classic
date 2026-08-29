@@ -17,6 +17,7 @@ const branchImportSchema = z.object({
   phoneNumber: z.string().trim().min(1, 'Telefon raqami majburiy').max(100),
   description: z.string().trim().min(1, "Do'kon haqida ma'lumot majburiy").max(4000),
   photoUrls: z.array(z.string().trim().url()).max(2).optional().default([]),
+  telegramGroupUrl: z.string().trim().url('Haqiqiy link kiriting').max(500).optional().or(z.literal('')),
   extraInfo: z.string().trim().max(8000).optional().or(z.literal('')),
   isActive: z.boolean().optional().default(true),
 });
@@ -80,6 +81,7 @@ router.post('/', validateBody(importSchema), async (req, res, next) => {
         phoneNumber: branch.phoneNumber,
         description: branch.description,
         photoUrls: branch.photoUrls,
+        telegramGroupUrl: normalizeOptionalText(branch.telegramGroupUrl),
         extraInfo: normalizeOptionalText(branch.extraInfo),
         isActive: branch.isActive,
       };

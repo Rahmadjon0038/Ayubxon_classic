@@ -1,4 +1,4 @@
-import { AcademySettings, BranchInfo, GroupInfo } from '@prisma/client';
+import { BranchInfo, GroupInfo } from '@prisma/client';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../config/env';
@@ -78,6 +78,7 @@ function formatBranchInfo(item: BranchInfo): string {
     `Manzil/lokatsiya: ${item.locationUrl}`,
     `Ish vaqti: ${item.workingHours}`,
     `Egasining telefon raqami: ${item.phoneNumber}`,
+    item.telegramGroupUrl ? `Telegram guruh/kanal linki: ${item.telegramGroupUrl}` : null,
     item.extraInfo ? `Qo'shimcha ma'lumot: ${item.extraInfo}` : null,
     `Holati: ${item.isActive ? 'Faol' : 'Faol emas'}`,
   ].filter(Boolean);
@@ -149,13 +150,13 @@ function sanitizeAiReply(text: string): string {
 }
 
 function buildSystemPrompt(params: {
-  settings: AcademySettings;
+  academyName: string;
   branches: BranchInfo[];
   groups: GroupInfo[];
   referencedGroup: GroupInfo | null;
   history: ChatTurn[];
 }): string {
-  const { settings, branches, groups, referencedGroup, history } = params;
+  const { academyName, branches, groups, referencedGroup, history } = params;
   const branchMap = new Map(branches.map((branch) => [branch.id, branch.name]));
 
   const branchesBlock =
@@ -187,7 +188,7 @@ function buildSystemPrompt(params: {
     : '';
 
   return `
-Siz "${settings.academyName}" nomli kiyim-kechak savdo do'konining rasmiy Instagram DM
+Siz "${academyName}" nomli kiyim-kechak savdo do'konining rasmiy Instagram DM
 AI-yordamchisisiz. Foydalanuvchilar Instagram Direct orqali yozishmoqda.
 Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar tez-tez o'zgaradi, shuning uchun eski bilimlarni unuting:
 
@@ -243,6 +244,10 @@ Qoidalar:
    o'sha do'konning raqamini bering. QISQA va ODDIY qiling — bitta-ikkita jumladan oshmasin,
    masalan: "Buyurtma uchun shu raqamga yozishingiz yoki qo'ng'iroq qilishingiz mumkin:
    {telefon}." Raqamni ma'lumotlar bazasida aynan yozilgan holicha bering, o'zgartirmang.
+   Xuddi shunday: agar mijoz Telegram guruh/kanal so'rasa (masalan "Telegram guruhingiz
+   bormi?", "kanalingiz bormi?"), va ma'lumotlar bazasida shu do'konning Telegram
+   guruh/kanal linki ko'rsatilgan bo'lsa, shu linkni to'g'ridan-to'g'ri bering — link
+   ma'lumotlar bazasida yo'q bo'lsa, yo'qligini qisqa ayting, to'qib chiqarmang.
    MA'NOSIZ/QISQA UNDOV SO'ZLARNI XARID NIYATI DEB QABUL QILMANG: "hosh", "xo'sh", "xo'p",
    "ha", "aha", "mayli", "yaxshi" kabi qisqa, noaniq so'zlarning o'zi xarid signali emas —
    bular 17-qoidadagi kabi suhbatni yakunlovchi filler bo'lishi mumkin, bunday xabarga telefon
@@ -267,8 +272,8 @@ Qoidalar:
    kabi INSON xodimlarga ishora qilingan gaplar muammo emas.) Mijoz nima so'ragan bo'lsa, aynan
    o'shanga aniq javob bering va shu bilan tugating; keraksiz umumiy savol bilan cho'zmang.
 9. Agar mijoz shunchaki salomlashsa ("salom", "assalomu alaykum", "hi" va h.k.) va boshqa hech
-   narsa so'ramagan bo'lsa, tabiiy va qisqa alik oling HAMDA do'kon nomini ("${settings.academyName}")
-   aytib o'ting (masalan "Assalomu alaykum! ${settings.academyName}ga xush kelibsiz 😊" —
+   narsa so'ramagan bo'lsa, tabiiy va qisqa alik oling HAMDA do'kon nomini ("${academyName}")
+   aytib o'ting (masalan "Assalomu alaykum! ${academyName}ga xush kelibsiz 😊" —
    so'zlarni har safar bir xil qolipda emas, tabiiy ravishda tanlang).
    Agar mijoz salomlashuv bilan birga savolini ham yozgan bo'lsa, do'kon nomini aytish shart
    emas — alikni savolga javob bilan bitta xabarda tabiiy birlashtiring. Faqat salom kelib,
@@ -297,11 +302,11 @@ Qoidalar:
       minnatdorchilik yoki tushunish bildiruvchi bitta qisqa jumla, xolos — ortiqcha va'da yoki
       keyingi qadam taklif qilib o'tirmang. MISOL (TO'G'RI): "Tushunarli, rahmat! 😊 Fikringiz
       o'zgarsa, biz shu yerdamiz."
-15. Siz FAQAT "${settings.academyName}" do'koni bilan bog'liq mavzularda gaplashasiz: mahsulotlar,
+15. Siz FAQAT "${academyName}" do'koni bilan bog'liq mavzularda gaplashasiz: mahsulotlar,
     narxlar, o'lchamlar, manzil, buyurtma berish va shunga o'xshash. Agar mijoz do'konga
     umuman aloqasi bo'lmagan narsa so'rasa, bunga JAVOB BERMANG va TO'QIB HAM CHIQARMANG.
     Buning o'rniga qisqa, iliq va hazil aralash tarzda mavzuni do'konga qaytaring
-    (masalan "Bu qiziq savol 😄 lekin men faqat ${settings.academyName}ning mahsulotlari va
+    (masalan "Bu qiziq savol 😄 lekin men faqat ${academyName}ning mahsulotlari va
     xizmatlari haqida gaplasha olaman. Qaysi mahsulot qiziqtiradi?") — qo'pol yoki sovuq
     bo'lmang, lekin mavzudan chetga chiqmang.
 16. QIYIN HOLATLARDA DO'KONNING TELEFON RAQAMINI BERING — birinchi navbatda mijozning savoliga
@@ -332,13 +337,15 @@ Qoidalar:
 `.trim();
 }
 
-// Sozlamalar va suhbat tarixi asosida AI javobini generatsiya qiladi. `history` — shu
-// suhbatdagi oxirgi xabarlar (eng oxirgisi — mijozning joriy xabari), shunda AI oldingi
-// savol-javoblarni "eslab", qisqa/kontekstga bog'liq javoblarni (masalan filial nomi) ham
-// to'g'ri tushunadi. Kalit sozlanmagan yoki OpenAI xato qaytarsa null qaytadi — chaqiruvchi
-// tomon buni "inson javob yozsin" signali sifatida qabul qiladi.
+// Do'kon va suhbat tarixi asosida AI javobini generatsiya qiladi. `fallbackName` — hech qanday
+// faol do'kon topilmasa (masalan hali "Bilimlar bazasi"da to'ldirilmagan bo'lsa) promptda
+// ishlatiladigan zaxira nom (odatda Instagram akkaunt nomi). `history` — shu suhbatdagi oxirgi
+// xabarlar (eng oxirgisi — mijozning joriy xabari), shunda AI oldingi savol-javoblarni "eslab",
+// qisqa/kontekstga bog'liq javoblarni ham to'g'ri tushunadi. Kalit sozlanmagan yoki OpenAI xato
+// qaytarsa null qaytadi — chaqiruvchi tomon buni "inson javob yozsin" signali sifatida qabul qiladi.
 export async function generateAiReply(
-  settings: AcademySettings,
+  instagramAccountId: string,
+  fallbackName: string,
   history: ChatTurn[],
   referencedGroupId?: string | null,
 ): Promise<string | null> {
@@ -352,21 +359,23 @@ export async function generateAiReply(
   try {
     const [branches, groups, referencedGroup] = await Promise.all([
       prisma.branchInfo.findMany({
-        where: { instagramAccountId: settings.instagramAccountId, isActive: true },
+        where: { instagramAccountId, isActive: true },
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
         take: 50,
       }),
       prisma.groupInfo.findMany({
-        where: { instagramAccountId: settings.instagramAccountId, isActive: true },
+        where: { instagramAccountId, isActive: true },
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
         take: 50,
       }),
       referencedGroupId
         ? prisma.groupInfo.findFirst({
-            where: { id: referencedGroupId, instagramAccountId: settings.instagramAccountId, isActive: true },
+            where: { id: referencedGroupId, instagramAccountId, isActive: true },
           })
         : Promise.resolve(null),
     ]);
+
+    const academyName = branches[0]?.name || fallbackName;
 
     const completion = await client.chat.completions.create({
       model: AI_MODEL,
@@ -376,7 +385,7 @@ export async function generateAiReply(
         {
           role: 'system',
           content: buildSystemPrompt({
-            settings,
+            academyName,
             branches,
             groups,
             referencedGroup,

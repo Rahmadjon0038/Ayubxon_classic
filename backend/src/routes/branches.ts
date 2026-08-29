@@ -41,6 +41,7 @@ const branchSchema = z.object({
   phoneNumber: z.string().trim().min(1, 'Telefon raqami majburiy').max(100),
   description: z.string().trim().min(1, "Do'kon haqida ma'lumot majburiy").max(4000),
   photoUrls: z.array(z.string().trim().url()).max(MAX_PHOTOS, `Ko'pi bilan ${MAX_PHOTOS} ta rasm`).default([]),
+  telegramGroupUrl: z.string().trim().url('Haqiqiy link kiriting').max(500).optional().or(z.literal('')),
   extraInfo: z.string().trim().max(8000).optional().or(z.literal('')),
   isActive: z.boolean().default(true),
 });
@@ -103,6 +104,7 @@ router.post('/', validateBody(branchSchema), async (req, res, next) => {
         phoneNumber: body.phoneNumber,
         description: body.description,
         photoUrls: body.photoUrls,
+        telegramGroupUrl: normalizeOptionalText(body.telegramGroupUrl),
         extraInfo: normalizeOptionalText(body.extraInfo),
         isActive: body.isActive,
       },
@@ -136,6 +138,7 @@ router.put('/:id', validateBody(branchSchema), async (req, res, next) => {
         phoneNumber: body.phoneNumber,
         description: body.description,
         photoUrls: body.photoUrls,
+        telegramGroupUrl: normalizeOptionalText(body.telegramGroupUrl),
         extraInfo: normalizeOptionalText(body.extraInfo),
         isActive: body.isActive,
       },

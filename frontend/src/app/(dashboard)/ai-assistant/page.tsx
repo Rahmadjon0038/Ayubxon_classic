@@ -36,6 +36,7 @@ const IMPORT_TEMPLATE = `{
       "phoneNumber": "+998 99 695 55 50",
       "description": "Erkaklar va ayollar uchun sifatli tayyor kiyim-kechak sotuvchi do'kon.",
       "photoUrls": [],
+      "telegramGroupUrl": "https://t.me/ayubxonclassic",
       "isActive": true
     }
   ],
@@ -67,6 +68,7 @@ interface BranchFormState {
   phoneNumber: string;
   description: string;
   photoUrls: string[];
+  telegramGroupUrl: string;
   extraInfo: string;
   isActive: boolean;
 }
@@ -79,8 +81,8 @@ interface GroupFormState {
 }
 
 const TABS: { key: SectionKey; label: string; desc: string }[] = [
-  { key: 'branches', label: "Do'kon", desc: "Asosiy ma'lumotlar" },
   { key: 'groups', label: 'Mahsulotlar', desc: "Do'konga bog'langan mahsulotlar" },
+  { key: 'branches', label: "Do'kon", desc: "Asosiy ma'lumotlar" },
 ];
 
 const emptyBranchForm: BranchFormState = {
@@ -90,6 +92,7 @@ const emptyBranchForm: BranchFormState = {
   phoneNumber: '',
   description: '',
   photoUrls: [],
+  telegramGroupUrl: '',
   extraInfo: '',
   isActive: true,
 };
@@ -108,7 +111,7 @@ function firstLine(text: string, fallback: string): string {
 
 export default function AiAssistantPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<SectionKey>('branches');
+  const [activeTab, setActiveTab] = useState<SectionKey>('groups');
   const [search, setSearch] = useState('');
   const [modalKind, setModalKind] = useState<ModalKind>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -170,6 +173,7 @@ export default function AiAssistantPage() {
         phoneNumber: existingBranch.phoneNumber,
         description: existingBranch.description,
         photoUrls: existingBranch.photoUrls,
+        telegramGroupUrl: existingBranch.telegramGroupUrl ?? '',
         extraInfo: existingBranch.extraInfo ?? '',
         isActive: existingBranch.isActive,
       });
@@ -212,6 +216,7 @@ export default function AiAssistantPage() {
         phoneNumber: branchForm.phoneNumber.trim(),
         description: branchForm.description.trim(),
         photoUrls: branchForm.photoUrls,
+        telegramGroupUrl: branchForm.telegramGroupUrl.trim(),
         extraInfo: branchForm.extraInfo.trim(),
         isActive: branchForm.isActive,
       };
@@ -376,65 +381,51 @@ export default function AiAssistantPage() {
   return (
     <div className="h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 dark:bg-tg-bg">
       <div className="mx-auto max-w-7xl space-y-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-400">
-                AI Assistant
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-tg-text">
-                Bilimlar bazasi
-              </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
-                Do&apos;kon asosiy ma&apos;lumot hisoblanadi. Mahsulotlar do&apos;konga bog&apos;lanadi.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={openImport}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover"
-              >
-                <FileJson size={16} />
-                JSON orqali to&apos;ldirish
-              </button>
-              <button
-                type="button"
-                onClick={handleToggle}
-                disabled={toggleMutation.isPending || settingsQuery.isLoading}
-                className={`flex min-w-[200px] items-center justify-between gap-4 rounded-lg border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={openImport}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:hover:border-tg-hover sm:text-sm"
+            >
+              <FileJson size={14} />
+              JSON orqali to&apos;ldirish
+            </button>
+            <button
+              type="button"
+              onClick={handleToggle}
+              disabled={toggleMutation.isPending || settingsQuery.isLoading}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm ${
+                aiEnabled
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+                  : 'border-slate-300 bg-slate-50 text-slate-700 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text'
+              }`}
+              aria-pressed={aiEnabled}
+              aria-label={aiEnabled ? 'AI o‘chirish' : 'AI yoqish'}
+            >
+              <span className="flex items-center gap-1.5">
+                {aiEnabled ? <Check size={14} /> : <EyeOff size={14} />}
+                {aiEnabled ? 'AI yoqilgan' : 'AI o\'chirilgan'}
+              </span>
+              <span
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition ${
                   aiEnabled
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
-                    : 'border-slate-300 bg-slate-50 text-slate-700 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text'
+                    ? 'border-emerald-500 bg-emerald-500'
+                    : 'border-slate-300 bg-slate-200 dark:border-tg-hover dark:bg-tg-hover'
                 }`}
-                aria-pressed={aiEnabled}
-                aria-label={aiEnabled ? 'AI o‘chirish' : 'AI yoqish'}
+                aria-hidden="true"
               >
-                <span className="flex items-center gap-2">
-                  {aiEnabled ? <Check size={16} /> : <EyeOff size={16} />}
-                  {aiEnabled ? 'AI yoqilgan' : 'AI o\'chirilgan'}
-                </span>
                 <span
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition ${
-                    aiEnabled
-                      ? 'border-emerald-500 bg-emerald-500'
-                      : 'border-slate-300 bg-slate-200 dark:border-tg-hover dark:bg-tg-hover'
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition ${
+                    aiEnabled ? 'translate-x-4' : 'translate-x-1'
                   }`}
-                  aria-hidden="true"
-                >
-                  <span
-                    className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition ${
-                      aiEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </span>
-              </button>
-            </div>
+                />
+              </span>
+            </button>
           </div>
 
           {settingsQuery.isError && (
-            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+            <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
               {getErrorMessage(settingsQuery.error)}
             </p>
           )}
@@ -450,14 +441,14 @@ export default function AiAssistantPage() {
                     key={tab.key}
                     type="button"
                     onClick={() => setActiveTab(tab.key)}
-                    className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition sm:text-sm ${
                       active
                         ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
                         : 'border-slate-300 bg-slate-50 text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-textMuted dark:hover:border-tg-hover dark:hover:text-tg-text'
                     }`}
                   >
                     <span>{tab.label}</span>
-                    <span className="ml-2 text-xs opacity-70">{tab.desc}</span>
+                    <span className="ml-1.5 hidden text-[11px] opacity-70 sm:inline">{tab.desc}</span>
                   </button>
                 );
               })}
@@ -550,6 +541,15 @@ export default function AiAssistantPage() {
                         onChange={(event) => setBranchForm({ ...branchForm, phoneNumber: event.target.value })}
                         className={inputClass}
                         placeholder="+998 99 123 45 67"
+                      />
+                    </Field>
+                    <Field label="Telegram guruh/kanal linki" className="sm:col-span-2">
+                      <input
+                        type="url"
+                        value={branchForm.telegramGroupUrl}
+                        onChange={(event) => setBranchForm({ ...branchForm, telegramGroupUrl: event.target.value })}
+                        className={inputClass}
+                        placeholder="https://t.me/..."
                       />
                     </Field>
                     <Field label="Do'kon haqida ma'lumot *" className="sm:col-span-2">
@@ -1018,62 +1018,74 @@ function GroupCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="line-clamp-1 text-lg font-semibold text-slate-900 dark:text-tg-text">
-            {firstLine(item.details, 'Mahsulot')}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">{item.isActive ? 'Faol' : 'Faol emas'}</p>
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-tg-border dark:bg-tg-panel">
+      {item.videoThumbnailUrl && (
+        <a href={item.videoUrl ?? undefined} target="_blank" rel="noreferrer" className="block shrink-0">
+          <img
+            src={item.videoThumbnailUrl}
+            alt="Mahsulot videosi"
+            className="aspect-square w-full object-cover"
+          />
+        </a>
+      )}
+
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="line-clamp-1 text-lg font-semibold text-slate-900 dark:text-tg-text">
+              {firstLine(item.details, 'Mahsulot')}
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">{item.isActive ? 'Faol' : 'Faol emas'}</p>
+          </div>
+          <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
+            Mahsulot
+          </span>
         </div>
-        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
-          Mahsulot
-        </span>
-      </div>
 
-      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
-        <p>
-          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Do&apos;kon:</span> {branchName}
-        </p>
-        {item.videoUrl && (
-          <a
-            href={item.videoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 break-all text-sky-600 hover:underline dark:text-sky-400"
+        <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
+          <p>
+            <span className="font-medium text-slate-500 dark:text-tg-textFaint">Do&apos;kon:</span> {branchName}
+          </p>
+          {item.videoUrl && !item.videoThumbnailUrl && (
+            <a
+              href={item.videoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 break-all text-sky-600 hover:underline dark:text-sky-400"
+            >
+              <Video size={16} className="shrink-0" />
+              <span>Instagram videoni ko&apos;rish</span>
+            </a>
+          )}
+        </div>
+
+        <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
+          <p className="font-medium text-slate-500 dark:text-tg-textFaint">Ma&apos;lumot</p>
+          <p className="mt-1 whitespace-pre-wrap">{item.details}</p>
+        </div>
+
+        <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
+          <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
           >
-            <Video size={16} className="shrink-0" />
-            <span>Instagram videoni ko&apos;rish</span>
-          </a>
-        )}
-      </div>
-
-      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
-        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Ma&apos;lumot</p>
-        <p className="mt-1 whitespace-pre-wrap">{item.details}</p>
-      </div>
-
-      <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
-        <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
-        >
-          <PencilLine size={16} />
-          Tahrirlash
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700 transition hover:border-rose-300 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
-        >
-          <Trash2 size={16} />
-          O&apos;chirish
-        </button>
+            <PencilLine size={16} />
+            Tahrirlash
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700 transition hover:border-rose-300 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
+          >
+            <Trash2 size={16} />
+            O&apos;chirish
+          </button>
+        </div>
       </div>
     </article>
   );

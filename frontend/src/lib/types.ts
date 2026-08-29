@@ -41,6 +41,7 @@ export interface BranchInfo {
   phoneNumber: string;
   description: string;
   photoUrls: string[];
+  telegramGroupUrl: string | null;
   extraInfo: string | null;
   isActive: boolean;
   createdAt: string;
@@ -52,6 +53,7 @@ export interface GroupInfo {
   instagramAccountId: string;
   branchId: string;
   videoUrl: string | null;
+  videoThumbnailUrl: string | null;
   details: string;
   isActive: boolean;
   createdAt: string;

@@ -1096,16 +1096,6 @@ async function handleIncomingContactMessage({
 }: HandleIncomingParams): Promise<void> {
   if (!account.aiEnabled) return;
 
-  const settings = await prisma.academySettings.findUnique({
-    where: { instagramAccountId: account.id },
-  });
-  if (!settings) {
-    console.log(
-      `[webhook] AI yoqilgan, lekin "${account.username}" uchun markaz sozlamalari topilmadi — inson javobiga qoldirildi`,
-    );
-    return;
-  }
-
   const current = await prisma.conversation.findUnique({
     where: { id: conversationId },
     select: { aiPaused: true, aiPausedAt: true },
@@ -1146,13 +1136,13 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
   });
   if (!current || current.aiPaused) return;
 
-  const settings = await prisma.academySettings.findUnique({
-    where: { instagramAccountId: account.id },
-  });
-  if (!settings) return;
-
   const history = await getConversationHistory(conversationId);
-  const replyText = await generateAiReply(settings, history, current.referencedGroupId);
+  const replyText = await generateAiReply(
+    account.id,
+    account.name || account.username,
+    history,
+    current.referencedGroupId,
+  );
   if (!replyText) return;
 
   try {
@@ -1227,7 +1217,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
         analysis.isJobInquiry ||
         analysisHistory.some((turn) => turn.role === 'user' && detectJobInquiry(turn.content));
       notifyNewLead({
-        academyName: settings.academyName,
+        academyName: account.name || account.username,
         phoneNumber: analysis.phoneNumber,
         previousPhoneNumber,
         courseName: analysis.interestedCourse,
