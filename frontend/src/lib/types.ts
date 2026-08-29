@@ -32,8 +32,6 @@ export interface AcademySettings {
 
 export type KnowledgeBaseCategory = 'COURSE' | 'GROUP' | 'PROMOTION' | 'PRICE' | 'BRANCH' | 'OTHER';
 
-export type PromotionScope = 'ALL_BRANCHES' | 'BRANCH';
-
 export interface BranchInfo {
   id: string;
   instagramAccountId: string;
@@ -41,7 +39,8 @@ export interface BranchInfo {
   locationUrl: string;
   workingHours: string;
   phoneNumber: string;
-  subjectNames: string;
+  description: string;
+  photoUrls: string[];
   extraInfo: string | null;
   isActive: boolean;
   createdAt: string;
@@ -52,53 +51,9 @@ export interface GroupInfo {
   id: string;
   instagramAccountId: string;
   branchId: string;
-  subjectName: string;
-  price: string;
+  videoUrl: string | null;
   details: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PromotionInfo {
-  id: string;
-  instagramAccountId: string;
-  branchId: string | null;
-  scope: PromotionScope;
-  title: string;
-  details: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AdCampaign {
-  id: string;
-  instagramAccountId: string;
-  title: string;
-  metaPageId: string | null;
-  metaPageName: string | null;
-  metaFormId: string | null;
-  metaFormName: string | null;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  leadCount?: number;
-}
-
-export interface AdLead {
-  id: string;
-  instagramAccountId: string;
-  adCampaignId: string;
-  metaLeadId: string;
-  metaPageId: string | null;
-  metaFormId: string | null;
-  fullName: string;
-  phoneNumber: string | null;
-  email: string | null;
-  comment: string | null;
-  rawFields: Record<string, string[]> | null;
-  leadCreatedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

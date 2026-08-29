@@ -227,11 +227,11 @@ export default function StatsPage() {
                 <StackedBreakdown
                   emptyLabel={t('stats.noData')}
                   segments={[
-                    { key: 'NEW', label: t('calls.columnNew'), color: COLOR_VIOLET, value: stats.callStatus.NEW },
-                    { key: 'TALKED', label: t('calls.columnTalked'), color: COLOR_EMERALD, value: stats.callStatus.TALKED },
+                    { key: 'NEW', label: t('stats.callNew'), color: COLOR_VIOLET, value: stats.callStatus.NEW },
+                    { key: 'TALKED', label: t('stats.callTalked'), color: COLOR_EMERALD, value: stats.callStatus.TALKED },
                     {
                       key: 'NOT_ANSWERED',
-                      label: t('calls.columnNotAnswered'),
+                      label: t('stats.callNotAnswered'),
                       color: COLOR_ROSE,
                       value: stats.callStatus.NOT_ANSWERED,
                     },

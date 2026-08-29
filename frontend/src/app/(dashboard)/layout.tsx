@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BarChart3, Bot, Camera, Inbox, KanbanSquare, LogOut, Megaphone, Phone, Settings } from 'lucide-react';
+import { BarChart3, Bot, Camera, Inbox, LogOut, Settings } from 'lucide-react';
 import Avatar from '@/components/Avatar';
 import { useLocale } from '@/components/LocaleProvider';
 import { clearToken, getToken } from '@/lib/api';
@@ -11,10 +11,7 @@ import { disconnectSocket } from '@/lib/socket';
 import { useInstagramAccount } from '@/lib/useInstagramAccount';
 
 const navItems = [
-  { href: '/leads', key: 'nav.leads', Icon: KanbanSquare },
-  { href: '/ads', key: 'nav.ads', Icon: Megaphone },
   { href: '/inbox', key: 'nav.inbox', Icon: Inbox },
-  { href: '/calls', key: 'nav.calls', Icon: Phone },
   { href: '/stats', key: 'nav.stats', Icon: BarChart3 },
   { href: '/instagram', key: 'nav.instagram', Icon: Camera },
   { href: '/ai-assistant', key: 'nav.aiAssistant', Icon: Bot },

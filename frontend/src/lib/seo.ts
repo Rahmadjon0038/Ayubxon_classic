@@ -98,8 +98,6 @@ export function getPrivatePathPrefixes(): string[] {
   return [
     '/login',
     '/inbox',
-    '/leads',
-    '/calls',
     '/stats',
     '/instagram',
     '/ai-assistant',

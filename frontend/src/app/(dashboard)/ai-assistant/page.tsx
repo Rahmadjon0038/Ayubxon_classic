@@ -1,52 +1,58 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Clock3, EyeOff, FileJson, MapPin, Plus, Search, Phone, PencilLine, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  Check,
+  Clock3,
+  EyeOff,
+  FileJson,
+  ImagePlus,
+  MapPin,
+  Plus,
+  Search,
+  Phone,
+  PencilLine,
+  Trash2,
+  Video,
+  X,
+} from 'lucide-react';
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { api, getErrorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
-import { BranchInfo, GroupInfo, PromotionInfo, PromotionScope } from '@/lib/types';
+import { BranchInfo, GroupInfo } from '@/lib/types';
+
+const MAX_PHOTOS = 2;
 
 interface ImportResult {
   academyNameUpdated: boolean;
   branches: { created: number; updated: number };
   groups: { created: number; updated: number; skipped: string[] };
-  promotions: { created: number; updated: number; skipped: string[] };
 }
 
 const IMPORT_TEMPLATE = `{
   "academyName": "Ayubxon Classic",
   "branches": [
     {
-      "name": "Boburshox filiali",
-      "locationUrl": "https://maps.google.com/?q=Boburshox+filiali",
-      "workingHours": "08:00-22:00",
+      "name": "Asosiy do'kon",
+      "locationUrl": "https://maps.google.com/?q=Ayubxon+Classic",
+      "workingHours": "09:00-20:00",
       "phoneNumber": "+998 99 695 55 50",
-      "subjectNames": "Ingliz tili, Matematika, Fizika",
-      "extraInfo": "Mo'ljal: Bolalar stomatologiyasi ro'parasida.",
+      "description": "Erkaklar va ayollar uchun sifatli tayyor kiyim-kechak sotuvchi do'kon.",
+      "photoUrls": [],
       "isActive": true
     }
   ],
   "groups": [
     {
-      "branchName": "Boburshox filiali",
-      "subjectName": "Klassik kostyum",
-      "price": "1 200 000 so'm",
-      "details": "Mato: shirst. Ranglari: qora, kulrang, ko'k. O'lchamlari: 46-56.",
-      "isActive": true
-    }
-  ],
-  "promotions": [
-    {
-      "scope": "ALL_BRANCHES",
-      "title": "Kostyum + shim to'plamiga chegirma",
-      "details": "Kostyum va shimni birga xarid qilganda 10% chegirma beriladi.",
+      "branchName": "Asosiy do'kon",
+      "videoUrl": "https://www.instagram.com/reel/xxxxxxxxxxx/",
+      "details": "Rangi qora yoki kulrang.\\nPidjak narxi 450 000 so'm\\nKo'ylak narxi 190 000 so'm\\nShim narxi 180 000 so'm",
       "isActive": true
     }
   ]
 }`;
 
-type SectionKey = 'branches' | 'groups' | 'promotions';
+type SectionKey = 'branches' | 'groups';
 type ModalKind = SectionKey | null;
 
 interface SettingsResponse {
@@ -62,31 +68,22 @@ interface BranchFormState {
   locationUrl: string;
   workingHours: string;
   phoneNumber: string;
-  subjectNames: string;
+  description: string;
+  photoUrls: string[];
   extraInfo: string;
   isActive: boolean;
 }
 
 interface GroupFormState {
   branchId: string;
-  subjectName: string;
-  price: string;
-  details: string;
-  isActive: boolean;
-}
-
-interface PromotionFormState {
-  scope: PromotionScope;
-  branchId: string;
-  title: string;
+  videoUrl: string;
   details: string;
   isActive: boolean;
 }
 
 const TABS: { key: SectionKey; label: string; desc: string }[] = [
-  { key: 'branches', label: 'Filiallar', desc: 'Asosiy ma\'lumotlar' },
-  { key: 'groups', label: 'Mahsulotlar', desc: 'Filialga bog\'langan mahsulotlar' },
-  { key: 'promotions', label: 'Aksiyalar', desc: 'Chegirmalar va maxsus takliflar' },
+  { key: 'branches', label: "Do'kon", desc: "Asosiy ma'lumotlar" },
+  { key: 'groups', label: 'Mahsulotlar', desc: "Do'konga bog'langan mahsulotlar" },
 ];
 
 const emptyBranchForm: BranchFormState = {
@@ -94,26 +91,23 @@ const emptyBranchForm: BranchFormState = {
   locationUrl: '',
   workingHours: '',
   phoneNumber: '',
-  subjectNames: '',
+  description: '',
+  photoUrls: [],
   extraInfo: '',
   isActive: true,
 };
 
 const emptyGroupForm: GroupFormState = {
   branchId: '',
-  subjectName: '',
-  price: '',
+  videoUrl: '',
   details: '',
   isActive: true,
 };
 
-const emptyPromotionForm: PromotionFormState = {
-  scope: 'ALL_BRANCHES',
-  branchId: '',
-  title: '',
-  details: '',
-  isActive: true,
-};
+function firstLine(text: string, fallback: string): string {
+  const line = text.split('\n').find((part) => part.trim().length > 0)?.trim();
+  return line ? (line.length > 60 ? `${line.slice(0, 60)}…` : line) : fallback;
+}
 
 export default function AiAssistantPage() {
   const queryClient = useQueryClient();
@@ -126,7 +120,6 @@ export default function AiAssistantPage() {
   const [aiHydrated, setAiHydrated] = useState(false);
   const [branchForm, setBranchForm] = useState<BranchFormState>(emptyBranchForm);
   const [groupForm, setGroupForm] = useState<GroupFormState>(emptyGroupForm);
-  const [promotionForm, setPromotionForm] = useState<PromotionFormState>(emptyPromotionForm);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importParseError, setImportParseError] = useState<string | null>(null);
@@ -161,19 +154,36 @@ export default function AiAssistantPage() {
     },
   });
 
-  const promotionsQuery = useQuery({
-    queryKey: ['knowledge-promotions'],
-    queryFn: async () => {
-      const { data } = await api.get<ListResponse<PromotionInfo>>('/knowledge-base/promotions');
-      return data.items;
+  const branches = branchesQuery.data ?? [];
+  const groups = groupsQuery.data ?? [];
+
+  const branchMap = useMemo(() => new Map(branches.map((branch) => [branch.id, branch])), [branches]);
+
+  const photoUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post<{ url: string }>('/knowledge-base/branches/upload-photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data.url;
+    },
+    onSuccess: (url) => {
+      setBranchForm((prev) => ({ ...prev, photoUrls: [...prev.photoUrls, url].slice(0, MAX_PHOTOS) }));
     },
   });
 
-  const branches = branchesQuery.data ?? [];
-  const groups = groupsQuery.data ?? [];
-  const promotions = promotionsQuery.data ?? [];
+  function handlePhotoSelect(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    photoUploadMutation.reset();
+    photoUploadMutation.mutate(file);
+  }
 
-  const branchMap = useMemo(() => new Map(branches.map((branch) => [branch.id, branch])), [branches]);
+  function removePhoto(url: string) {
+    setBranchForm((prev) => ({ ...prev, photoUrls: prev.photoUrls.filter((item) => item !== url) }));
+  }
 
   const branchSaveMutation = useMutation({
     mutationFn: async () => {
@@ -182,7 +192,8 @@ export default function AiAssistantPage() {
         locationUrl: branchForm.locationUrl.trim(),
         workingHours: branchForm.workingHours.trim(),
         phoneNumber: branchForm.phoneNumber.trim(),
-        subjectNames: branchForm.subjectNames.trim(),
+        description: branchForm.description.trim(),
+        photoUrls: branchForm.photoUrls,
         extraInfo: branchForm.extraInfo.trim(),
         isActive: branchForm.isActive,
       };
@@ -205,8 +216,7 @@ export default function AiAssistantPage() {
     mutationFn: async () => {
       const payload = {
         branchId: groupForm.branchId,
-        subjectName: groupForm.subjectName.trim(),
-        price: groupForm.price.trim(),
+        videoUrl: groupForm.videoUrl.trim(),
         details: groupForm.details.trim(),
         isActive: groupForm.isActive,
       };
@@ -225,30 +235,6 @@ export default function AiAssistantPage() {
     },
   });
 
-  const promotionSaveMutation = useMutation({
-    mutationFn: async () => {
-      const payload = {
-        scope: promotionForm.scope,
-        branchId: promotionForm.scope === 'BRANCH' ? promotionForm.branchId : '',
-        title: promotionForm.title.trim(),
-        details: promotionForm.details.trim(),
-        isActive: promotionForm.isActive,
-      };
-
-      if (editingId) {
-        const { data } = await api.put<{ item: PromotionInfo }>(`/knowledge-base/promotions/${editingId}`, payload);
-        return data.item;
-      }
-
-      const { data } = await api.post<{ item: PromotionInfo }>('/knowledge-base/promotions', payload);
-      return data.item;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['knowledge-promotions'] });
-      closeModal();
-    },
-  });
-
   const importMutation = useMutation({
     mutationFn: async (payload: unknown) => {
       const { data } = await api.post<{ result: ImportResult }>('/knowledge-base/import', payload);
@@ -258,7 +244,6 @@ export default function AiAssistantPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['knowledge-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['knowledge-groups'] }),
-        queryClient.invalidateQueries({ queryKey: ['knowledge-promotions'] }),
         queryClient.invalidateQueries({ queryKey: ['academy-settings-ai'] }),
       ]);
     },
@@ -269,7 +254,6 @@ export default function AiAssistantPage() {
       const endpointMap: Record<SectionKey, string> = {
         branches: '/knowledge-base/branches',
         groups: '/knowledge-base/groups',
-        promotions: '/knowledge-base/promotions',
       };
       await api.delete(`${endpointMap[kind]}/${id}`);
     },
@@ -277,7 +261,6 @@ export default function AiAssistantPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['knowledge-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['knowledge-groups'] }),
-        queryClient.invalidateQueries({ queryKey: ['knowledge-promotions'] }),
       ]);
       setDeleteTarget(null);
     },
@@ -309,7 +292,7 @@ export default function AiAssistantPage() {
   function resetForms() {
     setBranchForm(emptyBranchForm);
     setGroupForm(emptyGroupForm);
-    setPromotionForm(emptyPromotionForm);
+    photoUploadMutation.reset();
   }
 
   function closeModal() {
@@ -353,7 +336,7 @@ export default function AiAssistantPage() {
     resetForms();
   }
 
-  function openEdit(kind: SectionKey, item: BranchInfo | GroupInfo | PromotionInfo) {
+  function openEdit(kind: SectionKey, item: BranchInfo | GroupInfo) {
     setEditingId(item.id);
     setModalKind(kind);
     if (kind === 'branches') {
@@ -363,7 +346,8 @@ export default function AiAssistantPage() {
         locationUrl: branch.locationUrl,
         workingHours: branch.workingHours,
         phoneNumber: branch.phoneNumber,
-        subjectNames: branch.subjectNames,
+        description: branch.description,
+        photoUrls: branch.photoUrls,
         extraInfo: branch.extraInfo ?? '',
         isActive: branch.isActive,
       });
@@ -372,26 +356,15 @@ export default function AiAssistantPage() {
       const group = item as GroupInfo;
       setGroupForm({
         branchId: group.branchId,
-        subjectName: group.subjectName,
-        price: group.price,
+        videoUrl: group.videoUrl ?? '',
         details: group.details,
         isActive: group.isActive,
-      });
-    }
-    if (kind === 'promotions') {
-      const promotion = item as PromotionInfo;
-      setPromotionForm({
-        scope: promotion.scope,
-        branchId: promotion.branchId ?? '',
-        title: promotion.title,
-        details: promotion.details,
-        isActive: promotion.isActive,
       });
     }
   }
 
   const filteredBranches = branches.filter((item) => {
-    const haystack = [item.name, item.locationUrl, item.workingHours, item.phoneNumber, item.subjectNames, item.extraInfo ?? '']
+    const haystack = [item.name, item.locationUrl, item.workingHours, item.phoneNumber, item.description, item.extraInfo ?? '']
       .join(' ')
       .toLowerCase();
     return haystack.includes(search.trim().toLowerCase());
@@ -399,13 +372,7 @@ export default function AiAssistantPage() {
 
   const filteredGroups = groups.filter((item) => {
     const branchName = branchMap.get(item.branchId)?.name ?? '';
-    const haystack = [item.subjectName, item.price, item.details, branchName].join(' ').toLowerCase();
-    return haystack.includes(search.trim().toLowerCase());
-  });
-
-  const filteredPromotions = promotions.filter((item) => {
-    const branchName = item.branchId ? branchMap.get(item.branchId)?.name ?? '' : 'Barcha filiallar';
-    const haystack = [item.title, item.details, branchName].join(' ').toLowerCase();
+    const haystack = [item.details, item.videoUrl ?? '', branchName].join(' ').toLowerCase();
     return haystack.includes(search.trim().toLowerCase());
   });
 
@@ -414,9 +381,9 @@ export default function AiAssistantPage() {
   const selectClass =
     'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text dark:focus:border-slate-500 dark:focus:ring-slate-800';
 
-  const isLoading = branchesQuery.isLoading || groupsQuery.isLoading || promotionsQuery.isLoading;
-  const isError = branchesQuery.isError || groupsQuery.isError || promotionsQuery.isError;
-  const error = branchesQuery.error || groupsQuery.error || promotionsQuery.error;
+  const isLoading = branchesQuery.isLoading || groupsQuery.isLoading;
+  const isError = branchesQuery.isError || groupsQuery.isError;
+  const error = branchesQuery.error || groupsQuery.error;
 
   return (
     <div className="h-full overflow-y-auto bg-slate-50 p-4 sm:p-6 dark:bg-tg-bg">
@@ -431,7 +398,7 @@ export default function AiAssistantPage() {
                 Bilimlar bazasi
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
-                Filiallar asosiy ma&apos;lumot hisoblanadi. Guruhlar va aksiyalar alohida filialga bog&apos;lanadi.
+                Do&apos;kon asosiy ma&apos;lumot hisoblanadi. Mahsulotlar do&apos;konga bog&apos;lanadi.
               </p>
             </div>
 
@@ -540,13 +507,13 @@ export default function AiAssistantPage() {
           <>
             {activeTab === 'branches' && (
               <SectionShell
-                title="Filiallar"
-                subtitle="Nomi, joylashuv linki, ish vaqti, telefon raqami va fan yo'nalishlari shu yerda saqlanadi."
+                title="Do'kon"
+                subtitle="Nomi, tavsifi, manzili, ish vaqti, egasining telefon raqami va rasmlari shu yerda saqlanadi."
                 onAdd={() => openCreate('branches')}
-                addLabel="Yangi filial qo'shish"
+                addLabel="Yangi do'kon qo'shish"
               >
                 {filteredBranches.length === 0 ? (
-                  <EmptyState onAdd={() => openCreate('branches')} label="Filial qo'shish" />
+                  <EmptyState onAdd={() => openCreate('branches')} label="Do'kon qo'shish" />
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {filteredBranches.map((branch) => (
@@ -565,7 +532,7 @@ export default function AiAssistantPage() {
             {activeTab === 'groups' && (
               <SectionShell
                 title="Mahsulotlar"
-                subtitle="Har bir mahsulot filialga bog'lanadi. Mahsulot nomi, narxi va batafsil ma'lumot alohida yoziladi."
+                subtitle="Instagram video linki va mahsulot haqidagi erkin matnli ma'lumot (rang, o'lcham, narx va h.k.) shu yerda saqlanadi."
                 onAdd={() => openCreate('groups')}
                 addLabel="Yangi mahsulot qo'shish"
               >
@@ -577,34 +544,11 @@ export default function AiAssistantPage() {
                       <GroupCard
                         key={group.id}
                         item={group}
-                        branchName={branchMap.get(group.branchId)?.name ?? 'Filial topilmadi'}
+                        branchName={branchMap.get(group.branchId)?.name ?? "Do'kon topilmadi"}
                         onEdit={() => openEdit('groups', group)}
-                        onDelete={() => setDeleteTarget({ kind: 'groups', id: group.id, title: group.subjectName })}
-                      />
-                    ))}
-                  </div>
-                )}
-              </SectionShell>
-            )}
-
-            {activeTab === 'promotions' && (
-              <SectionShell
-                title="Aksiyalar"
-                subtitle="Chegirma yoki aksiya barcha filiallar uchun yoki bitta filial uchun belgilanishi mumkin."
-                onAdd={() => openCreate('promotions')}
-                addLabel="Yangi aksiya qo'shish"
-              >
-                {filteredPromotions.length === 0 ? (
-                  <EmptyState onAdd={() => openCreate('promotions')} label="Aksiya qo'shish" />
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {filteredPromotions.map((promotion) => (
-                      <PromotionCard
-                        key={promotion.id}
-                        item={promotion}
-                        branchName={promotion.branchId ? branchMap.get(promotion.branchId)?.name ?? 'Filial topilmadi' : 'Barcha filiallar'}
-                        onEdit={() => openEdit('promotions', promotion)}
-                        onDelete={() => setDeleteTarget({ kind: 'promotions', id: promotion.id, title: promotion.title })}
+                        onDelete={() =>
+                          setDeleteTarget({ kind: 'groups', id: group.id, title: firstLine(group.details, 'Mahsulot') })
+                        }
                       />
                     ))}
                   </div>
@@ -633,7 +577,7 @@ export default function AiAssistantPage() {
                     value={branchForm.name}
                     onChange={(event) => setBranchForm({ ...branchForm, name: event.target.value })}
                     className={inputClass}
-                    placeholder="Boburshox filiali"
+                    placeholder="Ayubxon Classic"
                   />
                 </Field>
                 <Field label="Joylashuv linki *">
@@ -653,10 +597,10 @@ export default function AiAssistantPage() {
                     value={branchForm.workingHours}
                     onChange={(event) => setBranchForm({ ...branchForm, workingHours: event.target.value })}
                     className={inputClass}
-                    placeholder="09:00 - 19:00"
+                    placeholder="09:00 - 20:00"
                   />
                 </Field>
-                <Field label="Telefon raqami *">
+                <Field label="Egasining telefon raqami *">
                   <input
                     type="text"
                     required
@@ -666,14 +610,14 @@ export default function AiAssistantPage() {
                     placeholder="+998 99 123 45 67"
                   />
                 </Field>
-                <Field label="Fan yo'nalishlari *" className="md:col-span-2">
+                <Field label="Do'kon haqida ma'lumot *" className="md:col-span-2">
                   <textarea
                     required
                     rows={3}
-                    value={branchForm.subjectNames}
-                    onChange={(event) => setBranchForm({ ...branchForm, subjectNames: event.target.value })}
+                    value={branchForm.description}
+                    onChange={(event) => setBranchForm({ ...branchForm, description: event.target.value })}
                     className={inputClass}
-                    placeholder="Ingliz tili, Turk tili, IELTS, Matematika..."
+                    placeholder="Erkaklar va ayollar uchun sifatli tayyor kiyim-kechak sotuvchi do'kon."
                   />
                 </Field>
                 <Field label="Qo'shimcha ma'lumot" className="md:col-span-2">
@@ -682,8 +626,51 @@ export default function AiAssistantPage() {
                     value={branchForm.extraInfo}
                     onChange={(event) => setBranchForm({ ...branchForm, extraInfo: event.target.value })}
                     className={inputClass}
-                    placeholder="Filial haqida bilish kerak bo'lgan barcha qo'shimcha ma'lumotlar."
+                    placeholder="Do'kon haqida bilish kerak bo'lgan boshqa qo'shimcha ma'lumotlar."
                   />
+                </Field>
+                <Field label={`Rasmlar (ko'pi bilan ${MAX_PHOTOS} ta)`} className="md:col-span-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {branchForm.photoUrls.map((url) => (
+                      <div
+                        key={url}
+                        className="group relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 dark:border-tg-hover"
+                      >
+                        <img src={url} alt="Do'kon rasmi" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(url)}
+                          className="absolute right-1 top-1 rounded-full bg-slate-950/70 p-1 text-white transition hover:bg-rose-600"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    {branchForm.photoUrls.length < MAX_PHOTOS && (
+                      <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 transition hover:border-slate-400 hover:text-slate-600 dark:border-tg-hover dark:text-tg-textMuted dark:hover:border-tg-hover">
+                        {photoUploadMutation.isPending ? (
+                          <span className="text-[10px]">Yuklanmoqda...</span>
+                        ) : (
+                          <>
+                            <ImagePlus size={18} />
+                            <span className="text-[10px]">Rasm qo&apos;shish</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handlePhotoSelect}
+                          disabled={photoUploadMutation.isPending}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {photoUploadMutation.isError && (
+                    <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+                      {getErrorMessage(photoUploadMutation.error)}
+                    </p>
+                  )}
                 </Field>
               </div>
 
@@ -709,14 +696,14 @@ export default function AiAssistantPage() {
               className="space-y-4"
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Filial *" className="md:col-span-2">
+                <Field label="Do'kon *" className="md:col-span-2">
                   <select
                     required
                     value={groupForm.branchId}
                     onChange={(event) => setGroupForm({ ...groupForm, branchId: event.target.value })}
                     className={selectClass}
                   >
-                    <option value="">Filial tanlang</option>
+                    <option value="">Do'kon tanlang</option>
                     {branches.map((branch) => (
                       <option key={branch.id} value={branch.id}>
                         {branch.name}
@@ -724,34 +711,23 @@ export default function AiAssistantPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Mahsulot nomi *">
+                <Field label="Instagram video linki" className="md:col-span-2">
                   <input
-                    type="text"
-                    required
-                    value={groupForm.subjectName}
-                    onChange={(event) => setGroupForm({ ...groupForm, subjectName: event.target.value })}
+                    type="url"
+                    value={groupForm.videoUrl}
+                    onChange={(event) => setGroupForm({ ...groupForm, videoUrl: event.target.value })}
                     className={inputClass}
-                    placeholder="Klassik kostyum"
+                    placeholder="https://www.instagram.com/reel/..."
                   />
                 </Field>
-                <Field label="Narxi *">
-                  <input
-                    type="text"
-                    required
-                    value={groupForm.price}
-                    onChange={(event) => setGroupForm({ ...groupForm, price: event.target.value })}
-                    className={inputClass}
-                    placeholder="1 200 000 so'm"
-                  />
-                </Field>
-                <Field label="Batafsil ma'lumot *" className="md:col-span-2">
+                <Field label="Mahsulot ma'lumoti *" className="md:col-span-2">
                   <textarea
                     required
-                    rows={6}
+                    rows={8}
                     value={groupForm.details}
                     onChange={(event) => setGroupForm({ ...groupForm, details: event.target.value })}
                     className={inputClass}
-                    placeholder="Mahsulot haqidagi barcha savollarga javob beradigan batafsil ma'lumot: o'lchamlar, rang, mato turi, mavjudligi va boshqa eslatmalar."
+                    placeholder={"Videoda ko'rsatilgan mahsulotlar haqida erkin matn — masalan:\nRangi qora yoki kulrang.\nPidjak narxi 450 000 so'm\nKo'ylak narxi 190 000 so'm\nShim narxi 180 000 so'm"}
                   />
                 </Field>
               </div>
@@ -768,81 +744,6 @@ export default function AiAssistantPage() {
               />
             </form>
           )}
-
-          {modalKind === 'promotions' && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                promotionSaveMutation.mutate();
-              }}
-              className="space-y-4"
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Qamrov *">
-                  <select
-                    value={promotionForm.scope}
-                    onChange={(event) =>
-                      setPromotionForm({
-                        ...promotionForm,
-                        scope: event.target.value as PromotionScope,
-                        branchId: event.target.value === 'ALL_BRANCHES' ? '' : promotionForm.branchId,
-                      })
-                    }
-                    className={selectClass}
-                  >
-                    <option value="ALL_BRANCHES">Barcha filiallar</option>
-                    <option value="BRANCH">Bitta filial</option>
-                  </select>
-                </Field>
-                <Field label="Filial" disabled={promotionForm.scope === 'ALL_BRANCHES'}>
-                  <select
-                    disabled={promotionForm.scope === 'ALL_BRANCHES'}
-                    value={promotionForm.branchId}
-                    onChange={(event) => setPromotionForm({ ...promotionForm, branchId: event.target.value })}
-                    className={selectClass}
-                  >
-                    <option value="">Filial tanlang</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Sarlavha *" className="md:col-span-2">
-                  <input
-                    type="text"
-                    required
-                    value={promotionForm.title}
-                    onChange={(event) => setPromotionForm({ ...promotionForm, title: event.target.value })}
-                    className={inputClass}
-                    placeholder="Yozgi chegirma"
-                  />
-                </Field>
-                <Field label="Batafsil ma'lumot *" className="md:col-span-2">
-                  <textarea
-                    required
-                    rows={6}
-                    value={promotionForm.details}
-                    onChange={(event) => setPromotionForm({ ...promotionForm, details: event.target.value })}
-                    className={inputClass}
-                    placeholder="Aksiya tafsilotlari, amal qilish muddati va kimlarga tegishli ekani."
-                  />
-                </Field>
-              </div>
-
-              <StatusRow
-                active={promotionForm.isActive}
-                onToggle={() => setPromotionForm({ ...promotionForm, isActive: !promotionForm.isActive })}
-              />
-
-              <SaveBar
-                pending={promotionSaveMutation.isPending}
-                error={promotionSaveMutation.isError ? getErrorMessage(promotionSaveMutation.error) : null}
-                onCancel={closeModal}
-              />
-            </form>
-          )}
         </ModalShell>
       )}
 
@@ -850,10 +751,10 @@ export default function AiAssistantPage() {
         <ModalShell title="JSON orqali to'ldirish" onClose={closeImport} maxWidth="max-w-3xl">
           <div className="space-y-4">
             <p className="text-sm leading-6 text-slate-600 dark:text-tg-textMuted">
-              Filiallar, mahsulotlar va aksiyalarni bittada qo&apos;shish uchun JSON yopishtiring
-              va &quot;Yuklash&quot;ni bosing. Mavjud filial/mahsulot/aksiya nomi bilan mos kelsa —
-              yangilanadi, aks holda yangi yozuv sifatida qo&apos;shiladi. Keyin har birini
-              alohida tahrirlashingiz mumkin.
+              Do&apos;kon va mahsulotlarni bittada qo&apos;shish uchun JSON yopishtiring va
+              &quot;Yuklash&quot;ni bosing. Mavjud do&apos;kon nomi bilan mos kelsa — yangilanadi,
+              aks holda yangi yozuv sifatida qo&apos;shiladi. Keyin har birini alohida
+              tahrirlashingiz mumkin.
             </p>
 
             <div className="flex items-center justify-between">
@@ -891,7 +792,7 @@ export default function AiAssistantPage() {
               <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <p className="font-medium">Tayyor!</p>
                 <p>
-                  Filiallar: {importMutation.data.branches.created} yangi,{' '}
+                  Do&apos;konlar: {importMutation.data.branches.created} yangi,{' '}
                   {importMutation.data.branches.updated} yangilandi
                 </p>
                 <p>
@@ -900,22 +801,13 @@ export default function AiAssistantPage() {
                   {importMutation.data.groups.skipped.length > 0 &&
                     `, ${importMutation.data.groups.skipped.length} o'tkazib yuborildi`}
                 </p>
-                <p>
-                  Aksiyalar: {importMutation.data.promotions.created} yangi,{' '}
-                  {importMutation.data.promotions.updated} yangilandi
-                  {importMutation.data.promotions.skipped.length > 0 &&
-                    `, ${importMutation.data.promotions.skipped.length} o'tkazib yuborildi`}
-                </p>
-                {(importMutation.data.groups.skipped.length > 0 ||
-                  importMutation.data.promotions.skipped.length > 0) && (
+                {importMutation.data.groups.skipped.length > 0 && (
                   <div className="mt-2 rounded-lg bg-white/60 p-3 text-xs text-emerald-900 dark:bg-black/20 dark:text-emerald-200">
-                    <p className="font-medium">O&apos;tkazib yuborilganlar (filial nomi mos kelmadi):</p>
+                    <p className="font-medium">O&apos;tkazib yuborilganlar (do&apos;kon nomi mos kelmadi):</p>
                     <ul className="mt-1 list-inside list-disc space-y-0.5">
-                      {[...importMutation.data.groups.skipped, ...importMutation.data.promotions.skipped].map(
-                        (line) => (
-                          <li key={line}>{line}</li>
-                        ),
-                      )}
+                      {importMutation.data.groups.skipped.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
                     </ul>
                   </div>
                 )}
@@ -1033,18 +925,14 @@ function Field({
   label,
   children,
   className = '',
-  disabled = false,
 }: {
   label: string;
   children: ReactNode;
   className?: string;
-  disabled?: boolean;
 }) {
   return (
     <div className={className}>
-      <label className={`mb-1 block text-sm font-medium ${disabled ? 'text-slate-400' : 'text-slate-700 dark:text-tg-text'}`}>
-        {label}
-      </label>
+      <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-tg-text">{label}</label>
       {children}
     </div>
   );
@@ -1152,9 +1040,22 @@ function BranchCard({
           </p>
         </div>
         <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
-          Filial
+          Do'kon
         </span>
       </div>
+
+      {item.photoUrls.length > 0 && (
+        <div className="mt-4 flex gap-2">
+          {item.photoUrls.map((url) => (
+            <img
+              key={url}
+              src={url}
+              alt={item.name}
+              className="h-20 w-20 rounded-lg border border-slate-200 object-cover dark:border-tg-hover"
+            />
+          ))}
+        </div>
+      )}
 
       <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
         <a
@@ -1177,8 +1078,8 @@ function BranchCard({
       </div>
 
       <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
-        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Fan yo&apos;nalishlari</p>
-        <p className="mt-1 whitespace-pre-wrap">{item.subjectNames}</p>
+        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Do&apos;kon haqida</p>
+        <p className="mt-1 whitespace-pre-wrap">{item.description}</p>
       </div>
 
       {item.extraInfo && (
@@ -1229,7 +1130,9 @@ function GroupCard({
     <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-lg font-semibold text-slate-900 dark:text-tg-text">{item.subjectName}</p>
+          <p className="line-clamp-1 text-lg font-semibold text-slate-900 dark:text-tg-text">
+            {firstLine(item.details, 'Mahsulot')}
+          </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">{item.isActive ? 'Faol' : 'Faol emas'}</p>
         </div>
         <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
@@ -1239,75 +1142,23 @@ function GroupCard({
 
       <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
         <p>
-          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Filial:</span> {branchName}
+          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Do&apos;kon:</span> {branchName}
         </p>
-        <p>
-          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Narxi:</span> {item.price}
-        </p>
+        {item.videoUrl && (
+          <a
+            href={item.videoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 break-all text-sky-600 hover:underline dark:text-sky-400"
+          >
+            <Video size={16} className="shrink-0" />
+            <span>Instagram videoni ko&apos;rish</span>
+          </a>
+        )}
       </div>
 
       <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
-        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Batafsil ma&apos;lumot</p>
-        <p className="mt-1 whitespace-pre-wrap">{item.details}</p>
-      </div>
-
-      <div className="mt-4 text-xs text-slate-500 dark:text-tg-textMuted">
-        <p>Yangilangan: {formatDateTime(item.updatedAt)}</p>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
-        >
-          <PencilLine size={16} />
-          Tahrirlash
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700 transition hover:border-rose-300 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
-        >
-          <Trash2 size={16} />
-          O&apos;chirish
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function PromotionCard({
-  item,
-  branchName,
-  onEdit,
-  onDelete,
-}: {
-  item: PromotionInfo;
-  branchName: string;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-lg font-semibold text-slate-900 dark:text-tg-text">{item.title}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-tg-textMuted">{item.isActive ? 'Faol' : 'Faol emas'}</p>
-        </div>
-        <span className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 dark:border-tg-hover dark:text-tg-textMuted">
-          Aksiya
-        </span>
-      </div>
-
-      <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-tg-textMuted">
-        <p>
-          <span className="font-medium text-slate-500 dark:text-tg-textFaint">Filial:</span> {branchName}
-        </p>
-      </div>
-
-      <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-tg-panelAlt dark:text-tg-textMuted">
-        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Batafsil ma&apos;lumot</p>
+        <p className="font-medium text-slate-500 dark:text-tg-textFaint">Ma&apos;lumot</p>
         <p className="mt-1 whitespace-pre-wrap">{item.details}</p>
       </div>
 
