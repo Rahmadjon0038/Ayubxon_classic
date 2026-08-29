@@ -12,11 +12,15 @@ router.use(requireAuth);
 
 const groupSchema = z.object({
   branchId: z.string().trim().min(1, 'Filial tanlash majburiy'),
-  subjectName: z.string().trim().min(1, 'Fan nomi majburiy').max(200),
-  price: z.string().trim().min(1, 'Kurs narxi majburiy').max(200),
-  details: z.string().trim().min(1, 'Batafsil ma\'lumot majburiy').max(8000),
+  videoUrl: z.string().trim().url('Haqiqiy link kiriting').max(500).optional().or(z.literal('')),
+  details: z.string().trim().min(1, 'Mahsulot ma\'lumoti majburiy').max(8000),
   isActive: z.boolean().default(true),
 });
+
+function normalizeOptionalText(value?: string | null): string | null {
+  const text = value?.trim();
+  return text ? text : null;
+}
 
 async function resolveAccountId(): Promise<string> {
   const account = await getAccount();
@@ -60,8 +64,7 @@ router.post('/', validateBody(groupSchema), async (req, res, next) => {
       data: {
         instagramAccountId,
         branchId: body.branchId,
-        subjectName: body.subjectName,
-        price: body.price,
+        videoUrl: normalizeOptionalText(body.videoUrl),
         details: body.details,
         isActive: body.isActive,
       },
@@ -92,8 +95,7 @@ router.put('/:id', validateBody(groupSchema), async (req, res, next) => {
       where: { id: existing.id },
       data: {
         branchId: body.branchId,
-        subjectName: body.subjectName,
-        price: body.price,
+        videoUrl: normalizeOptionalText(body.videoUrl),
         details: body.details,
         isActive: body.isActive,
       },

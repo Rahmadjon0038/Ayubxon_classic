@@ -264,7 +264,7 @@ router.post('/:id/clear-ai-memory', async (req, res, next) => {
 
     const updated = await prisma.conversation.update({
       where: { id: conversation.id },
-      data: { aiMemoryResetAt: new Date() },
+      data: { aiMemoryResetAt: new Date(), referencedGroupId: null },
     });
 
     return res.json({ aiMemoryResetAt: updated.aiMemoryResetAt });

@@ -13,7 +13,7 @@ import {
   generateAiReply,
   pickHandoverAcknowledgement,
 } from './aiService';
-import { fetchContactProfile, fetchInstagramOEmbed, sendTextMessage } from './instagramApi';
+import { fetchContactProfile, fetchInstagramOEmbed, replyToComment, sendTextMessage } from './instagramApi';
 import {
   getAccessToken,
   getConnectedAccount,
@@ -76,6 +76,15 @@ const leadgenValueSchema = z
   })
   .passthrough();
 
+const commentValueSchema = z
+  .object({
+    id: z.string().optional(),
+    text: z.string().optional(),
+    from: z.object({ id: z.string().optional(), username: z.string().optional() }).partial().optional(),
+    media: z.object({ id: z.string().optional() }).partial().optional(),
+  })
+  .passthrough();
+
 const webhookPayloadSchema = z
   .object({
     object: z.string(),
@@ -94,6 +103,7 @@ const webhookPayloadSchema = z
 
 type MessagingEvent = z.infer<typeof messagingEventSchema>;
 type LeadgenChangeValue = z.infer<typeof leadgenValueSchema>;
+type CommentChangeValue = z.infer<typeof commentValueSchema>;
 
 async function resolveWebhookAccount(
   event: MessagingEvent,
@@ -211,6 +221,47 @@ function isInstagramPermalink(rawUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+// Instagram post/reel havolasidan barqaror qismini (shortcode) ajratib oladi — havolalar
+// query parametr, "www." prefiksi yoki oxirgi "/" bilan farq qilishi mumkin, shuning uchun
+// to'g'ridan-to'g'ri satr solishtirish ishonchli emas.
+function extractInstagramShortcode(rawUrl: string): string | null {
+  try {
+    const { pathname } = new URL(rawUrl);
+    const match = pathname.match(/\/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+// Mijoz linkni tabiiy "Yuborish" (Send) tugmasi orqali emas, qo'lda nusxalab, oddiy matn
+// sifatida yozib yuborishi ham mumkin — bunday holatda attachment kelmaydi, faqat matn
+// ichida URL bo'ladi. Shuni ham topib olamiz.
+const INSTAGRAM_URL_IN_TEXT_PATTERN = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|p|tv)\/[A-Za-z0-9_-]+[^\s]*/i;
+
+function findInstagramUrlInText(text: string): string | null {
+  const match = text.match(INSTAGRAM_URL_IN_TEXT_PATTERN);
+  return match ? match[0] : null;
+}
+
+// Mijoz Instagramda ulashgan/messages qilgan post/reel havolasini shu akkauntning faol
+// mahsulotlari (GroupInfo.videoUrl) bilan solishtirib, mos kelgan mahsulot id'sini topadi.
+// Topilmasa null — bu holatda avvalgi referencedGroupId o'zgarishsiz qoladi.
+async function findGroupIdByVideoUrl(instagramAccountId: string, url: string): Promise<string | null> {
+  const shortcode = extractInstagramShortcode(url);
+  if (!shortcode) return null;
+
+  const candidates = await prisma.groupInfo.findMany({
+    where: { instagramAccountId, isActive: true, videoUrl: { not: null } },
+    select: { id: true, videoUrl: true },
+  });
+
+  const match = candidates.find(
+    (candidate) => candidate.videoUrl && extractInstagramShortcode(candidate.videoUrl) === shortcode,
+  );
+  return match?.id ?? null;
 }
 
 // Meta payload'idagi attachment turi bizning oddiy image/video/audio toifalarimizga mos
@@ -442,6 +493,102 @@ async function processMetaLeadChange(changeValue: LeadgenChangeValue, entryBusin
   );
 }
 
+// Faqat "narxi", "narxi qancha", "qancha" kabi QISQA, narxdan boshqa hech narsa
+// so'ramaydigan kommentiyalarni ushlaydi — uzunroq yoki boshqa mavzudagi kommentlarga
+// tegilmaydi (bular AI DM suhbatida javob berishi mumkin bo'lgan holatlar).
+const PRICE_ONLY_COMMENT_PHRASES = new Set([
+  'narx',
+  'narxi',
+  'narxlari',
+  'narxiqancha',
+  'narxlariqancha',
+  'narxinecha',
+  'narxinechapul',
+  'narxiqanaqa',
+  'qancha',
+  'qanchapul',
+  'qanchaturadi',
+  'qanchaboladi',
+  'nechapul',
+  'price',
+  'howmuch',
+  'нарх',
+  'нархи',
+  'нархиканча',
+  'канча',
+  'сколько',
+  'сколькостоит',
+  'цена',
+  'ценасколько',
+]);
+
+function normalizeCommentText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function isPriceOnlyComment(text: string): boolean {
+  const normalized = normalizeCommentText(text);
+  return normalized.length > 0 && PRICE_ONLY_COMMENT_PHRASES.has(normalized);
+}
+
+// Har safar bir xil bo'lmasligi uchun bir nechta variant orasidan tasodifiy tanlanadi —
+// bular ommaviy (hamma ko'radigan) kommentariyalar, shuning uchun tabiiy va turlicha bo'lishi
+// muhim.
+const PRICE_COMMENT_REPLIES = [
+  "Assalomu alaykum! Narxlar va batafsil ma'lumot uchun Direct'ga yozing 😊",
+  "Salom! Iltimos, Direct'dan yozing, batafsil ma'lumot beramiz 🙌",
+  "Assalomu alaykum, narx haqida Direct orqali batafsil aytamiz — yozing 😊",
+  "Salom! Direct'ga yozib qoldiring, sizga tez orada javob beramiz 😊",
+];
+
+function pickPriceCommentReply(): string {
+  return PRICE_COMMENT_REPLIES[Math.floor(Math.random() * PRICE_COMMENT_REPLIES.length)];
+}
+
+// Post/reel ostidagi "narxi?" kabi qisqa kommentariyalarga avtomatik javob yozadi — bu
+// kommentariyaning o'zida narx aytilmaydi (bir nechta o'lcham/rangda narx farq qilishi
+// mumkin), shuning uchun mijoz Direct'ga yo'naltiriladi. DM'dagi AI'dan farqli o'laroq bu
+// yerda AI chaqirilmaydi — oddiy regex asosidagi aniqlash yetarli va tezroq/ishonchliroq.
+async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: string): Promise<void> {
+  const commentId = value.id?.trim();
+  const text = value.text?.trim();
+  if (!commentId || !text) return;
+
+  const fromId = value.from?.id?.trim();
+
+  const account =
+    (entryBusinessId ? await getConnectedAccountByInstagramId(entryBusinessId) : null) ??
+    (await getConnectedAccount());
+  if (!account) return;
+
+  // O'zimizning (yoki admin qo'lda yozgan) kommentariyamizga qayta javob yozib yubormaslik.
+  if (fromId && fromId === account.instagramAccountId) return;
+  if (!account.aiEnabled) return;
+  if (!isPriceOnlyComment(text)) return;
+
+  // Meta webhookni ba'zan takror yuborishi mumkin — shu comment'ga avval javob yozgan
+  // bo'lsak, unique constraint buni ushlab qoladi va jim o'tkazib yuboramiz.
+  try {
+    await prisma.repliedComment.create({ data: { instagramAccountId: account.id, commentId } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return;
+    throw err;
+  }
+
+  try {
+    const accessToken = getAccessToken(account);
+    await replyToComment(accessToken, commentId, pickPriceCommentReply());
+    console.log(`[webhook] Narx kommentariyasiga javob yozildi (comment=${commentId.slice(0, 24)}…)`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[webhook] Kommentariyaga javob yozishda xato: ${message}`);
+  }
+}
+
 export async function processWebhookPayload(rawPayload: unknown): Promise<void> {
   const parsed = webhookPayloadSchema.safeParse(rawPayload);
   if (!parsed.success) {
@@ -489,6 +636,19 @@ export async function processWebhookPayload(rawPayload: unknown): Promise<void> 
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[webhook] Eventni qayta ishlashda xato: ${message}`);
+      }
+    }
+
+    const commentChanges = (entry.changes ?? []).filter((c) => c.field === 'comments' && c.value);
+    for (const change of commentChanges) {
+      const parsedComment = commentValueSchema.safeParse(change.value);
+      if (!parsedComment.success) continue;
+
+      try {
+        await processCommentEvent(parsedComment.data, entry.id);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[webhook] Kommentariyani qayta ishlashda xato: ${message}`);
       }
     }
   }
@@ -646,6 +806,23 @@ async function processMessagingEvent(
     }
   }
 
+  // Mijoz shu xabarda Instagram post/reel ulashgan/orqali yozgan BO'LSA (tabiiy "Yuborish"
+  // tugmasi orqali — attachment) YOKI havolani qo'lda matn sifatida yopishtirgan bo'lsa,
+  // uni bizning mahsulotlarimizdan (GroupInfo.videoUrl) biriga moslashtirishga harakat
+  // qilamiz — topilsa, keyingi qisqa savollarda ("narxi qancha?") AI aynan shu mahsulotni
+  // nazarda tutadi.
+  const candidateProductUrl =
+    attachmentUrl && isInstagramPermalink(attachmentUrl)
+      ? attachmentUrl
+      : normalizedText
+        ? findInstagramUrlInText(normalizedText)
+        : null;
+  const matchedGroupId =
+    !isEcho && candidateProductUrl ? await findGroupIdByVideoUrl(account.id, candidateProductUrl) : null;
+  if (matchedGroupId) {
+    console.log(`[webhook] Xabar mahsulotga moslashtirildi (conversation=${conversation.id}, group=${matchedGroupId})`);
+  }
+
   let saved;
   try {
     saved = await prisma.message.create({
@@ -695,6 +872,7 @@ async function processMessagingEvent(
       lastMessageAt: sentAt,
       ...(isEcho ? {} : { unreadCount: { increment: 1 } }),
       ...(detectedPhone ? { leadNotifiedAt: new Date() } : {}),
+      ...(matchedGroupId ? { referencedGroupId: matchedGroupId } : {}),
     },
     include: { contact: true },
   });
@@ -964,7 +1142,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
   // qo'lda javob yozdi yoki boshqa xabar handover'ni ishga tushirdi) — shuni oxirgi marta tekshiramiz.
   const current = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { aiPaused: true },
+    select: { aiPaused: true, referencedGroupId: true },
   });
   if (!current || current.aiPaused) return;
 
@@ -974,7 +1152,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
   if (!settings) return;
 
   const history = await getConversationHistory(conversationId);
-  const replyText = await generateAiReply(settings, history);
+  const replyText = await generateAiReply(settings, history, current.referencedGroupId);
   if (!replyText) return;
 
   try {

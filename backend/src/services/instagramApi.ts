@@ -105,6 +105,9 @@ export async function fetchContactProfile(
 
 // Akkauntni app webhook'lariga obuna qilish. Instagram Login API'da bu shart —
 // Dashboard'dagi "Webhook Subscription" tumbleri ham aynan shu chaqiruvni bajaradi.
+// "comments" — post/reel ostidagi kommentariyalar (masalan "narxi?" kommentiga avtomatik
+// javob yozish uchun) uchun kerak; token'da instagram_business_manage_comments ruxsati
+// bo'lmasa, bu maydon bo'yicha eventlar kelsa ham javob yozish (replyToComment) xato beradi.
 export async function subscribeToMessages(accessToken: string): Promise<boolean> {
   try {
     const { data } = await axios.post(
@@ -112,7 +115,7 @@ export async function subscribeToMessages(accessToken: string): Promise<boolean>
       null,
       {
         params: {
-          subscribed_fields: 'messages',
+          subscribed_fields: 'messages,comments',
           access_token: accessToken,
         },
         timeout: 15_000,
@@ -125,6 +128,29 @@ export async function subscribeToMessages(accessToken: string): Promise<boolean>
     const apiErr = toInstagramError(err);
     console.warn(`[instagram] Webhook obunasida xato: ${apiErr.message}`);
     return false;
+  }
+}
+
+// Post/reel ostidagi kommentariyaga javob yozadi (yangi kommentariya sifatida, aslining
+// "reply"i sifatida ko'rinadi). Token'da instagram_business_manage_comments ruxsati shart —
+// bo'lmasa Meta ruxsat xatosi qaytaradi.
+export async function replyToComment(
+  accessToken: string,
+  commentId: string,
+  message: string,
+): Promise<{ id: string }> {
+  try {
+    const { data } = await axios.post(`${GRAPH_BASE}/${GRAPH_VERSION}/${commentId}/replies`, null, {
+      params: { message, access_token: accessToken },
+      timeout: 15_000,
+    });
+    if (!data?.id) {
+      throw new InstagramApiError('Instagram kommentariya ID qaytarmadi', 502);
+    }
+    return { id: String(data.id) };
+  } catch (err) {
+    if (err instanceof InstagramApiError) throw err;
+    throw toInstagramError(err);
   }
 }
 

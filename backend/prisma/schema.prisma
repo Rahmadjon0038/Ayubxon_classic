@@ -36,9 +36,9 @@ model InstagramAccount {
   knowledgeBaseItems KnowledgeBaseItem[]
   branches        BranchInfo[]
   groups          GroupInfo[]
-  promotions      PromotionInfo[]
   adCampaigns     AdCampaign[]
   adLeads         AdLead[]
+  repliedComments RepliedComment[]
 }
 
 // Har bir Instagram biznes akkaunti (o'quv markazi) uchun AI'ga o'rgatiladigan
@@ -67,11 +67,9 @@ enum KnowledgeBaseCategory {
   OTHER
 }
 
-enum PromotionScope {
-  ALL_BRANCHES
-  BRANCH
-}
-
+// "BranchInfo" nomi tarixiy (loyiha ilgari kop filialli o'quv markazi uchun edi) — hozir
+// bitta yoki bir nechta DO'KON manzilini ifodalaydi. Ichki nomlash (branch/filial) o'zgarmadi,
+// faqat foydalanuvchiga korinadigan matn "Do'kon" deb yuritiladi.
 model BranchInfo {
   id                 String   @id @default(cuid())
   instagramAccountId  String
@@ -79,7 +77,9 @@ model BranchInfo {
   locationUrl       String
   workingHours      String
   phoneNumber       String
-  subjectNames      String
+  description       String
+  // Do'kon rasmlari (1-2 dona) — public /uploads havolalari sifatida saqlanadi.
+  photoUrls         String[] @default([])
   extraInfo         String?
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
@@ -87,44 +87,26 @@ model BranchInfo {
 
   account   InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
   groups    GroupInfo[]
-  promotions PromotionInfo[] @relation("BranchPromotions")
 
   @@index([instagramAccountId, updatedAt])
   @@index([instagramAccountId, isActive])
 }
 
+// Har bir yozuv — Instagramda ko'rsatilgan bitta post/video va uning erkin matnli tavsifi
+// (rang, o'lcham, narx va h.k. — hammasi "details" ichida, alohida maydonlarsiz).
 model GroupInfo {
   id                 String   @id @default(cuid())
   instagramAccountId  String
   branchId          String
-  subjectName       String
-  price             String
+  videoUrl          String?
   details           String
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
-  branch  BranchInfo       @relation(fields: [branchId], references: [id], onDelete: Cascade)
-
-  @@index([instagramAccountId, branchId])
-  @@index([instagramAccountId, updatedAt])
-  @@index([instagramAccountId, isActive])
-}
-
-model PromotionInfo {
-  id                 String         @id @default(cuid())
-  instagramAccountId  String
-  branchId          String?
-  scope             PromotionScope @default(ALL_BRANCHES)
-  title             String
-  details           String
-  isActive          Boolean        @default(true)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
-  branch  BranchInfo?      @relation("BranchPromotions", fields: [branchId], references: [id], onDelete: SetNull)
+  account       InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  branch        BranchInfo       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
 
   @@index([instagramAccountId, branchId])
   @@index([instagramAccountId, updatedAt])
@@ -209,6 +191,20 @@ model Contact {
   conversations Conversation[]
 }
 
+// Instagram post/reel ostidagi kommentariyaga (masalan "narxi?") avtomatik javob
+// yozilganini eslab qoladi — Meta webhookni ba'zan takror yuborishi mumkin, shu orqali
+// bir xil kommentariyaga ikkinchi marta javob yozib yuborilmaydi.
+model RepliedComment {
+  id                 String   @id @default(cuid())
+  instagramAccountId String
+  commentId          String   @unique
+  createdAt          DateTime @default(now())
+
+  account InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@index([instagramAccountId, createdAt])
+}
+
 enum ConversationStatus {
   OPEN
   CLOSED
@@ -270,13 +266,19 @@ model Conversation {
   // sifatida qayta boshlaydi. Xabarlarning o'zi chatda saqlanib qoladi, faqat AI'ning
   // "xotirasi" tozalanadi.
   aiMemoryResetAt    DateTime?
+  // Mijoz Instagramda ulashgan/shu orqali yozgan reel/post ANIQ qaysi mahsulotga mos kelishi —
+  // webhook payloaddagi ulashilgan post havolasini GroupInfo.videoUrl bilan solishtirib
+  // aniqlanadi. Shu orqali mijoz "narxi qancha?" kabi keyingi qisqa savol yozganda ham AI
+  // aynan qaysi mahsulot haqida gap ketayotganini taxmin qilmasdan biladi.
+  referencedGroupId  String?
   lastMessageAt      DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  account  InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
-  contact  Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  messages Message[]
+  account         InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  contact         Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  referencedGroup GroupInfo?       @relation(fields: [referencedGroupId], references: [id], onDelete: SetNull)
+  messages        Message[]
 
   @@unique([instagramAccountId, contactId])
   @@index([lastMessageAt])

@@ -15,38 +15,23 @@ const branchImportSchema = z.object({
   locationUrl: z.string().trim().url('Haqiqiy link kiriting').max(500),
   workingHours: z.string().trim().min(1, 'Ish vaqti majburiy').max(500),
   phoneNumber: z.string().trim().min(1, 'Telefon raqami majburiy').max(100),
-  subjectNames: z.string().trim().min(1, "Fan yo'nalishlari majburiy").max(4000),
+  description: z.string().trim().min(1, "Do'kon haqida ma'lumot majburiy").max(4000),
+  photoUrls: z.array(z.string().trim().url()).max(2).optional().default([]),
   extraInfo: z.string().trim().max(8000).optional().or(z.literal('')),
   isActive: z.boolean().optional().default(true),
 });
 
 const groupImportSchema = z.object({
   branchName: z.string().trim().min(1, 'branchName majburiy'),
-  subjectName: z.string().trim().min(1, 'Fan nomi majburiy').max(200),
-  price: z.string().trim().min(1, 'Kurs narxi majburiy').max(200),
-  details: z.string().trim().min(1, "Batafsil ma'lumot majburiy").max(8000),
+  videoUrl: z.string().trim().url('Haqiqiy link kiriting').max(500).optional().or(z.literal('')),
+  details: z.string().trim().min(1, "Mahsulot ma'lumoti majburiy").max(8000),
   isActive: z.boolean().optional().default(true),
 });
-
-const promotionImportSchema = z
-  .object({
-    scope: z.enum(['ALL_BRANCHES', 'BRANCH']).optional().default('ALL_BRANCHES'),
-    branchName: z.string().trim().optional().or(z.literal('')),
-    title: z.string().trim().min(1, 'Sarlavha majburiy').max(200),
-    details: z.string().trim().min(1, "Batafsil ma'lumot majburiy").max(8000),
-    isActive: z.boolean().optional().default(true),
-  })
-  .superRefine((value, ctx) => {
-    if (value.scope === 'BRANCH' && !value.branchName?.trim()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['branchName'], message: 'BRANCH qamrovida branchName majburiy' });
-    }
-  });
 
 const importSchema = z.object({
   academyName: z.string().trim().min(1).max(200).optional(),
   branches: z.array(branchImportSchema).max(200).optional().default([]),
   groups: z.array(groupImportSchema).max(2000).optional().default([]),
-  promotions: z.array(promotionImportSchema).max(500).optional().default([]),
 });
 
 function normalizeOptionalText(value?: string | null): string | null {
@@ -67,7 +52,6 @@ router.post('/', validateBody(importSchema), async (req, res, next) => {
       academyNameUpdated: false,
       branches: { created: 0, updated: 0 },
       groups: { created: 0, updated: 0, skipped: [] as string[] },
-      promotions: { created: 0, updated: 0, skipped: [] as string[] },
     };
 
     if (body.academyName) {
@@ -78,8 +62,8 @@ router.post('/', validateBody(importSchema), async (req, res, next) => {
       result.academyNameUpdated = true;
     }
 
-    // Filial nomi -> id xaritasi. Avval bazadagi mavjud filiallar bilan boshlanadi,
-    // shu import davomida yaratilgan/yangilangan filiallar ustiga qo'shiladi.
+    // Do'kon nomi -> id xaritasi. Avval bazadagi mavjud do'konlar bilan boshlanadi,
+    // shu import davomida yaratilgan/yangilangan do'konlar ustiga qo'shiladi.
     const existingBranches = await prisma.branchInfo.findMany({
       where: { instagramAccountId },
       select: { id: true, name: true },
@@ -94,7 +78,8 @@ router.post('/', validateBody(importSchema), async (req, res, next) => {
         locationUrl: branch.locationUrl,
         workingHours: branch.workingHours,
         phoneNumber: branch.phoneNumber,
-        subjectNames: branch.subjectNames,
+        description: branch.description,
+        photoUrls: branch.photoUrls,
         extraInfo: normalizeOptionalText(branch.extraInfo),
         isActive: branch.isActive,
       };
@@ -109,26 +94,31 @@ router.post('/', validateBody(importSchema), async (req, res, next) => {
       }
     }
 
+    // Mahsulotlarda endi alohida "nomi" maydoni yo'q (erkin matn), shuning uchun
+    // dublikatni Instagram video linki bo'yicha aniqlaymiz — link bo'lmasa, har doim
+    // yangi yozuv sifatida qo'shiladi.
     const existingGroups = await prisma.groupInfo.findMany({
-      where: { instagramAccountId },
-      select: { id: true, branchId: true, subjectName: true },
+      where: { instagramAccountId, videoUrl: { not: null } },
+      select: { id: true, branchId: true, videoUrl: true },
     });
     const groupIdByKey = new Map(
-      existingGroups.map((g) => [`${g.branchId}::${g.subjectName.trim().toLowerCase()}`, g.id]),
+      existingGroups
+        .filter((g): g is typeof g & { videoUrl: string } => Boolean(g.videoUrl))
+        .map((g) => [`${g.branchId}::${g.videoUrl.trim().toLowerCase()}`, g.id]),
     );
 
     for (const group of body.groups) {
       const branchId = branchIdByName.get(group.branchName.trim().toLowerCase());
       if (!branchId) {
-        result.groups.skipped.push(`${group.branchName} / ${group.subjectName} (filial topilmadi)`);
+        result.groups.skipped.push(`${group.branchName} (filial topilmadi)`);
         continue;
       }
-      const key = `${branchId}::${group.subjectName.trim().toLowerCase()}`;
-      const existingId = groupIdByKey.get(key);
+      const videoUrl = normalizeOptionalText(group.videoUrl);
+      const key = videoUrl ? `${branchId}::${videoUrl.trim().toLowerCase()}` : null;
+      const existingId = key ? groupIdByKey.get(key) : undefined;
       const data = {
         branchId,
-        subjectName: group.subjectName,
-        price: group.price,
+        videoUrl,
         details: group.details,
         isActive: group.isActive,
       };
@@ -138,46 +128,8 @@ router.post('/', validateBody(importSchema), async (req, res, next) => {
         result.groups.updated += 1;
       } else {
         const created = await prisma.groupInfo.create({ data: { instagramAccountId, ...data } });
-        groupIdByKey.set(key, created.id);
+        if (key) groupIdByKey.set(key, created.id);
         result.groups.created += 1;
-      }
-    }
-
-    const existingPromotions = await prisma.promotionInfo.findMany({
-      where: { instagramAccountId },
-      select: { id: true, title: true, branchId: true },
-    });
-    const promotionIdByKey = new Map(
-      existingPromotions.map((p) => [`${p.branchId ?? 'ALL'}::${p.title.trim().toLowerCase()}`, p.id]),
-    );
-
-    for (const promotion of body.promotions) {
-      let branchId: string | null = null;
-      if (promotion.scope === 'BRANCH') {
-        const resolved = branchIdByName.get((promotion.branchName ?? '').trim().toLowerCase());
-        if (!resolved) {
-          result.promotions.skipped.push(`${promotion.title} (filial topilmadi: ${promotion.branchName})`);
-          continue;
-        }
-        branchId = resolved;
-      }
-      const key = `${branchId ?? 'ALL'}::${promotion.title.trim().toLowerCase()}`;
-      const existingId = promotionIdByKey.get(key);
-      const data = {
-        scope: promotion.scope,
-        branchId,
-        title: promotion.title,
-        details: promotion.details,
-        isActive: promotion.isActive,
-      };
-
-      if (existingId) {
-        await prisma.promotionInfo.update({ where: { id: existingId }, data });
-        result.promotions.updated += 1;
-      } else {
-        const created = await prisma.promotionInfo.create({ data: { instagramAccountId, ...data } });
-        promotionIdByKey.set(key, created.id);
-        result.promotions.created += 1;
       }
     }
 
