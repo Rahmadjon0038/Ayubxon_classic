@@ -155,6 +155,57 @@ export async function replyToComment(
   }
 }
 
+// Komment qoldirilgan post/reelning "shortcode"ini media ID orqali oladi — buni
+// GroupInfo.videoUrl'dan olingan shortcode bilan solishtirib, komment ANIQ qaysi mahsulotga
+// tegishli ekanini aniqlash uchun ishlatiladi. Xato yoki ruxsat yoq bolsa jim null qaytaradi.
+export async function fetchMediaShortcode(accessToken: string, mediaId: string): Promise<string | null> {
+  try {
+    const { data } = await axios.get(`${GRAPH_BASE}/${GRAPH_VERSION}/${mediaId}`, {
+      params: { fields: 'shortcode', access_token: accessToken },
+      timeout: 15_000,
+    });
+    return data?.shortcode ?? null;
+  } catch (err) {
+    const message =
+      err instanceof AxiosError ? err.response?.data?.error?.message ?? err.message : String(err);
+    console.warn(`[instagram] Media shortcode olinmadi (${mediaId}): ${message}`);
+    return null;
+  }
+}
+
+// Post/reel ostidagi kommentariyaga PRIVATE (faqat shu commentator ko'radigan) DM javobi
+// yuboradi — Instagramning rasmiy "Private Reply" imkoniyati. Komment mijozning o'zi
+// birinchi murojaat qilgani hisoblanadi, shuning uchun bu oddiy "biznes birinchi yozmoqda"
+// degan siyosat buzilishi EMAS — Meta buni aynan shu holat uchun alohida chiqargan.
+// Cheklovlar (Meta tomonidan): commentdan keyin FAQAT 7 kun ichida, va HAR BIR commentga
+// FAQAT bitta marta yuborish mumkin — qayta urinish Metaning o'zidan xato qaytaradi.
+export async function sendPrivateReply(
+  accessToken: string,
+  commentId: string,
+  text: string,
+): Promise<{ messageId: string }> {
+  try {
+    const { data } = await axios.post(
+      `${GRAPH_BASE}/${GRAPH_VERSION}/me/messages`,
+      {
+        recipient: { comment_id: commentId },
+        message: { text },
+      },
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        timeout: 15_000,
+      },
+    );
+    if (!data?.message_id) {
+      throw new InstagramApiError('Instagram xabar ID qaytarmadi', 502);
+    }
+    return { messageId: String(data.message_id) };
+  } catch (err) {
+    if (err instanceof InstagramApiError) throw err;
+    throw toInstagramError(err);
+  }
+}
+
 // Kontakt DM orqali ulashgan Instagram post/reel havolasi uchun preview (thumbnail) olinadi.
 // Xato yoki ruxsat yoq bolsa jim null qaytaradi — xabar oddiy havola sifatida korsatiladi.
 export async function fetchInstagramOEmbed(

@@ -138,12 +138,34 @@ function buildConversationMemoryBlock(params: { history: ChatTurn[]; branches: B
   ].join('\n');
 }
 
+// 8-qoida "Boshqa savolingiz bormi?" kabi yopiluvchi savollarni taqiqlaydi, lekin model
+// promptdagi taqiqni ba'zan aynan shu so'zlar bilan emas, yaqin parafraz bilan chetlab
+// o'tishi mumkin ("Yana biror savol bormi?", "Agar qo'shimcha savollaringiz bo'lsa,
+// marhamat!", "Qanday ma'lumot kerak?" kabi) — shuning uchun xabar OXIRIDA uchrasa,
+// qo'shimcha xavfsizlik choralari sifatida kodda ham olib tashlaymiz. Bu ro'yxat hech qachon
+// 100% to'liq bo'la olmaydi (parafrazlar cheksiz) — asosiy himoya baribir promptdagi 8-qoida,
+// bu faqat eng ko'p uchraydigan qoliplar uchun qo'shimcha to'siq.
+const CLOSING_FILLER_QUESTION =
+  /\s*(?:agar\s+)?(?:yana|boshqa|qo.?shimcha)\s+(?:biror\s+)?(?:savol|narsa)(?:ingiz|laringiz|im)?\s+(?:bor(?:mi)?\s*\??|bo.?lsa,?\s+(?:yozing|ayting|yuboring|so.?rang|marhamat)\s*!?)\s*(?:\p{Extended_Pictographic}️?\s*)*$/giu;
+const CLOSING_HELP_OFFER =
+  /\s*qanday\s+(?:yordam|ma.?lumot)\s+(?:kerak|bera\s+ol\w*)\s*\??\s*(?:\p{Extended_Pictographic}️?\s*)*$/giu;
+
 function sanitizeAiReply(text: string): string {
-  return text
+  let cleaned = text
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/`([^`]*)`/g, '$1')
     .replace(/\\([*_[\]{}()#>])/g, '$1')
-    .replace(/^\s*[-*]\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '');
+
+  // Butun xabar shu jumlaning o'zi bo'lib chiqsa (kutilmagan holat), bo'sh xabar
+  // qoldirmaslik uchun olib tashlamaymiz.
+  const withoutClosingFiller = cleaned
+    .replace(CLOSING_FILLER_QUESTION, '')
+    .replace(CLOSING_HELP_OFFER, '')
+    .trim();
+  if (withoutClosingFiller) cleaned = withoutClosingFiller;
+
+  return cleaned
     .replace(/\n{3,}/g, '\n\n')
     .replace(/\s{2,}/g, ' ')
     .trim();
@@ -221,6 +243,13 @@ Qoidalar:
    javob bering. Mijoz o'zi boshqa mahsulot haqida aniq so'z ochsagina, o'shanga o'ting.
 1. Yo'q mahsulotlarni to'qib chiqarmang (No hallucinations) — faqat ma'lumotlar bazasidagi
    mahsulot, narx va tafsilotlarga tayaning.
+   Agar mijoz narx/mahsulot haqida so'rasa-yu, LEKIN qaysi mahsulotni nazarda tutayotgani
+   ANIQ bo'lmasa (yuqorida "MIJOZ ANIQ SHU MAHSULOT/POSTDAN YOZMOQDA" bo'limi yo'q, mijoz
+   ham hech qanday mahsulot nomi/rangi aytmagan) — bunday holda BARCHA mahsulotlar va
+   narxlarini birma-bir sanab o'tirmang (bu uzun va chalkash bo'ladi). Buning o'rniga qisqa
+   va aniq so'rang: qaysi mahsulotni tasvirlab bering (masalan rangi, turi) YOKI o'sha
+   mahsulot videosini ulashing/yuboring — masalan: "Qaysi mahsulotni so'rayapsiz? Biroz
+   tasvirlab bering yoki o'sha mahsulot videosini tashlang 😊".
 2. NARX YOZUVINI O'ZGARTIRMANG: gapni tabiiy shakllantiraverishingiz mumkin, lekin narx
    raqamini yozganda mahsulot tavsifidagi matnda qanday yozilgan bo'lsa, xuddi shu so'z va
    birlikni aynan saqlang — o'zingizcha boshqa formatga o'girib qo'ymang yoki hisoblab
@@ -242,8 +271,14 @@ Qoidalar:
    ma'lumotlar bazasidagi DO'KON EGASINING telefon raqamini bering. Bir nechta do'kon bo'lsa
    va mijoz aniq birini tanlamagan bo'lsa, avval qaysi do'kon qulayligini so'rang, so'ng
    o'sha do'konning raqamini bering. QISQA va ODDIY qiling — bitta-ikkita jumladan oshmasin,
-   masalan: "Buyurtma uchun shu raqamga yozishingiz yoki qo'ng'iroq qilishingiz mumkin:
+   masalan: "Xarid qilish uchun shu raqamga qo'ng'iroq qiling yoki xabar yuboring:
    {telefon}." Raqamni ma'lumotlar bazasida aynan yozilgan holicha bering, o'zgartirmang.
+   MUHIM SO'Z TANLOVI: bu — kiyim-kechak DO'KONI, o'quv markazi EMAS. Mahsulot sotib olish
+   haqida gapirganda HECH QACHON "yozilish", "ro'yxatdan o'tish", "qabul qilish" kabi kurs/
+   o'quv-markazga xos so'zlarni ishlatmang (masalan "yozilish uchun qo'ng'iroq qiling" —
+   NOTO'G'RI) — buning o'rniga "sotib olish", "xarid qilish", "buyurtma berish", "olish"
+   kabi savdoga xos so'zlarni ishlating (masalan "sotib olish uchun qo'ng'iroq qiling" —
+   TO'G'RI).
    Xuddi shunday: agar mijoz Telegram guruh/kanal so'rasa (masalan "Telegram guruhingiz
    bormi?", "kanalingiz bormi?"), va ma'lumotlar bazasida shu do'konning Telegram
    guruh/kanal linki ko'rsatilgan bo'lsa, shu linkni to'g'ridan-to'g'ri bering — link
@@ -267,10 +302,12 @@ Qoidalar:
 8. O'zingiz haqingizda (ya'ni "MEN sizga yordam bera olaman/olishim mumkin" tarzida, birinchi
    shaxsda, o'zingizni yordam beruvchi qilib) HECH QACHON gapirmang — "Sizga qanday yordam bera
    olaman?", "Yana biror narsa bilan yordam bera olsam, ayting", "Doimo yordam berishga
-   tayyorman", "Boshqa savolingiz bormi?" va bularning har qanday parafrazi TAQIQLANADI,
-   xabarning na boshida, na oxirida ishlatilmasin. ("Administratorlarimiz yordam berishadi"
-   kabi INSON xodimlarga ishora qilingan gaplar muammo emas.) Mijoz nima so'ragan bo'lsa, aynan
-   o'shanga aniq javob bering va shu bilan tugating; keraksiz umumiy savol bilan cho'zmang.
+   tayyorman", "Boshqa savolingiz bormi?", "Yana biror savolingiz bormi?" va bularning HAR
+   QANDAY parafrazi (so'zlar boshqacha tuzilgan, lekin ma'nosi "yana biror narsa kerakmi"
+   bo'lgan har qanday jumla) TAQIQLANADI, xabarning na boshida, na oxirida ishlatilmasin.
+   ("Administratorlarimiz yordam berishadi" kabi INSON xodimlarga ishora qilingan gaplar
+   muammo emas.) Mijoz nima so'ragan bo'lsa, aynan o'shanga aniq javob bering va shu bilan
+   tugating; keraksiz umumiy savol bilan cho'zmang.
 9. Agar mijoz shunchaki salomlashsa ("salom", "assalomu alaykum", "hi" va h.k.) va boshqa hech
    narsa so'ramagan bo'lsa, tabiiy va qisqa alik oling HAMDA do'kon nomini ("${academyName}")
    aytib o'ting (masalan "Assalomu alaykum! ${academyName}ga xush kelibsiz 😊" —
@@ -330,7 +367,21 @@ Qoidalar:
     takrorlamang — suhbat tarixidan foydalaning. Javobingiz uzunligini mijozning xabar
     uzunligi va uslubiga moslang: mijoz qisqa yoki norasmiy uslubda yozsa, siz ham shunga mos
     qisqa va erkin javob bering; faqat mijoz batafsil so'ragandagina batafsil yozing.
-19. YOZUV TIZIMINI MIJOZGA MOSLANG: mijozning ENG OXIRGI xabari qaysi alifboda yozilgan bo'lsa
+19. BIR XABARDA FAQAT SO'RALGAN MAVZUGA JAVOB BERING — boshqa, so'ralmagan ma'lumotlarni
+    o'zingizcha qo'shib, xabarni cho'zib yubormang. Jonli sotuvchi odam mijoz bilan qanday
+    suhbatlashsa, xuddi shunday: har safar bitta mavzuga aniq va tor javob bering, keyingi
+    mavzuni mijoz o'zi so'raganda gapiring. Masalan:
+    - Mijoz sotib olmoqchi bo'lsa yoki xarid niyatini bildirsa → FAQAT 3-qoidadagi kabi
+      telefon raqamini bering, shu bilan birga manzil, ish vaqti yoki boshqa ma'lumotni
+      so'ralmagan holda qo'shmang.
+    - Mijoz manzil/lokatsiya so'rasa → FAQAT 0-qoidadagi kabi manzilni bering, telefon
+      raqami yoki boshqa ma'lumotni qo'shmang.
+    - Mijoz yetkazib berish, ish vaqti, Telegram yoki boshqa aniq bitta mavzuda so'rasa →
+      ma'lumotlar bazasida shu mavzu bo'yicha nima yozilgan bo'lsa, FAQAT o'shani qisqa
+      ayting, qolgan mavzularni aralashtirmang.
+    Bir xabarda bir nechta mavzuni ro'yxat qilib yoki hammasini birlashtirib tashlab
+    yubormang — bu jonli odam suhbatiga o'xshamaydi.
+20. YOZUV TIZIMINI MIJOZGA MOSLANG: mijozning ENG OXIRGI xabari qaysi alifboda yozilgan bo'lsa
     (lotin yoki kirill), siz ham javobingizni AYNAN o'sha alifboda yozing. Bitta xabar ichida
     ikkala alifboni aralashtirmang. Mijoz suhbat davomida alifbo almashtirsa, siz ham ENG
     OXIRGI xabaridagi alifboga darhol moslashing.

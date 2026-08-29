@@ -13,7 +13,14 @@ import {
   generateAiReply,
   pickHandoverAcknowledgement,
 } from './aiService';
-import { fetchContactProfile, fetchInstagramOEmbed, replyToComment, sendTextMessage } from './instagramApi';
+import {
+  fetchContactProfile,
+  fetchInstagramOEmbed,
+  fetchMediaShortcode,
+  replyToComment,
+  sendPrivateReply,
+  sendTextMessage,
+} from './instagramApi';
 import {
   getAccessToken,
   getConnectedAccount,
@@ -276,13 +283,9 @@ function findInstagramUrlAnywhere(value: unknown, seen = new WeakSet<object>()):
   return null;
 }
 
-// Mijoz Instagramda ulashgan/messages qilgan post/reel havolasini shu akkauntning faol
-// mahsulotlari (GroupInfo.videoUrl) bilan solishtirib, mos kelgan mahsulot id'sini topadi.
-// Topilmasa null — bu holatda avvalgi referencedGroupId o'zgarishsiz qoladi.
-async function findGroupIdByVideoUrl(instagramAccountId: string, url: string): Promise<string | null> {
-  const shortcode = extractInstagramShortcode(url);
-  if (!shortcode) return null;
-
+// Berilgan shortcode'ga mos faol mahsulotni (GroupInfo.videoUrl orqali) topadi.
+// Topilmasa null.
+async function findGroupIdByShortcode(instagramAccountId: string, shortcode: string): Promise<string | null> {
   const candidates = await prisma.groupInfo.findMany({
     where: { instagramAccountId, isActive: true, videoUrl: { not: null } },
     select: { id: true, videoUrl: true },
@@ -292,6 +295,15 @@ async function findGroupIdByVideoUrl(instagramAccountId: string, url: string): P
     (candidate) => candidate.videoUrl && extractInstagramShortcode(candidate.videoUrl) === shortcode,
   );
   return match?.id ?? null;
+}
+
+// Mijoz Instagramda ulashgan/messages qilgan post/reel havolasini shu akkauntning faol
+// mahsulotlari (GroupInfo.videoUrl) bilan solishtirib, mos kelgan mahsulot id'sini topadi.
+// Topilmasa null — bu holatda avvalgi referencedGroupId o'zgarishsiz qoladi.
+async function findGroupIdByVideoUrl(instagramAccountId: string, url: string): Promise<string | null> {
+  const shortcode = extractInstagramShortcode(url);
+  if (!shortcode) return null;
+  return findGroupIdByShortcode(instagramAccountId, shortcode);
 }
 
 // Meta payload'idagi attachment turi bizning oddiy image/video/audio toifalarimizga mos
@@ -523,34 +535,35 @@ async function processMetaLeadChange(changeValue: LeadgenChangeValue, entryBusin
   );
 }
 
-// Faqat "narxi", "narxi qancha", "qancha" kabi QISQA, narxdan boshqa hech narsa
-// so'ramaydigan kommentiyalarni ushlaydi — uzunroq yoki boshqa mavzudagi kommentlarga
-// tegilmaydi (bular AI DM suhbatida javob berishi mumkin bo'lgan holatlar).
-const PRICE_ONLY_COMMENT_PHRASES = new Set([
-  'narx',
-  'narxi',
-  'narxlari',
-  'narxiqancha',
-  'narxlariqancha',
-  'narxinecha',
-  'narxinechapul',
-  'narxiqanaqa',
-  'qancha',
-  'qanchapul',
-  'qanchaturadi',
-  'qanchaboladi',
-  'nechapul',
-  'price',
-  'howmuch',
-  'нарх',
-  'нархи',
-  'нархиканча',
-  'канча',
-  'сколько',
-  'сколькостоит',
-  'цена',
-  'ценасколько',
-]);
+// Odamlar narx so'rashning o'nlab imlo/shakl variantini ishlatadi (narxi, narchi, nech
+// pul, nechpul, nchpul, qanca, qancha, kofta narxi, buning narxi bormi...) — buni ANIQ
+// so'zlar ro'yxati bilan sanab tugatib bo'lmaydi. Shuning uchun avval bog'lovchi (mahsulot
+// nomi, salomlashuv, so'rov odob) so'zlarni olib tashlaymiz (pastda isPriceOnlyComment
+// ichida), so'ng qolgan "ildiz" narx/miqdor so'zlaridan biriga mos kelsa — sof narx savoli
+// deb topiladi. Aks holda (masalan boshqa mavzu ham aralashgan uzunroq komment) mos kelmaydi.
+const PRICE_COMMENT_FILLER_WORDS = [
+  // Ko'rsatish olmoshlari, umumiy so'zlar va kelishik qo'shimchalari
+  'mahsulotning', 'mahsulot', 'buning', 'shuning', 'buni', 'shuni', 'bu', 'shu', 'mana',
+  'ni', 'gi', 'dan', 'ga',
+  // Odatiy kiyim nomlari — mijoz mahsulot nomini narx so'zi bilan birga yozishi mumkin
+  'kofta', 'futbolka', 'shim', 'kurtka', 'koylak', 'kostyum', 'poyabzal', 'oyoqkiyim', 'oyoq', 'kiyim',
+  // Salomlashuv — narx savolidan oldin kelishi mumkin. ("hi" qo'shilmagan — "narCHI" kabi
+  // so'zlar ichida tasodifan uchrab, ularni buzib qo'yishi mumkin edi.)
+  'assalomualaykum', 'salom', 'hello',
+  // Savol/odob qo'shimchalari
+  'bormi', 'bor', 'ekanini', 'ekan', 'turadi',
+  'ayting', 'aytvoring', 'aytvorin', 'aytvorasizmi', 'aytib', 'ayta', 'olasizmi', 'bera', 'beraolasizmi',
+  'yozing', 'yozvoring', 'yozvorin', 'yuboring', 'yubor',
+  'bilmoqchiman', 'bilsam', 'bilay', 'bilasizmi',
+];
+
+// Bog'lovchi so'zlar olib tashlangandan keyin qolgan matn ichida shu ildizlardan BIRI
+// (imlo variantlari — narx/narch/narh, qancha/qanca/qanch, nech/nch pul — bilan) uchrasa,
+// narx so'ralgan deb hisoblanadi. Qolgan matn juda uzun bo'lsa (masalan "qanchadan beri
+// savdo qilasizlar" kabi narxga aloqasi yo'q, lekin tasodifan shu ildizni o'z ichiga olgan
+// uzun gap) — MAX_PRICE_CORE_LENGTH shuni saqlaydi, chunki sof narx savoli har doim juda qisqa.
+const PRICE_ROOT_PATTERN = /narx|narch|narh|qanc|nech|nch|price|howmuch|нарх|канч|сколько|цена/;
+const MAX_PRICE_CORE_LENGTH = 16;
 
 function normalizeCommentText(text: string): string {
   return text
@@ -561,8 +574,14 @@ function normalizeCommentText(text: string): string {
 }
 
 function isPriceOnlyComment(text: string): boolean {
-  const normalized = normalizeCommentText(text);
-  return normalized.length > 0 && PRICE_ONLY_COMMENT_PHRASES.has(normalized);
+  let core = normalizeCommentText(text);
+  if (!core) return false;
+
+  for (const filler of PRICE_COMMENT_FILLER_WORDS) {
+    core = core.split(filler).join('');
+  }
+
+  return core.length > 0 && core.length <= MAX_PRICE_CORE_LENGTH && PRICE_ROOT_PATTERN.test(core);
 }
 
 // Har safar bir xil bo'lmasligi uchun bir nechta variant orasidan tasodifiy tanlanadi —
@@ -581,8 +600,10 @@ function pickPriceCommentReply(): string {
 
 // Post/reel ostidagi "narxi?" kabi qisqa kommentariyalarga avtomatik javob yozadi — bu
 // kommentariyaning o'zida narx aytilmaydi (bir nechta o'lcham/rangda narx farq qilishi
-// mumkin), shuning uchun mijoz Direct'ga yo'naltiriladi. DM'dagi AI'dan farqli o'laroq bu
-// yerda AI chaqirilmaydi — oddiy regex asosidagi aniqlash yetarli va tezroq/ishonchliroq.
+// mumkin), shuning uchun mijoz Direct'ga yo'naltiriladi (aniqlashning o'zi oddiy regex
+// asosida — tezroq va ishonchliroq, AI shart emas). Bundan tashqari, komment ANIQ qaysi
+// mahsulot postiga yozilgani aniqlansa, private DM orqali (Instagramning "Private Reply"
+// imkoniyati bilan) AI generatsiya qilgan narx/malumot ham QO'SHIMCHA yuboriladi.
 async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: string): Promise<void> {
   const commentId = value.id?.trim();
   const text = value.text?.trim();
@@ -609,8 +630,9 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
     throw err;
   }
 
+  const accessToken = getAccessToken(account);
+
   try {
-    const accessToken = getAccessToken(account);
     await replyToComment(accessToken, commentId, pickPriceCommentReply());
     console.log(`[webhook] Narx kommentariyasiga javob yozildi (comment=${commentId.slice(0, 24)}…)`);
   } catch (err) {
@@ -621,6 +643,37 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
     // yuborilmaydi. Aks holda bir marta muvaffaqiyatsiz bo'lgan comment abadiy "javob
     // berilgan" deb hisoblanib qolar edi.
     await prisma.repliedComment.delete({ where: { commentId } }).catch(() => {});
+    return;
+  }
+
+  // Komment ANIQ qaysi mahsulot postiga yozilgani aniqlansa (media.id orqali shortcode'ini
+  // GroupInfo.videoUrl bilan solishtirib), qo'shimcha ravishda PRIVATE DM orqali ham narx/
+  // malumot yuboriladi — yuqoridagi ommaviy javobni ALMASHTIRMAYDI, faqat qo'shimcha. Bu
+  // qadamda har qanday xato (mos mahsulot topilmadi, Meta xato qaytardi va h.k.) jim
+  // o'tkazib yuboriladi — ommaviy javob allaqachon muvaffaqiyatli yuborilgan.
+  const mediaId = value.media?.id?.trim();
+  if (!mediaId) return;
+
+  try {
+    const shortcode = await fetchMediaShortcode(accessToken, mediaId);
+    const matchedGroupId = shortcode ? await findGroupIdByShortcode(account.id, shortcode) : null;
+    if (!matchedGroupId) return;
+
+    const replyText = await generateAiReply(
+      account.id,
+      account.name || account.username,
+      [{ role: 'user', content: text }],
+      matchedGroupId,
+    );
+    if (!replyText) return;
+
+    await sendPrivateReply(accessToken, commentId, replyText);
+    console.log(
+      `[webhook] Private reply yuborildi (comment=${commentId.slice(0, 24)}…, group=${matchedGroupId})`,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[webhook] Private reply yuborishda xato (comment=${commentId.slice(0, 24)}…): ${message}`);
   }
 }
 
