@@ -36,8 +36,8 @@ router.get(['/instagram', '/meta-leads'], async (req, res) => {
 // X-Hub-Signature-256 imzosini app secret bilan tekshirish.
 function isSignatureValid(req: RawBodyRequest): boolean {
   if (!env.INSTAGRAM_APP_SECRET) {
-    // App secret berilmagan bolsa imzo tekshirilmaydi (faqat test rejimi uchun).
-    return true;
+    console.error('[SECURITY] INSTAGRAM_APP_SECRET is not set! Rejecting webhook.');
+    return false; // FAIL-CLOSED, not fail-open
   }
   const signature = req.headers['x-hub-signature-256'];
   if (typeof signature !== 'string' || !req.rawBody) return false;
@@ -56,7 +56,7 @@ function isSignatureValid(req: RawBodyRequest): boolean {
 // Instagram va Meta leadgen webhook eventlari shu yerga keladi.
 router.post(['/instagram', '/meta-leads'], (req: RawBodyRequest, res) => {
   if (!isSignatureValid(req)) {
-    console.warn('[webhook] Imzo notogri, event rad etildi');
+    console.warn(`[webhook] Invalid signature from IP: ${req.ip}`);
     return res.sendStatus(401);
   }
 

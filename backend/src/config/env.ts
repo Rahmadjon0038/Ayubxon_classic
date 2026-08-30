@@ -50,6 +50,15 @@ if (!parsed.success) {
 export const env = parsed.data;
 export const isProduction = env.NODE_ENV === 'production';
 
+// Webhook imzosi (X-Hub-Signature-256) INSTAGRAM_APP_SECRET'siz tekshirilmaydi — u yo'q bo'lsa
+// routes/webhooks.ts har qanday so'rovni FAIL-CLOSED rad etadi va DM/komment eventlari hech
+// qachon qayta ishlanmaydi. Production'da bu holatni "webhook jim ishlamayapti" deb tushunib,
+// soatlab debug qilishdan ko'ra, backend ishga tushmasin — xato darhol, aniq ko'rinsin.
+if (isProduction && !env.INSTAGRAM_APP_SECRET) {
+  console.error('INSTAGRAM_APP_SECRET missing: production muhitida majburiy (webhook imzosi tekshiruvi uchun)');
+  process.exit(1);
+}
+
 export function getAllowedOrigins(): string[] {
   const origins = new Set<string>();
 

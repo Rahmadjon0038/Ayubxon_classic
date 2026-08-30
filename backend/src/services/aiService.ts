@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../config/env';
 import { prisma } from '../lib/prisma';
+import { pickVariant } from '../utils/messageVariants';
 
 const AI_MODEL = 'gpt-4o-mini';
 
@@ -597,8 +598,12 @@ const HANDOVER_ACKNOWLEDGEMENTS = [
   "Yaxshi, sizni jonli operatorga ulaymiz — tez orada javob berishadi 🙌",
 ];
 
+let lastHandoverAcknowledgement: string | null = null;
+
 export function pickHandoverAcknowledgement(): string {
-  return HANDOVER_ACKNOWLEDGEMENTS[Math.floor(Math.random() * HANDOVER_ACKNOWLEDGEMENTS.length)];
+  const picked = pickVariant(HANDOVER_ACKNOWLEDGEMENTS, lastHandoverAcknowledgement);
+  lastHandoverAcknowledgement = picked;
+  return picked;
 }
 
 const ANALYSIS_SYSTEM_PROMPT = `

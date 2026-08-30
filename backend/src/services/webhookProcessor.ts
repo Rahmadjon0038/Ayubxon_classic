@@ -28,6 +28,8 @@ import {
 } from './accountService';
 import { fetchLeadDetails } from './metaLeadAds';
 import { emitMessageUpdated, emitNewMessage } from './socketService';
+import { enqueueComment, enqueueDm } from '../utils/messageQueue';
+import { pickVariant } from '../utils/messageVariants';
 
 // Instagram webhook payloadining bizga kerakli qismi.
 // Nomalum maydonlar passthrough qilinadi — Meta yangi maydon qoshsa parse buzilmaydi.
@@ -614,9 +616,13 @@ const PRICE_COMMENT_REPLIES_AFTER_DM = [
   "Assalomu alaykum! Sizga Direct orqali batafsil ma'lumot yubordik 😊",
 ];
 
+let lastPriceCommentReply: string | null = null;
+
 function pickPriceCommentReply(privateReplySent: boolean): string {
   const pool = privateReplySent ? PRICE_COMMENT_REPLIES_AFTER_DM : PRICE_COMMENT_REPLIES;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const picked = pickVariant(pool, lastPriceCommentReply);
+  lastPriceCommentReply = picked;
+  return picked;
 }
 
 // Post/reel ostidagi "narxi?" yoki "+" kabi qisqa qiziqish bildiruvchi kommentariyalarga
@@ -674,7 +680,11 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
           matchedGroupId,
         );
         if (replyText) {
-          await sendPrivateReply(accessToken, commentId, replyText);
+          await enqueueDm({
+            userId: fromId ?? commentId,
+            label: 'Komment orqali private reply',
+            execute: () => sendPrivateReply(accessToken, commentId, replyText),
+          });
           privateReplySent = true;
           console.log(
             `[webhook] Private reply yuborildi (comment=${commentId.slice(0, 24)}…, group=${matchedGroupId})`,
@@ -688,7 +698,11 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
   }
 
   try {
-    await replyToComment(accessToken, commentId, pickPriceCommentReply(privateReplySent));
+    await enqueueComment({
+      userId: fromId ?? commentId,
+      label: 'Narx kommentariyasiga ommaviy javob',
+      execute: () => replyToComment(accessToken, commentId, pickPriceCommentReply(privateReplySent)),
+    });
     console.log(`[webhook] Narx kommentariyasiga javob yozildi (comment=${commentId.slice(0, 24)}…)`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1161,7 +1175,11 @@ async function triggerHandover({ accessToken, contactIgsid, conversationId }: Ha
   const ackText = pickHandoverAcknowledgement();
 
   try {
-    const { messageId } = await sendTextMessage(accessToken, contactIgsid, ackText);
+    const { messageId } = await enqueueDm({
+      userId: contactIgsid,
+      label: 'Operatorga ulanish xabari',
+      execute: () => sendTextMessage(accessToken, contactIgsid, ackText),
+    });
     const ackMessage = await prisma.message.create({
       data: {
         instagramMessageId: messageId,
@@ -1263,7 +1281,22 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
   if (!replyText) return;
 
   try {
-    const { messageId } = await sendTextMessage(accessToken, contactIgsid, replyText);
+    const { messageId } = await enqueueDm({
+      userId: contactIgsid,
+      label: 'AI javobi',
+      execute: async () => {
+        // Navbatda kutish paytida (limit sabab pauza bo'lsa, bir necha daqiqagacha) suhbat
+        // holati o'zgargan bo'lishi mumkin — aynan yuborish oldidan yana tekshiramiz.
+        const stillActive = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+          select: { aiPaused: true },
+        });
+        if (stillActive?.aiPaused) {
+          throw new Error("AI javobi eskirgan — suhbat operator rejimiga o'tkazilgan, yuborish bekor qilindi");
+        }
+        return sendTextMessage(accessToken, contactIgsid, replyText);
+      },
+    });
     const aiMessage = await prisma.message.create({
       data: {
         instagramMessageId: messageId,

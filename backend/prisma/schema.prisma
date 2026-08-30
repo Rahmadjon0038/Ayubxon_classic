@@ -293,6 +293,31 @@ enum MessageStatus {
   FAILED
 }
 
+// Instagram DM/komment yuborish limitlari uchun bitta "singleton" qator (id har doim
+// "singleton"). Backend qayta ishga tushganda (deploy, crash, PM2 restart) hisoblagichlar
+// va navbat pauzasi shu yerdan tiklanadi — xotiradagi o'zgaruvchilarga tayanib qolinmaydi.
+model RateLimitCounter {
+  id               String    @id @default("singleton")
+  messagesThisHour Int       @default(0)
+  commentsThisHour Int       @default(0)
+  messagesToday    Int       @default(0)
+  commentsToday    Int       @default(0)
+  hourResetAt      DateTime
+  dayResetAt       DateTime
+  // 429/action-block sabab navbat pauzada bo'lsa shu payt bilan birga saqlanadi — aks holda
+  // pauza vaqtida restart bo'lsa, navbat cheklov hali faol bo'lsa ham darhol davom etib ketardi.
+  pausedUntil      DateTime?
+  pauseReason      String?
+  rateLimitStrikes Int       @default(0)
+  // Operator (admin) inboxdan qo'lda yuboradigan xabarlar uchun alohida, qisqa muddatli
+  // tezlik chegarasi (1 daqiqada 10 tadan) — Instagramga umuman aloqasi yo'q, faqat UI
+  // orqali juda tez-tez bosishning oldini olish uchun.
+  operatorMessagesThisMinute Int       @default(0)
+  operatorMinuteResetAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
 model Message {
   id                 String        @id @default(cuid())
   instagramMessageId String?       @unique

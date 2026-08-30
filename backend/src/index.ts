@@ -3,8 +3,13 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { prisma } from './lib/prisma';
 import { initSocket } from './services/socketService';
+import { loadRateLimiterState } from './utils/rateLimiter';
 
 async function main() {
+  // Server so'rov qabul qilishni boshlashidan OLDIN — aks holda birinchi webhook eventlari
+  // rate-limiter holati hali DB'dan tiklanmagan paytda kelib qolishi mumkin edi.
+  await loadRateLimiterState();
+
   const app = createApp();
   const server = http.createServer(app);
 

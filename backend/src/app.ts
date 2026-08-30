@@ -51,15 +51,16 @@ export function createApp() {
     }),
   );
 
-  // Umumiy rate limit. Webhooklar Meta tomonidan yuboriladi — ular chegaralanmaydi.
+  // Umumiy rate limit. Webhook so'rovlari HAM shu limitga kiradi — imzosi noto'g'ri yoki
+  // haddan tashqari ko'p soxta so'rov yuborilishi endi bu yerda ham to'xtatiladi, faqat
+  // routes/webhooks.ts'dagi imzo tekshiruviga tayanib qolinmaydi.
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 300,
     standardHeaders: true,
     legacyHeaders: false,
-    // TEMP (2026-08-21): dev paytida bloklanmaslik uchun vaqtincha ochirilgan.
-    // Ish tugagach isProduction tekshiruvisiz qoldirmasdan qayta yoqish kerak.
-    skip: (req) => !isProduction || req.path.startsWith('/api/webhooks'),
+    skip: (req) => false,
+    // All requests including webhooks must be rate-limited and signature-checked
     message: { error: 'Juda kop sorov yuborildi. Birozdan keyin qayta urinib koring' },
   });
   app.use(apiLimiter);

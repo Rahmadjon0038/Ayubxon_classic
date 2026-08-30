@@ -119,6 +119,39 @@ function buildAdLeadMessage(lead: NewAdLeadNotification): string {
   return lines.join('\n');
 }
 
+// Spam-himoya navbati Instagram rate-limit/action-block xatosi sabab toʻxtatilganda adminga
+// darhol xabar berish uchun. BOT_TOKEN yoki CHANNEL_ID sozlanmagan bo'lsa, jim o'chiq holatda
+// ishlaydi — chaqiruvchi tomon (messageQueue) buni fire-and-forget sifatida chaqiradi.
+export async function notifySpamProtectionPause(reason: string, pauseMinutes: number): Promise<void> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) {
+    console.warn('[telegram] TELEGRAM_BOT_TOKEN yoki TELEGRAM_CHANNEL_ID sozlanmagan, spam himoyasi xabarnomasi otkazib yuborildi');
+    return;
+  }
+
+  const text = [
+    '<b>⚠️ Instagram xabar navbati toxtatildi</b>',
+    '',
+    `Sabab: ${escapeHtml(reason)}`,
+    `Kutish vaqti: ${pauseMinutes} daqiqa`,
+  ].join('\n');
+
+  try {
+    const response = await axios.post(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: env.TELEGRAM_CHANNEL_ID,
+      text,
+      parse_mode: 'HTML',
+    });
+
+    if (!response.data?.ok) {
+      console.error(`[telegram] Telegram "ok:false" qaytardi (spam himoyasi): ${JSON.stringify(response.data)}`);
+    }
+  } catch (err) {
+    const details = axios.isAxiosError(err) && err.response ? JSON.stringify(err.response.data) : undefined;
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[telegram] Spam himoyasi xabarnomasini yuborishda xato: ${message}${details ? ` — ${details}` : ''}`);
+  }
+}
+
 export async function notifyNewAdLead(lead: NewAdLeadNotification): Promise<void> {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) {
     console.warn('[telegram] TELEGRAM_BOT_TOKEN yoki TELEGRAM_CHANNEL_ID sozlanmagan, reklama lid xabarnomasi otkazib yuborildi');

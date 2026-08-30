@@ -2,19 +2,28 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { Prisma, SenderType } from '@prisma/client';
-import { Router } from 'express';
+import { Response, Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { env } from '../config/env';
 import { AppError } from '../lib/errors';
 import { UPLOAD_DIR } from '../lib/uploads';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { sendAttachmentMessage, sendReaction, sendTextMessage } from '../services/instagramApi';
 import { getAccessToken, getConnectedAccount } from '../services/accountService';
 import { cancelPendingAiTurn } from '../services/webhookProcessor';
 import { emitMessageDeleted } from '../services/socketService';
+import { enqueueHighPriorityAttachment, enqueueHighPriorityDm, isRateLimitError } from '../utils/messageQueue';
+import {
+  checkOperatorRateLimit,
+  checkSharedCapsOrThrow,
+  getLimitResetRemainingMs,
+  getOperatorLimitRemainingMs,
+  getPauseRemainingMs,
+  isPaused,
+} from '../utils/rateLimiter';
 
 // Instagram Send API faqat rasm/video/audio qabul qiladi.
 const ALLOWED_MIME: Record<string, 'image' | 'video' | 'audio'> = {
@@ -112,6 +121,55 @@ function getLocalUploadPath(attachmentUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+// Qo'lda yuborishdan OLDIN operator tezligini va umumiy soatlik/kunlik/pauza chegaralarini
+// tekshiradi — bu qo'lda yuborish avtomatik xabarlar bilan BIR XIL himoyaga bo'ysunishi uchun
+// (§6 Risk 2). Limitga tegilsa, javobni o'zi yuborib `true` qaytaradi (chaqiruvchi tomon
+// darhol to'xtashi kerak); hammasi yaxshi bo'lsa `false` qaytaradi.
+async function rejectIfRateLimited(res: Response, type: 'dm' | 'comment'): Promise<boolean> {
+  try {
+    await checkOperatorRateLimit();
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        error: err.message,
+        retryAfter: Math.ceil(getOperatorLimitRemainingMs() / 1000),
+      });
+      return true;
+    }
+    throw err;
+  }
+
+  try {
+    await checkSharedCapsOrThrow(type);
+  } catch (err) {
+    if (err instanceof AppError) {
+      const retryAfter = isPaused()
+        ? Math.ceil(getPauseRemainingMs() / 1000)
+        : Math.ceil(getLimitResetRemainingMs('hourly') / 1000);
+      res.status(err.statusCode).json({ error: err.message, retryAfter });
+      return true;
+    }
+    throw err;
+  }
+
+  return false;
+}
+
+// enqueueHighPriorityDm/Attachment xato bilan tugasa, mos javobni yuboradi va `true`
+// qaytaradi. Rate-limit/action-block bilan bog'liq bo'lmagan xatolar uchun `false` qaytaradi —
+// chaqiruvchi tomon odatdagidek (rethrow -> next(err)) davom etishi kerak.
+function respondIfSendBlocked(res: Response, err: unknown): boolean {
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({ error: err.message });
+    return true;
+  }
+  if (isRateLimitError(err)) {
+    res.status(503).json({ error: "Instagram vaqtincha chekladi, 15 daqiqadan so'ng qayta urinib ko'ring" });
+    return true;
+  }
+  return false;
 }
 
 router.get('/', async (_req, res, next) => {
@@ -353,9 +411,13 @@ const sendMessageSchema = z.object({
   text: z.string().trim().min(1, 'Xabar bosh bolishi mumkin emas').max(1000, 'Xabar 1000 belgidan oshmasligi kerak'),
 });
 
-router.post('/:id/messages', validateBody(sendMessageSchema), async (req, res, next) => {
+router.post('/:id/messages', validateBody(sendMessageSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { text } = req.body as z.infer<typeof sendMessageSchema>;
+
+    // Operator tezligi va umumiy soatlik/kunlik/pauza chegaralari — DB'dan suhbatni
+    // o'qishdan OLDIN, chunki limitga tegilgan bo'lsa keraksiz so'rov qilinmaydi.
+    if (await rejectIfRateLimited(res, 'dm')) return;
 
     const { account, conversation } = await getCurrentConversationOrThrow(req.params.id);
 
@@ -376,15 +438,19 @@ router.post('/:id/messages', validateBody(sendMessageSchema), async (req, res, n
 
     let result: { messageId: string };
     try {
-      result = await sendTextMessage(
-        getAccessToken(account),
-        conversation.contact.instagramScopedId,
-        text,
+      // Qo'lda yuborish ham navbat orqali o'tadi — soatlik/kunlik hisoblagichga qo'shiladi va
+      // pauza/limitga bo'ysunadi, lekin 'high' ustuvorlik bilan sun'iy kechikishsiz (operator
+      // real vaqtda kutmoqda).
+      result = await enqueueHighPriorityDm(
+        () => sendTextMessage(getAccessToken(account), conversation.contact.instagramScopedId, text),
+        { userId: conversation.contact.instagramScopedId, label: `manual-operator-${req.adminId}` },
       );
+      console.log(`[manual] Yuborildi: operator=${req.adminId} user=${conversation.contact.instagramScopedId} type=dm`);
     } catch (sendErr) {
       await prisma.message
         .update({ where: { id: pending.id }, data: { status: 'FAILED' } })
         .catch(() => {});
+      if (respondIfSendBlocked(res, sendErr)) return;
       throw sendErr;
     }
 
@@ -396,10 +462,18 @@ router.post('/:id/messages', validateBody(sendMessageSchema), async (req, res, n
 });
 
 // Rasm/video/audio yuborish. Fayl serverda saqlanadi va public URL orqali Instagramga uzatiladi.
-router.post('/:id/attachments', upload.single('file'), async (req, res, next) => {
+router.post('/:id/attachments', upload.single('file'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const file = req.file;
     if (!file) throw new AppError('Fayl yuborilmadi', 400);
+
+    // Operator tezligi va umumiy soatlik/kunlik/pauza chegaralari. multer fayl ustidan bu
+    // yerga yetguncha allaqachon diskka yozib bo'lgan — rad etilsa, yetim qolgan faylni
+    // o'chiramiz.
+    if (await rejectIfRateLimited(res, 'dm')) {
+      await fs.promises.unlink(file.path).catch(() => {});
+      return;
+    }
 
     const { account, conversation } = await getCurrentConversationOrThrow(req.params.id);
 
@@ -423,16 +497,18 @@ router.post('/:id/attachments', upload.single('file'), async (req, res, next) =>
 
     let result: { messageId: string };
     try {
-      result = await sendAttachmentMessage(
-        getAccessToken(account),
-        conversation.contact.instagramScopedId,
-        attachmentType,
-        publicUrl,
+      result = await enqueueHighPriorityAttachment(
+        () => sendAttachmentMessage(getAccessToken(account), conversation.contact.instagramScopedId, attachmentType, publicUrl),
+        { userId: conversation.contact.instagramScopedId, label: `manual-operator-${req.adminId}` },
+      );
+      console.log(
+        `[manual] Yuborildi: operator=${req.adminId} user=${conversation.contact.instagramScopedId} type=dm (attachment)`,
       );
     } catch (sendErr) {
       await prisma.message
         .update({ where: { id: pending.id }, data: { status: 'FAILED' } })
         .catch(() => {});
+      if (respondIfSendBlocked(res, sendErr)) return;
       throw sendErr;
     }
 
