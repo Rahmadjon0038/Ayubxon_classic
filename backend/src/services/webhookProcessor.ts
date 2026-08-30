@@ -639,19 +639,36 @@ function pickPriceCommentReply(privateReplySent: boolean): string {
 async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: string): Promise<void> {
   const commentId = value.id?.trim();
   const text = value.text?.trim();
-  if (!commentId || !text) return;
+  if (!commentId || !text) {
+    console.log(`[webhook] Komment eventi otkazib yuborildi: commentId yoki matn yoq (payload: ${JSON.stringify(value).slice(0, 200)})`);
+    return;
+  }
 
   const fromId = value.from?.id?.trim();
+  console.log(`[webhook] Komment eventi: comment=${commentId} from=${fromId ?? '-'} text="${text}"`);
 
   const account =
     (entryBusinessId ? await getConnectedAccountByInstagramId(entryBusinessId) : null) ??
     (await getConnectedAccount());
-  if (!account) return;
+  if (!account) {
+    console.log(`[webhook] Komment otkazib yuborildi: mos ulangan akkaunt topilmadi (entryBusinessId=${entryBusinessId ?? '-'})`);
+    return;
+  }
 
   // O'zimizning (yoki admin qo'lda yozgan) kommentariyamizga qayta javob yozib yubormaslik.
-  if (fromId && fromId === account.instagramAccountId) return;
-  if (!account.aiEnabled) return;
-  if (!isPriceOnlyComment(text) && !isPlusInterestComment(text)) return;
+  if (fromId && fromId === account.instagramAccountId) {
+    console.log(`[webhook] Komment otkazib yuborildi: bu akkauntning oz kommentariyasi (comment=${commentId})`);
+    return;
+  }
+  if (!account.aiEnabled) {
+    console.log(`[webhook] Komment otkazib yuborildi: AI ochirilgan (account=${account.username})`);
+    return;
+  }
+  if (!isPriceOnlyComment(text) && !isPlusInterestComment(text)) {
+    console.log(`[webhook] Komment otkazib yuborildi: matn narx/qiziqish patterniga mos kelmadi (comment=${commentId}, text="${text}")`);
+    return;
+  }
+  console.log(`[webhook] Narx/qiziqish kommentariyasi aniqlandi, javob tayyorlanmoqda (comment=${commentId})`);
 
   // Meta webhookni ba'zan takror yuborishi mumkin — shu comment'ga avval javob yozgan
   // bo'lsak, unique constraint buni ushlab qoladi va jim o'tkazib yuboramiz.
@@ -779,9 +796,15 @@ export async function processWebhookPayload(rawPayload: unknown): Promise<void> 
     }
 
     const commentChanges = (entry.changes ?? []).filter((c) => c.field === 'comments' && c.value);
+    if (commentChanges.length > 0) {
+      console.log(`[webhook] Komment eventlari qabul qilindi (entry: ${entry.id ?? '-'}, kommentlar: ${commentChanges.length})`);
+    }
     for (const change of commentChanges) {
       const parsedComment = commentValueSchema.safeParse(change.value);
-      if (!parsedComment.success) continue;
+      if (!parsedComment.success) {
+        console.warn(`[webhook] Komment payload strukturasi notogri, otkazib yuborildi: ${JSON.stringify(change.value).slice(0, 200)}`);
+        continue;
+      }
 
       try {
         await processCommentEvent(parsedComment.data, entry.id);
