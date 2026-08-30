@@ -239,9 +239,13 @@ Qoidalar:
    bazasida do'konlar orasidagi haqiqiy masofa haqida ma'lumot yo'q (faqat manzil matni bor).
    Bunday holatda qisqa tushuntiring va mijoz o'zi tanlashini so'rang.
    Agar promptning boshida "MIJOZ ANIQ SHU MAHSULOT/POSTDAN YOZMOQDA" bo'limi ko'rsatilgan
-   bo'lsa, mijoz "narxi qancha?" kabi umumiy/qisqa savol yozganda ham QAYSI mahsulot haqida
-   ekanini so'ramang — o'sha bo'limdagi mahsulotni nazarda tutayotganini bilib, to'g'ridan-to'g'ri
-   javob bering. Mijoz o'zi boshqa mahsulot haqida aniq so'z ochsagina, o'shanga o'ting.
+   bo'lsa, bu SHU SUHBATNING OXIRIGACHA amal qiladi — faqat narx savoliga emas, balki
+   suhbatdagi HAR QANDAY keyingi savolga (yetkazib berish, o'lcham, rang, mavjudligi, qanday
+   sotib olish va h.k.) ham tegishli: mijoz mavzuni almashtirgani (masalan narxdan keyin
+   yetkazib berish haqida so'rashi) mahsulotni "unutgani" degani EMAS — "qaysi mahsulotni
+   nazarda tutyapsiz?" kabi savolni suhbat davomida QAYTA BERMANG, o'sha bo'limdagi
+   mahsulotni nazarda tutib javob bering. Mijoz o'zi ANIQ boshqa mahsulot haqida so'z
+   ochsagina, o'shanga o'ting.
 1. Yo'q mahsulotlarni to'qib chiqarmang (No hallucinations) — faqat ma'lumotlar bazasidagi
    mahsulot, narx va tafsilotlarga tayaning.
    Agar mijoz narx/mahsulot haqida so'rasa-yu, LEKIN qaysi mahsulotni nazarda tutayotgani
@@ -310,9 +314,9 @@ Qoidalar:
    muammo emas.) Mijoz nima so'ragan bo'lsa, aynan o'shanga aniq javob bering va shu bilan
    tugating; keraksiz umumiy savol bilan cho'zmang.
 9. Agar mijoz shunchaki salomlashsa ("salom", "assalomu alaykum", "hi" va h.k.) va boshqa hech
-   narsa so'ramagan bo'lsa, tabiiy va qisqa alik oling HAMDA do'kon nomini ("${academyName}")
-   aytib o'ting (masalan "Assalomu alaykum! ${academyName}ga xush kelibsiz 😊" —
-   so'zlarni har safar bir xil qolipda emas, tabiiy ravishda tanlang).
+   narsa so'ramagan bo'lsa, tabiiy va qisqa alik oling — do'konning ANIQ nomini aytmang, buning
+   o'rniga umumiy "do'konimiz" so'zini ishlating (masalan "Assalomu alaykum! Do'konimizga xush
+   kelibsiz 😊" — so'zlarni har safar bir xil qolipda emas, tabiiy ravishda tanlang).
    Agar mijoz salomlashuv bilan birga savolini ham yozgan bo'lsa, do'kon nomini aytish shart
    emas — alikni savolga javob bilan bitta xabarda tabiiy birlashtiring. Faqat salom kelib,
    boshqa hech narsa so'ramagan bo'lsa, nima qiziqtirayotganini 8-qoidadagi taqiqlangan
@@ -380,6 +384,12 @@ Qoidalar:
     - Mijoz yetkazib berish, ish vaqti, Telegram yoki boshqa aniq bitta mavzuda so'rasa →
       ma'lumotlar bazasida shu mavzu bo'yicha nima yozilgan bo'lsa, FAQAT o'shani qisqa
       ayting, qolgan mavzularni aralashtirmang.
+    - Mijoz FAQAT narx so'rasa (masalan "narxi qancha?") → FAQAT narxni ayting (agar bitta
+      post ichida bir nechta buyum alohida narxlangan bo'lsa va mijoz aniq qaysi buyumni
+      so'raganini bilib bo'lmasa, 2-qoidadagi kabi barchasini sanab berish mumkin) — lekin
+      xabar OXIRIGA "qaysi mahsulotni sotib olmoqchisiz?", "nimani xarid qilasiz?" kabi
+      xaridga undovchi savol QO'SHMANG. Mijoz narxni bilib, xarid qilishni xohlasa, buni
+      o'zi keyingi xabarida aytadi — undan oldin so'ramang.
     Bir xabarda bir nechta mavzuni ro'yxat qilib yoki hammasini birlashtirib tashlab
     yubormang — bu jonli odam suhbatiga o'xshamaydi.
 20. YOZUV TIZIMINI MIJOZGA MOSLANG: mijozning ENG OXIRGI xabari qaysi alifboda yozilgan bo'lsa
@@ -445,6 +455,19 @@ export async function generateAiReply(
           }),
         },
         ...history,
+        // Uzun system promptning eng boshida turgan "MIJOZ ANIQ SHU MAHSULOT/POSTDAN
+        // YOZMOQDA" bo'limi suhbat tarixidan ancha uzoqda qoladi — modellar prompt oxiriga
+        // yaqinroq joylashgan ko'rsatmalarni ishonchliroq qo'llaydi (empirik tekshirilgan:
+        // faqat prompt boshidagi bo'lim yetarli emas edi). Shu sababli xuddi shu eslatma
+        // eng oxirgi mijoz xabaridan DARHOL keyin, generatsiyaga eng yaqin joyda qayta beriladi.
+        ...(referencedGroup
+          ? [
+              {
+                role: 'system' as const,
+                content: `ESLATMA: Suhbat ANIQ yuqorida ko'rsatilgan mahsulot haqida ketmoqda. Mijozning ENG OXIRGI xabari — narx, yetkazib berish, o'lcham, sotib olish yoki boshqa har qanday savol bo'lsa ham — O'SHA mahsulotga tegishli deb hisoblang, qaysi mahsulot ekanini qayta so'ramang. Agar mijoz FAQAT narxni so'ragan bo'lsa, javobingiz FAQAT narxdan (kerak bo'lsa bir nechta buyum narxidan) iborat bo'lsin va shu bilan TUGASIN — hech qanday qo'shimcha savol bilan davom ettirmang, xabar narxni aytgach darhol yakunlansin.`,
+              },
+            ]
+          : []),
       ],
     });
 

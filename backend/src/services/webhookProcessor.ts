@@ -240,7 +240,11 @@ function isInstagramPermalink(rawUrl: string): boolean {
 // mos kelmay qolishiga (demak AI mahsulotni tanimay qolishiga) olib kelishi mumkin.
 function extractInstagramShortcode(rawUrl: string): string | null {
   try {
-    const { pathname } = new URL(rawUrl);
+    // Admin havolani "https://" siz kiritishi mumkin (masalan brauzer manzil satridan
+    // ko'rinib turgan matnni ko'chirib olganda) — bunday holda new URL() xato tashlab,
+    // mahsulot hech qachon topilmaydigan bo'lib qolardi.
+    const withScheme = /^https?:\/\//i.test(rawUrl.trim()) ? rawUrl.trim() : `https://${rawUrl.trim()}`;
+    const { pathname } = new URL(withScheme);
     const match = pathname.match(/\/(?:reels?|p|tv)\/([A-Za-z0-9_-]+)/);
     return match ? match[1] : null;
   } catch {
@@ -673,10 +677,18 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
       const shortcode = await fetchMediaShortcode(accessToken, mediaId);
       const matchedGroupId = shortcode ? await findGroupIdByShortcode(account.id, shortcode) : null;
       if (matchedGroupId) {
+        // Xom komment matni ("+", "narx" kabi) AI uchun juda kambag'al signal — bitta so'z yoki
+        // belgidan "bu mahsulot narxini so'rayapti" degan xulosani AI har doim ham chiqara
+        // olmaydi, natijada narx o'rniga oddiy salomlashuvga tushib qolishi mumkin. Shuning
+        // uchun AI'ga xom matn o'rniga aniq, tushunarli buyruq beriladi — mahsulotning o'zi
+        // (referencedGroupId orqali) allaqachon aniqlangan, faqat mijoz niyatini ANIQ aytamiz.
+        const aiPromptText = isPlusInterestComment(text)
+          ? "Mijoz ushbu mahsulotga (postga) qiziqish bildirib, narxi va tafsilotlarini so'ramoqda."
+          : `Mijoz ushbu mahsulot (post) ostiga shunday kommentariya yozdi: "${text}" — bu, ehtimol, narx haqida so'rov.`;
         const replyText = await generateAiReply(
           account.id,
           account.name || account.username,
-          [{ role: 'user', content: text }],
+          [{ role: 'user', content: aiPromptText }],
           matchedGroupId,
         );
         if (replyText) {
