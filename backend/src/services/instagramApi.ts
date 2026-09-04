@@ -53,12 +53,38 @@ function toInstagramError(err: unknown): InstagramApiError {
   return new InstagramApiError('Instagram API xatosi', 502);
 }
 
+// Bu token Facebook Login for Business orqali olingan uzoq muddatli PAGE tokeni
+// (EAB... prefiksli). Bunday token uchun graph.facebook.com/me — Instagram akkaunt emas,
+// balki unga bog'langan Facebook Page'ni qaytaradi (id=Page ID), shuning uchun har doim
+// /me'dan instagram_business_account.id'ni olib, keyingi chaqiruvlarni AYNAN shu IG ID
+// orqali bajarish kerak — Page node'da IG'ga xos maydonlar (username, profile_picture_url,
+// subscribed_fields=comments) mavjud emas va Meta "nonexisting field" xatosini qaytaradi.
+async function resolveIgAccountId(accessToken: string): Promise<string> {
+  const { data: pageData } = await axios.get(`${FACEBOOK_GRAPH_BASE}/${GRAPH_VERSION}/me`, {
+    params: {
+      fields: 'id,instagram_business_account',
+      access_token: accessToken,
+    },
+    timeout: 15_000,
+  });
+
+  const igAccountId = pageData?.instagram_business_account?.id;
+  if (!igAccountId) {
+    throw new InstagramApiError(
+      'Bu tokenga bog`langan Facebook Page`da Instagram biznes akkaunt topilmadi',
+      400,
+    );
+  }
+  return String(igAccountId);
+}
+
 // Access token orqali ulangan biznes akkaunt malumotlarini tekshiradi.
 export async function fetchMe(accessToken: string): Promise<InstagramProfile> {
   try {
-    const { data } = await axios.get(`${GRAPH_BASE}/me`, {
+    const igAccountId = await resolveIgAccountId(accessToken);
+    const { data } = await axios.get(`${FACEBOOK_GRAPH_BASE}/${GRAPH_VERSION}/${igAccountId}`, {
       params: {
-        fields: 'id,username,name,profile_picture_url,account_type',
+        fields: 'id,username,name,profile_picture_url',
         access_token: accessToken,
       },
       timeout: 15_000,
@@ -71,7 +97,6 @@ export async function fetchMe(accessToken: string): Promise<InstagramProfile> {
       username: data.username,
       name: data.name ?? undefined,
       profilePictureUrl: data.profile_picture_url ?? undefined,
-      accountType: data.account_type ?? undefined,
     };
   } catch (err) {
     if (err instanceof InstagramApiError) throw err;
@@ -111,8 +136,9 @@ export async function fetchContactProfile(
 // bo'lmasa, bu maydon bo'yicha eventlar kelsa ham javob yozish (replyToComment) xato beradi.
 export async function subscribeToMessages(accessToken: string): Promise<boolean> {
   try {
+    const igAccountId = await resolveIgAccountId(accessToken);
     const { data } = await axios.post(
-      `${GRAPH_BASE}/${GRAPH_VERSION}/me/subscribed_apps`,
+      `${FACEBOOK_GRAPH_BASE}/${GRAPH_VERSION}/${igAccountId}/subscribed_apps`,
       null,
       {
         params: {
