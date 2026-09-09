@@ -22,7 +22,7 @@ const loginLimiter = rateLimit({
 });
 
 const loginSchema = z.object({
-  email: z.string().email('Email notogri'),
+  phone: z.string().trim().min(7, 'Telefon raqam notogri'),
   password: z.string().min(1, 'Parol kiritilishi shart'),
 });
 
@@ -36,19 +36,19 @@ function signToken(admin: { id: string; organizationId: string }) {
 // faqat super-admin panel orqali (POST /api/super-admin/organizations) yaratiladi.
 router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res, next) => {
   try {
-    const { email, password } = req.body as z.infer<typeof loginSchema>;
+    const { phone, password } = req.body as z.infer<typeof loginSchema>;
 
-    const admin = await prisma.admin.findUnique({ where: { email: email.toLowerCase() } });
+    const admin = await prisma.admin.findUnique({ where: { phone } });
     const passwordOk = admin ? await bcrypt.compare(password, admin.passwordHash) : false;
     if (!admin || !passwordOk) {
-      return res.status(401).json({ error: 'Email yoki parol notogri' });
+      return res.status(401).json({ error: 'Telefon raqam yoki parol notogri' });
     }
 
     const token = signToken(admin);
 
     return res.json({
       token,
-      admin: { id: admin.id, email: admin.email, organizationId: admin.organizationId },
+      admin: { id: admin.id, phone: admin.phone, organizationId: admin.organizationId },
     });
   } catch (err) {
     return next(err);
@@ -59,7 +59,7 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const admin = await prisma.admin.findUnique({
       where: { id: req.adminId },
-      select: { id: true, email: true, createdAt: true, organizationId: true, organization: { select: { name: true } } },
+      select: { id: true, phone: true, createdAt: true, organizationId: true, organization: { select: { name: true } } },
     });
     if (!admin) {
       return res.status(401).json({ error: 'Admin topilmadi' });

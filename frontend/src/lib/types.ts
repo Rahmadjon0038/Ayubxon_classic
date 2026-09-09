@@ -5,7 +5,7 @@ export interface Organization {
 
 export interface Admin {
   id: string;
-  email: string;
+  phone: string;
   organizationId?: string;
   organization?: { name: string };
   createdAt?: string;

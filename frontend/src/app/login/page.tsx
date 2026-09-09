@@ -12,7 +12,7 @@ import { api, getErrorMessage, getToken, setToken } from '@/lib/api';
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useLocale();
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<{ token: string }>('/auth/login', { email, password });
+      const { data } = await api.post<{ token: string }>('/auth/login', { phone, password });
       return data;
     },
     onSuccess: (data) => {
@@ -55,18 +55,18 @@ export default function LoginPage() {
           className="space-y-5 rounded-2xl border border-gray-300 bg-white p-8 shadow-sm backdrop-blur-xl backdrop-saturate-150 dark:border-tg-border/70 dark:bg-tg-panel/[0.94]"
         >
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium dark:text-tg-text">
-              {t('common.email')}
+            <label htmlFor="phone" className="mb-2 block text-sm font-medium dark:text-tg-text">
+              {t('common.phone')}
             </label>
             <input
-              id="email"
-              type="email"
+              id="phone"
+              type="tel"
               required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              placeholder="admin@example.com"
+              placeholder="+998 90 123 45 67"
             />
           </div>
 

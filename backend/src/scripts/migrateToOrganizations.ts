@@ -8,23 +8,42 @@ import { prisma } from '../lib/prisma';
 // "Default workspace" hosil qiladi va mavjud Admin/InstagramAccount qatorlarini shunga
 // bog'laydi. Idempotent — organizationId ustuni allaqachon bor bo'lsa (yoki bo'sh bazada)
 // hech narsa qilmaydi.
-async function main() {
-  const adminHasColumn = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
+async function columnExists(table: string, column: string): Promise<boolean> {
+  const rows = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
     `SELECT EXISTS (
        SELECT 1 FROM information_schema.columns
-       WHERE table_name = 'Admin' AND column_name = 'organizationId'
+       WHERE table_name = $1 AND column_name = $2
      ) AS exists`,
+    table,
+    column,
   );
-  if (adminHasColumn[0]?.exists) {
-    console.log('[migrate] organizationId ustuni allaqachon mavjud — otkazib yuborildi.');
-    return;
-  }
+  return Boolean(rows[0]?.exists);
+}
 
+async function main() {
   const adminTableExists = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
     `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Admin') AS exists`,
   );
   if (!adminTableExists[0]?.exists) {
     console.log('[migrate] Admin jadvali hali yoq (yangi baza) — otkazib yuborildi.');
+    return;
+  }
+
+  // Admin.email -> Admin.phone: login endi telefon raqami orqali. Eski qatorlarda
+  // phone bo'lmasa, vaqtincha eski email qiymati bilan toldiramiz (mijoz keyin
+  // super-admindan haqiqiy raqamini yangilatishi mumkin) — shunda ustunni NOT NULL
+  // qilishda mavjud qatorlar uchun xato chiqmaydi.
+  const hasEmailColumn = await columnExists('Admin', 'email');
+  const hasPhoneColumn = await columnExists('Admin', 'phone');
+  if (hasEmailColumn && !hasPhoneColumn) {
+    console.log('[migrate] Admin.email -> Admin.phone kochirilmoqda...');
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Admin" ADD COLUMN IF NOT EXISTS "phone" TEXT`);
+    await prisma.$executeRawUnsafe(`UPDATE "Admin" SET "phone" = "email" WHERE "phone" IS NULL`);
+  }
+
+  const adminHasColumn = await columnExists('Admin', 'organizationId');
+  if (adminHasColumn) {
+    console.log('[migrate] organizationId ustuni allaqachon mavjud — otkazib yuborildi.');
     return;
   }
 

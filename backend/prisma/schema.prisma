@@ -33,9 +33,10 @@ model Organization {
 
   // To'lov/obuna — hozircha haqiqiy to'lov tizimi (Click/Payme) ulanmagan, super-admin
   // panelda qo'lda kiritiladi/yangilanadi. Faqat super-adminga nazorat/eslatma uchun.
-  subscriptionStatus    SubscriptionStatus @default(ACTIVE)
-  subscriptionExpiresAt DateTime?
-  planName              String?
+  subscriptionStatus SubscriptionStatus @default(ACTIVE)
+  // Tarif nomi — super-admin panelda tayyor variantlardan tanlanadi (masalan "Standart",
+  // "Pro"), narx faqat frontendda ko'rsatiladi.
+  planName           String?
 
   admins            Admin[]
   instagramAccounts InstagramAccount[]
@@ -44,7 +45,8 @@ model Organization {
 model Admin {
   id             String   @id @default(cuid())
   organizationId String
-  email          String   @unique
+  // Mijoz kabinetga shu telefon raqami (login sifatida) + super-admin bergan parol bilan kiradi.
+  phone          String   @unique
   passwordHash   String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

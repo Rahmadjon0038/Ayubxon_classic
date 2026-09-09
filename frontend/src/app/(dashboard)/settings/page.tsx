@@ -43,8 +43,8 @@ export default function SettingsPage() {
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               <dt className="text-gray-600 dark:text-tg-textMuted">{t('settings.workspace')}</dt>
               <dd className="min-w-0 break-all dark:text-tg-text">{meQuery.data?.organization?.name ?? '—'}</dd>
-              <dt className="text-gray-600 dark:text-tg-textMuted">{t('common.email')}</dt>
-              <dd className="min-w-0 break-all dark:text-tg-text">{meQuery.data?.email}</dd>
+              <dt className="text-gray-600 dark:text-tg-textMuted">{t('common.phone')}</dt>
+              <dd className="min-w-0 break-all dark:text-tg-text">{meQuery.data?.phone}</dd>
               <dt className="text-gray-600 dark:text-tg-textMuted">{t('settings.createdAt')}</dt>
               <dd className="min-w-0 break-all dark:text-tg-text">
                 {meQuery.data?.createdAt ? formatDateTime(meQuery.data.createdAt) : '—'}

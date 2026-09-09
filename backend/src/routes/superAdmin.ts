@@ -61,28 +61,23 @@ router.get('/me', requireSuperAuth, async (req: SuperAuthenticatedRequest, res, 
   }
 });
 
+// Tayyor tariflar — narx faqat frontendda ko'rsatiladi (hozircha mock, haqiqiy tolov
+// tizimi ulanmagan).
+const PLAN_NAMES = ['Standart', 'Pro'] as const;
+
 const subscriptionFields = {
-  planName: z.string().trim().max(100).optional().or(z.literal('')),
+  planName: z.enum(PLAN_NAMES).optional(),
   subscriptionStatus: z.enum(['ACTIVE', 'EXPIRED']).optional(),
-  // Sana string (YYYY-MM-DD) sifatida keladi — bosh satr "muddat belgilanmagan" degani.
-  subscriptionExpiresAt: z.string().trim().optional().or(z.literal('')),
 };
 
 const createOrganizationSchema = z.object({
   organizationName: z.string().trim().min(2, "Kompaniya nomi kamida 2 belgidan iborat bolishi kerak"),
-  email: z.string().email('Email notogri'),
+  phone: z.string().trim().min(7, 'Telefon raqam notogri'),
   password: z.string().min(8, 'Parol kamida 8 belgidan iborat bolishi kerak'),
   ...subscriptionFields,
 });
 
 const updateSubscriptionSchema = z.object(subscriptionFields);
-
-function parseExpiresAt(value: string | undefined): Date | null | undefined {
-  if (value === undefined) return undefined;
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
 
 // Yangi mijoz uchun workspace + kirish ma'lumotlarini yaratadi. Faqat super-admin
 // chaqira oladi — mijozning o'zi hech qachon ro'yxatdan ota olmaydi.
@@ -93,27 +88,24 @@ router.post(
   async (req, res, next) => {
     try {
       const body = req.body as z.infer<typeof createOrganizationSchema>;
-      const normalizedEmail = body.email.toLowerCase();
 
-      const existing = await prisma.admin.findUnique({ where: { email: normalizedEmail } });
+      const existing = await prisma.admin.findUnique({ where: { phone: body.phone } });
       if (existing) {
-        return res.status(409).json({ error: 'Bu email allaqachon ishlatilgan' });
+        return res.status(409).json({ error: 'Bu telefon raqam allaqachon ishlatilgan' });
       }
 
-      const expiresAt = parseExpiresAt(body.subscriptionExpiresAt);
       const passwordHash = await bcrypt.hash(body.password, 12);
 
       const { organization, admin } = await prisma.$transaction(async (tx) => {
         const organization = await tx.organization.create({
           data: {
             name: body.organizationName,
-            planName: body.planName || null,
+            planName: body.planName ?? null,
             subscriptionStatus: body.subscriptionStatus ?? 'ACTIVE',
-            subscriptionExpiresAt: expiresAt ?? null,
           },
         });
         const admin = await tx.admin.create({
-          data: { organizationId: organization.id, email: normalizedEmail, passwordHash },
+          data: { organizationId: organization.id, phone: body.phone, passwordHash },
         });
         return { organization, admin };
       });
@@ -124,9 +116,8 @@ router.post(
           name: organization.name,
           planName: organization.planName,
           subscriptionStatus: organization.subscriptionStatus,
-          subscriptionExpiresAt: organization.subscriptionExpiresAt,
         },
-        admin: { id: admin.id, email: admin.email },
+        admin: { id: admin.id, phone: admin.phone },
       });
     } catch (err) {
       return next(err);
@@ -143,14 +134,12 @@ router.patch(
   async (req, res, next) => {
     try {
       const body = req.body as z.infer<typeof updateSubscriptionSchema>;
-      const expiresAt = parseExpiresAt(body.subscriptionExpiresAt);
 
       const organization = await prisma.organization.update({
         where: { id: req.params.id },
         data: {
-          ...(body.planName !== undefined ? { planName: body.planName || null } : {}),
+          ...(body.planName !== undefined ? { planName: body.planName } : {}),
           ...(body.subscriptionStatus !== undefined ? { subscriptionStatus: body.subscriptionStatus } : {}),
-          ...(expiresAt !== undefined ? { subscriptionExpiresAt: expiresAt } : {}),
         },
       });
 
@@ -160,7 +149,6 @@ router.patch(
           name: organization.name,
           planName: organization.planName,
           subscriptionStatus: organization.subscriptionStatus,
-          subscriptionExpiresAt: organization.subscriptionExpiresAt,
         },
       });
     } catch (err) {
@@ -169,6 +157,18 @@ router.patch(
   },
 );
 
+// Kabinetni butunlay ochiradi — Admin, InstagramAccount va shu bilan bogliq barcha
+// ma'lumotlar (suhbatlar, bilim bazasi va h.k.) kaskad tarzda ochiriladi. Qaytarib
+// bolmaydi.
+router.delete('/organizations/:id', requireSuperAuth, async (req, res, next) => {
+  try {
+    await prisma.organization.delete({ where: { id: req.params.id } });
+    return res.status(204).send();
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // Yaratilgan kabinetlar ro'yxati — kimga qachon kabinet berilgani va Instagram
 // akkaunt ulanganmi degan holatni ko'rish uchun.
 router.get('/organizations', requireSuperAuth, async (_req, res, next) => {
@@ -176,7 +176,7 @@ router.get('/organizations', requireSuperAuth, async (_req, res, next) => {
     const organizations = await prisma.organization.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        admins: { select: { id: true, email: true } },
+        admins: { select: { id: true, phone: true } },
         instagramAccounts: { select: { id: true, username: true, isConnected: true } },
       },
     });
@@ -188,10 +188,65 @@ router.get('/organizations', requireSuperAuth, async (_req, res, next) => {
         createdAt: org.createdAt,
         planName: org.planName,
         subscriptionStatus: org.subscriptionStatus,
-        subscriptionExpiresAt: org.subscriptionExpiresAt,
         admins: org.admins,
         instagramAccounts: org.instagramAccounts,
       })),
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+const STATS_MONTHS_BACK = 12;
+
+function monthKeyFromDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function lastMonthKeys(count: number, end: Date): string[] {
+  const keys: string[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(end.getFullYear(), end.getMonth() - i, 1);
+    keys.push(monthKeyFromDate(d));
+  }
+  return keys;
+}
+
+// Platforma darajasidagi umumiy korsatkichlar — nechta kabinet, nechtasi faol/muddati
+// tugagan, nechtasi Instagram ulagan, va oylar boyicha yangi kabinetlar soni.
+router.get('/stats', requireSuperAuth, async (_req, res, next) => {
+  try {
+    const now = new Date();
+    const months = lastMonthKeys(STATS_MONTHS_BACK, now);
+    const trendWindowStart = new Date(now.getFullYear(), now.getMonth() - (STATS_MONTHS_BACK - 1), 1);
+
+    const [totalOrganizations, activeSubscriptions, expiredSubscriptions, organizationsWithConnectedAccount, orgDates] =
+      await Promise.all([
+        prisma.organization.count(),
+        prisma.organization.count({ where: { subscriptionStatus: 'ACTIVE' } }),
+        prisma.organization.count({ where: { subscriptionStatus: 'EXPIRED' } }),
+        prisma.organization.count({ where: { instagramAccounts: { some: { isConnected: true } } } }),
+        prisma.organization.findMany({
+          where: { createdAt: { gte: trendWindowStart } },
+          select: { createdAt: true },
+        }),
+      ]);
+
+    const newOrgsByMonth = new Map<string, number>();
+    for (const org of orgDates) {
+      const key = monthKeyFromDate(org.createdAt);
+      newOrgsByMonth.set(key, (newOrgsByMonth.get(key) ?? 0) + 1);
+    }
+    const monthlyNewOrganizations = months.map((month) => ({ month, count: newOrgsByMonth.get(month) ?? 0 }));
+
+    return res.json({
+      totals: {
+        totalOrganizations,
+        activeSubscriptions,
+        expiredSubscriptions,
+        connectedInstagramAccounts: organizationsWithConnectedAccount,
+      },
+      monthlyNewOrganizations,
     });
   } catch (err) {
     return next(err);

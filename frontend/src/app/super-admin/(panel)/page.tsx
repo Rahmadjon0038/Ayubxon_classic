@@ -1,36 +1,63 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Pencil } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useState } from 'react';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
-import LogoMark from '@/components/LogoMark';
+import { Pencil, Trash2 } from 'lucide-react';
+import { FormEvent, useState } from 'react';
 import { useLocale } from '@/components/LocaleProvider';
-import { clearSuperAdminToken, getErrorMessage, getSuperAdminToken, superAdminApi } from '@/lib/api';
+import { getErrorMessage, superAdminApi } from '@/lib/api';
 
 type SubscriptionStatus = 'ACTIVE' | 'EXPIRED';
+type PlanName = 'Standart' | 'Pro';
 
 interface OrganizationListItem {
   id: string;
   name: string;
   createdAt: string;
-  planName: string | null;
+  planName: PlanName | null;
   subscriptionStatus: SubscriptionStatus;
-  subscriptionExpiresAt: string | null;
-  admins: { id: string; email: string }[];
+  admins: { id: string; phone: string }[];
   instagramAccounts: { id: string; username: string; isConnected: boolean }[];
 }
 
 interface CreatedCredentials {
   organizationName: string;
-  email: string;
+  phone: string;
   password: string;
 }
 
-function toDateInputValue(value: string | null): string {
-  if (!value) return '';
-  return value.slice(0, 10);
+function PlanSelect({
+  value,
+  onChange,
+  label,
+}: {
+  value: PlanName | '';
+  onChange: (value: PlanName) => void;
+  label: string;
+}) {
+  const { t } = useLocale();
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium dark:text-tg-text">{label}</label>
+      <select
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value as PlanName)}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+      >
+        <option value="" disabled>
+          —
+        </option>
+        <option value="Standart">{t('superAdmin.planStandart')}</option>
+        <option value="Pro">{t('superAdmin.planPro')}</option>
+      </select>
+    </div>
+  );
+}
+
+function planLabel(t: (key: string) => string, plan: PlanName | null): string {
+  if (plan === 'Standart') return t('superAdmin.planStandart');
+  if (plan === 'Pro') return t('superAdmin.planPro');
+  return '—';
 }
 
 function StatusBadge({ status }: { status: SubscriptionStatus }) {
@@ -52,16 +79,14 @@ function StatusBadge({ status }: { status: SubscriptionStatus }) {
 function SubscriptionEditor({ org, onClose }: { org: OrganizationListItem; onClose: () => void }) {
   const { t } = useLocale();
   const queryClient = useQueryClient();
-  const [planName, setPlanName] = useState(org.planName ?? '');
+  const [planName, setPlanName] = useState<PlanName | ''>(org.planName ?? '');
   const [status, setStatus] = useState<SubscriptionStatus>(org.subscriptionStatus);
-  const [expiresAt, setExpiresAt] = useState(toDateInputValue(org.subscriptionExpiresAt));
 
   const updateMutation = useMutation({
     mutationFn: async () => {
       const { data } = await superAdminApi.patch(`/organizations/${org.id}/subscription`, {
-        planName,
+        planName: planName || undefined,
         subscriptionStatus: status,
-        subscriptionExpiresAt: expiresAt,
       });
       return data;
     },
@@ -78,21 +103,10 @@ function SubscriptionEditor({ org, onClose }: { org: OrganizationListItem; onClo
 
   return (
     <form onSubmit={handleSubmit} className="mt-3 space-y-3 rounded-xl bg-gray-50 p-3 dark:bg-tg-panelAlt">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <PlanSelect value={planName} onChange={setPlanName} label={t('superAdmin.planName')} />
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-tg-textMuted">
-            {t('superAdmin.planName')}
-          </label>
-          <input
-            type="text"
-            value={planName}
-            onChange={(e) => setPlanName(e.target.value)}
-            placeholder={t('superAdmin.planNamePlaceholder')}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-tg-textMuted">
+          <label className="mb-2 block text-sm font-medium dark:text-tg-text">
             {t('superAdmin.subscriptionStatus')}
           </label>
           <select
@@ -103,17 +117,6 @@ function SubscriptionEditor({ org, onClose }: { org: OrganizationListItem; onClo
             <option value="ACTIVE">{t('superAdmin.statusActive')}</option>
             <option value="EXPIRED">{t('superAdmin.statusExpired')}</option>
           </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-tg-textMuted">
-            {t('superAdmin.subscriptionExpiresAt')}
-          </label>
-          <input
-            type="date"
-            value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panel dark:text-tg-text"
-          />
         </div>
       </div>
 
@@ -144,26 +147,15 @@ function SubscriptionEditor({ org, onClose }: { org: OrganizationListItem; onClo
 }
 
 export default function SuperAdminDashboardPage() {
-  const router = useRouter();
   const { t } = useLocale();
   const queryClient = useQueryClient();
-  const [ready, setReady] = useState(false);
 
   const [organizationName, setOrganizationName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [planName, setPlanName] = useState('');
-  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState('');
+  const [planName, setPlanName] = useState<PlanName | ''>('');
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!getSuperAdminToken()) {
-      router.replace('/super-admin/login');
-    } else {
-      setReady(true);
-    }
-  }, [router]);
 
   const organizationsQuery = useQuery({
     queryKey: ['super-admin', 'organizations'],
@@ -171,27 +163,33 @@ export default function SuperAdminDashboardPage() {
       const { data } = await superAdminApi.get<{ organizations: OrganizationListItem[] }>('/organizations');
       return data.organizations;
     },
-    enabled: ready,
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const { data } = await superAdminApi.post('/organizations', {
         organizationName,
-        email,
+        phone,
         password,
         planName,
-        subscriptionExpiresAt,
       });
       return data;
     },
     onSuccess: () => {
-      setCreated({ organizationName, email, password });
+      setCreated({ organizationName, phone, password });
       setOrganizationName('');
-      setEmail('');
+      setPhone('');
       setPassword('');
       setPlanName('');
-      setSubscriptionExpiresAt('');
+      queryClient.invalidateQueries({ queryKey: ['super-admin', 'organizations'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await superAdminApi.delete(`/organizations/${id}`);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['super-admin', 'organizations'] });
     },
   });
@@ -202,31 +200,18 @@ export default function SuperAdminDashboardPage() {
     createMutation.mutate();
   };
 
-  const handleLogout = () => {
-    clearSuperAdminToken();
-    router.replace('/super-admin/login');
+  const handleDelete = (org: OrganizationListItem) => {
+    if (window.confirm(`${org.name}\n\n${t('superAdmin.deleteConfirm')}`)) {
+      deleteMutation.mutate(org.id);
+    }
   };
 
-  if (!ready) return null;
-
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8 dark:bg-tg-bg sm:px-6">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
-          <LogoMark width={140} height={48} />
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-tg-hover dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
-            >
-              <LogOut size={16} />
-              {t('superAdmin.logout')}
-            </button>
-          </div>
+    <div className="h-full overflow-y-auto p-4 sm:p-6">
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div>
+          <h1 className="text-lg font-semibold dark:text-tg-text">{t('superAdmin.dashboardTitle')}</h1>
         </div>
-
-        <h1 className="text-lg font-semibold dark:text-tg-text">{t('superAdmin.dashboardTitle')}</h1>
 
         <form
           onSubmit={handleSubmit}
@@ -247,14 +232,14 @@ export default function SuperAdminDashboardPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('superAdmin.email')}</label>
+            <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('common.phone')}</label>
             <input
-              type="email"
+              type="tel"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              placeholder="client@example.com"
+              placeholder="+998 90 123 45 67"
             />
           </div>
 
@@ -271,29 +256,7 @@ export default function SuperAdminDashboardPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('superAdmin.planName')}</label>
-              <input
-                type="text"
-                value={planName}
-                onChange={(e) => setPlanName(e.target.value)}
-                placeholder={t('superAdmin.planNamePlaceholder')}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium dark:text-tg-text">
-                {t('superAdmin.subscriptionExpiresAt')}
-              </label>
-              <input
-                type="date"
-                value={subscriptionExpiresAt}
-                onChange={(e) => setSubscriptionExpiresAt(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              />
-            </div>
-          </div>
+          <PlanSelect value={planName} onChange={setPlanName} label={t('superAdmin.planName')} />
 
           {createMutation.isError && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
@@ -303,7 +266,7 @@ export default function SuperAdminDashboardPage() {
 
           {created && (
             <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
-              {t('superAdmin.createSuccess')} <strong>{created.email}</strong> / <strong>{created.password}</strong>
+              {t('superAdmin.createSuccess')} <strong>{created.phone}</strong> / <strong>{created.password}</strong>
             </p>
           )}
 
@@ -334,13 +297,10 @@ export default function SuperAdminDashboardPage() {
                       <div className="min-w-0">
                         <p className="truncate font-medium dark:text-tg-text">{org.name}</p>
                         <p className="truncate text-xs text-gray-500 dark:text-tg-textFaint">
-                          {org.admins.map((a) => a.email).join(', ') || '—'}
+                          {org.admins.map((a) => a.phone).join(', ') || '—'}
                         </p>
                         <p className="mt-1 truncate text-xs text-gray-500 dark:text-tg-textFaint">
-                          {t('superAdmin.plan')}: {org.planName || '—'} · {t('superAdmin.expiresAt')}:{' '}
-                          {org.subscriptionExpiresAt
-                            ? new Date(org.subscriptionExpiresAt).toLocaleDateString()
-                            : t('superAdmin.noExpiryDate')}
+                          {t('superAdmin.plan')}: {planLabel(t, org.planName)}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
@@ -361,6 +321,15 @@ export default function SuperAdminDashboardPage() {
                           className="rounded-lg border border-gray-300 p-1.5 text-gray-600 transition hover:bg-gray-100 dark:border-tg-hover dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
                         >
                           <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(org)}
+                          disabled={deleteMutation.isPending}
+                          title={t('common.delete')}
+                          className="rounded-lg border border-gray-300 p-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-tg-hover dark:text-red-400 dark:hover:bg-red-500/10"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
