@@ -17,6 +17,11 @@ model SuperAdmin {
   updatedAt    DateTime @updatedAt
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+}
+
 // Har bir ro'yxatdan o'tgan kompaniya/mijoz uchun alohida workspace. Barcha
 // ma'lumotlar (Instagram akkaunt(lar), suhbatlar, bilim bazasi) shu orqali
 // bir-biridan izolyatsiya qilinadi.
@@ -25,6 +30,12 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // To'lov/obuna — hozircha haqiqiy to'lov tizimi (Click/Payme) ulanmagan, super-admin
+  // panelda qo'lda kiritiladi/yangilanadi. Faqat super-adminga nazorat/eslatma uchun.
+  subscriptionStatus    SubscriptionStatus @default(ACTIVE)
+  subscriptionExpiresAt DateTime?
+  planName              String?
 
   admins            Admin[]
   instagramAccounts InstagramAccount[]
