@@ -17,6 +17,7 @@ import paymentRoutes from './routes/payments';
 import platformSettingsRoutes from './routes/platformSettings';
 import statsRoutes from './routes/stats';
 import superAdminRoutes from './routes/superAdmin';
+import systemPromptRoutes from './routes/systemPrompt';
 import webhookRoutes from './routes/webhooks';
 
 export function createApp() {
@@ -85,6 +86,7 @@ export function createApp() {
   app.use('/api/knowledge-base/import', knowledgeImportRoutes);
   app.use('/api/stats', statsRoutes);
   app.use('/api/payments', paymentRoutes);
+  app.use('/api/system-prompt', systemPromptRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

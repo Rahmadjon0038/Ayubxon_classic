@@ -79,6 +79,7 @@ const createOrganizationSchema = z.object({
   organizationName: z.string().trim().min(2, "Kompaniya nomi kamida 2 belgidan iborat bolishi kerak"),
   phone: z.string().trim().regex(/^\+998\d{9}$/, "Telefon raqam +998XXXXXXXXX korinishida bolishi kerak"),
   password: z.string().min(6, 'Parol kamida 6 belgidan iborat bolishi kerak'),
+  categoryId: z.string().trim().optional().or(z.literal('')),
   ...subscriptionFields,
 });
 
@@ -101,12 +102,24 @@ router.post(
 
       const passwordHash = await bcrypt.hash(body.password, 12);
 
+      const category = body.categoryId
+        ? await prisma.promptCategory.findUnique({ where: { id: body.categoryId } })
+        : null;
+      if (body.categoryId && !category) {
+        return res.status(400).json({ error: 'Kategoriya topilmadi' });
+      }
+
       const { organization, admin } = await prisma.$transaction(async (tx) => {
         const organization = await tx.organization.create({
           data: {
             name: body.organizationName,
             planName: body.planName ?? null,
             subscriptionStatus: body.subscriptionStatus ?? 'ACTIVE',
+            categoryId: category?.id ?? null,
+            // Kategoriyaning "namunaviy" system prompti shu yerga nusxalanadi — mijoz keyin
+            // uni "AI System Prompt" sahifasida o'zi tahrirlashi mumkin (kategoriya bilan
+            // jonli bog'lanish yo'q).
+            systemPrompt: category?.basePrompt ?? null,
           },
         });
         const admin = await tx.admin.create({
@@ -121,6 +134,7 @@ router.post(
           name: organization.name,
           planName: organization.planName,
           subscriptionStatus: organization.subscriptionStatus,
+          categoryId: organization.categoryId,
         },
         admin: { id: admin.id, phone: admin.phone },
       });
@@ -183,6 +197,7 @@ router.get('/organizations', requireSuperAuth, async (_req, res, next) => {
       include: {
         admins: { select: { id: true, phone: true } },
         instagramAccounts: { select: { id: true, username: true, isConnected: true } },
+        category: { select: { id: true, name: true } },
       },
     });
 
@@ -195,8 +210,66 @@ router.get('/organizations', requireSuperAuth, async (_req, res, next) => {
         subscriptionStatus: org.subscriptionStatus,
         admins: org.admins,
         instagramAccounts: org.instagramAccounts,
+        category: org.category,
       })),
     });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+const categorySchema = z.object({
+  name: z.string().trim().min(2, 'Nomi kamida 2 belgidan iborat bolishi kerak').max(100),
+  basePrompt: z.string().trim().min(10, "System prompt kamida 10 belgidan iborat bolishi kerak").max(20000),
+});
+
+// Biznes turlari (masalan "Do'kon", "O'quv markaz") — har biriga mos namunaviy system
+// prompt. Yangi kabinet yaratishda shu ro'yxatdan biri tanlanadi.
+router.get('/categories', requireSuperAuth, async (_req, res, next) => {
+  try {
+    const categories = await prisma.promptCategory.findMany({
+      orderBy: { createdAt: 'asc' },
+      include: { _count: { select: { organizations: true } } },
+    });
+    return res.json({
+      categories: categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        basePrompt: c.basePrompt,
+        organizationCount: c._count.organizations,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      })),
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/categories', requireSuperAuth, validateBody(categorySchema), async (req, res, next) => {
+  try {
+    const body = req.body as z.infer<typeof categorySchema>;
+    const category = await prisma.promptCategory.create({ data: body });
+    return res.status(201).json({ category });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.put('/categories/:id', requireSuperAuth, validateBody(categorySchema), async (req, res, next) => {
+  try {
+    const body = req.body as z.infer<typeof categorySchema>;
+    const category = await prisma.promptCategory.update({ where: { id: req.params.id }, data: body });
+    return res.json({ category });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.delete('/categories/:id', requireSuperAuth, async (req, res, next) => {
+  try {
+    await prisma.promptCategory.delete({ where: { id: req.params.id } });
+    return res.status(204).send();
   } catch (err) {
     return next(err);
   }

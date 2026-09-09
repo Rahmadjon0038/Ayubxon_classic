@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import SystemPromptCard from '@/components/SystemPromptCard';
 import { api, getErrorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { BranchInfo, GroupInfo } from '@/lib/types';
@@ -381,6 +382,7 @@ export default function AiAssistantPage() {
   return (
     <div className="h-full overflow-y-auto bg-slate-50 p-0.5 sm:p-6 dark:bg-tg-bg">
       <div className="mx-auto max-w-7xl space-y-2 sm:space-y-4">
+        <SystemPromptCard />
         <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm dark:border-tg-border dark:bg-tg-panel sm:p-4">
           <div className="flex flex-wrap items-center gap-2">
             <button

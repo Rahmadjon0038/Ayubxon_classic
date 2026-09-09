@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BarChart3, Building2, CreditCard, LogOut, Settings } from 'lucide-react';
+import { BarChart3, Building2, CreditCard, LayoutGrid, LogOut, Settings } from 'lucide-react';
 import SuperAdminLogo from '@/components/SuperAdminLogo';
 import { useLocale } from '@/components/LocaleProvider';
 import { clearSuperAdminToken, getSuperAdminToken } from '@/lib/api';
 
 const navItems = [
   { href: '/super-admin', key: 'superAdmin.dashboardTitle', Icon: Building2 },
+  { href: '/super-admin/categories', key: 'superAdmin.categoriesTitle', Icon: LayoutGrid },
   { href: '/super-admin/payments', key: 'superAdmin.paymentsTitle', Icon: CreditCard },
   { href: '/super-admin/stats', key: 'superAdmin.statsTitle', Icon: BarChart3 },
   { href: '/super-admin/settings', key: 'superAdmin.settingsTitle', Icon: Settings },

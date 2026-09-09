@@ -178,8 +178,13 @@ function buildSystemPrompt(params: {
   groups: GroupInfo[];
   referencedGroup: GroupInfo | null;
   history: ChatTurn[];
+  // Workspace o'zi (yoki super-admin tanlagan kategoriya) yozgan erkin matnli qoidalar —
+  // berilgan bo'lsa, quyidagi standart (kiyim-kechak do'koniga moslashtirilgan) qoidalar
+  // o'rniga ishlatiladi. Bo'lmasa, mavjud mijozlar uchun xulq-atvor o'zgarmasligi uchun
+  // standart matn ishlatiladi.
+  customInstructions?: string | null;
 }): string {
-  const { academyName, branches, groups, referencedGroup, history } = params;
+  const { academyName, branches, groups, referencedGroup, history, customInstructions } = params;
   const branchMap = new Map(branches.map((branch) => [branch.id, branch.name]));
 
   const branchesBlock =
@@ -210,22 +215,11 @@ function buildSystemPrompt(params: {
       ].join('\n')
     : '';
 
-  return `
-Siz "${academyName}" nomli kiyim-kechak savdo do'konining rasmiy Instagram DM
+  const defaultIntro = `Siz "${academyName}" nomli kiyim-kechak savdo do'konining rasmiy Instagram DM
 AI-yordamchisisiz. Foydalanuvchilar Instagram Direct orqali yozishmoqda.
-Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar tez-tez o'zgaradi, shuning uchun eski bilimlarni unuting:
+Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar tez-tez o'zgaradi, shuning uchun eski bilimlarni unuting:`;
 
-${referencedProductBlock}${buildConversationMemoryBlock({ history, branches })}
-
-=== AKTUAL MA'LUMOTLAR BAZASI ===
-DO'KON:
-${branchesBlock}
-
-MAHSULOTLAR:
-${groupsBlock}
-=================================
-
-Qoidalar:
+  const defaultRules = `Qoidalar:
 0. Do'kon — manzil, ish vaqti va egasining telefon raqamini o'z ichiga oladi. Mahsulotlar
    do'konga bog'langan (Instagram videosi + erkin matnli tavsif — rang, o'lcham, narx va h.k.
    hammasi shu matn ichida). Bir nechta do'kon bo'lishi mumkin, lekin har biri haqida faqat
@@ -395,7 +389,25 @@ Qoidalar:
 20. YOZUV TIZIMINI MIJOZGA MOSLANG: mijozning ENG OXIRGI xabari qaysi alifboda yozilgan bo'lsa
     (lotin yoki kirill), siz ham javobingizni AYNAN o'sha alifboda yozing. Bitta xabar ichida
     ikkala alifboni aralashtirmang. Mijoz suhbat davomida alifbo almashtirsa, siz ham ENG
-    OXIRGI xabaridagi alifboga darhol moslashing.
+    OXIRGI xabaridagi alifboga darhol moslashing.`;
+
+  const introText = customInstructions?.trim() || defaultIntro;
+  const rulesText = customInstructions?.trim() ? '' : `\n${defaultRules}`;
+
+  return `
+${introText}
+
+${referencedProductBlock}${buildConversationMemoryBlock({ history, branches })}
+
+=== AKTUAL MA'LUMOTLAR BAZASI ===
+DO'KON:
+${branchesBlock}
+
+MAHSULOTLAR:
+${groupsBlock}
+=================================
+
+${rulesText}
 `.trim();
 }
 
@@ -419,7 +431,7 @@ export async function generateAiReply(
   if (history.length === 0) return null;
 
   try {
-    const [branches, groups, referencedGroup] = await Promise.all([
+    const [branches, groups, referencedGroup, account] = await Promise.all([
       prisma.branchInfo.findMany({
         where: { instagramAccountId, isActive: true },
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
@@ -435,9 +447,16 @@ export async function generateAiReply(
             where: { id: referencedGroupId, instagramAccountId, isActive: true },
           })
         : Promise.resolve(null),
+      // Workspace o'zi yozgan (yoki kategoriyadan nusxalangan) erkin matnli system prompt —
+      // bo'lsa, standart qoidalar o'rniga shu ishlatiladi.
+      prisma.instagramAccount.findUnique({
+        where: { id: instagramAccountId },
+        select: { organization: { select: { systemPrompt: true } } },
+      }),
     ]);
 
     const academyName = branches[0]?.name || fallbackName;
+    const customInstructions = account?.organization?.systemPrompt ?? null;
 
     const completion = await client.chat.completions.create({
       model: AI_MODEL,
@@ -452,6 +471,7 @@ export async function generateAiReply(
             groups,
             referencedGroup,
             history,
+            customInstructions,
           }),
         },
         ...history,

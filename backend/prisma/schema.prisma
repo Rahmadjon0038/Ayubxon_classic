@@ -31,6 +31,20 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
+// Biznes turi (masalan "Do'kon", "O'quv markaz") — super-admin panelda yaratiladi/
+// tahrirlanadi. Har biriga mos "namunaviy" system prompt yoziladi, yangi kabinet
+// yaratilganda shu matn Organization.systemPrompt'ga nusxalanadi (keyin mijoz o'zi
+// tahrirlashi mumkin — kategoriya bilan jonli bog'lanish yo'q, faqat boshlang'ich nusxa).
+model PromptCategory {
+  id         String   @id @default(cuid())
+  name       String
+  basePrompt String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  organizations Organization[]
+}
+
 // Har bir ro'yxatdan o'tgan kompaniya/mijoz uchun alohida workspace. Barcha
 // ma'lumotlar (Instagram akkaunt(lar), suhbatlar, bilim bazasi) shu orqali
 // bir-biridan izolyatsiya qilinadi.
@@ -46,6 +60,17 @@ model Organization {
   // Tarif nomi — super-admin panelda tayyor variantlardan tanlanadi (masalan "Standart",
   // "Pro"), narx faqat frontendda ko'rsatiladi.
   planName           String?
+
+  // Kabinet yaratilganda super-admin tanlagan biznes turi — faqat ma'lumot uchun
+  // (kategoriya o'chirilsa ham workspace saqlanib qoladi, shuning uchun SetNull).
+  categoryId String?
+  category   PromptCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // AI uchun erkin matnli qo'shimcha qoidalar/tavsif — kategoriya tanlanganda uning
+  // basePrompt'idan nusxalanadi, mijoz "AI System Prompt" sahifasida o'zi tahrirlashi
+  // mumkin. Bo'sh bo'lsa, aiService standart (eski, kiyim-kechak do'koniga moslashtirilgan)
+  // qoidalarga tushadi — mavjud mijozlar uchun xulq-atvor o'zgarmaydi.
+  systemPrompt String?
 
   admins            Admin[]
   instagramAccounts InstagramAccount[]

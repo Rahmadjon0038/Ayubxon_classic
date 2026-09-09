@@ -19,6 +19,7 @@ interface OrganizationListItem {
   subscriptionStatus: SubscriptionStatus;
   admins: { id: string; phone: string }[];
   instagramAccounts: { id: string; username: string; isConnected: boolean }[];
+  category: { id: string; name: string } | null;
 }
 
 interface CreatedCredentials {
@@ -104,7 +105,16 @@ function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
   const [phoneDigits, setPhoneDigits] = useState('');
   const [password, setPassword] = useState('');
   const [planName, setPlanName] = useState<PlanName | ''>('');
+  const [categoryId, setCategoryId] = useState('');
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
+
+  const categoriesQuery = useQuery({
+    queryKey: ['super-admin', 'categories'],
+    queryFn: async () => {
+      const { data } = await superAdminApi.get<{ categories: { id: string; name: string }[] }>('/categories');
+      return data.categories;
+    },
+  });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -114,6 +124,7 @@ function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
         phone,
         password,
         planName,
+        categoryId: categoryId || undefined,
       });
       return data;
     },
@@ -123,6 +134,7 @@ function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
       setPhoneDigits('');
       setPassword('');
       setPlanName('');
+      setCategoryId('');
       queryClient.invalidateQueries({ queryKey: ['super-admin', 'organizations'] });
     },
   });
@@ -167,6 +179,22 @@ function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <PlanSelect value={planName} onChange={setPlanName} label={t('superAdmin.planName')} />
+
+        <div>
+          <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('superAdmin.category')}</label>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+          >
+            <option value="">{t('superAdmin.categoryNone')}</option>
+            {categoriesQuery.data?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {createMutation.isError && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
@@ -292,6 +320,11 @@ function OrganizationCard({
             <p className="truncate text-xs text-gray-500 dark:text-tg-textFaint">
               {org.admins.map((a) => a.phone).join(', ') || '—'}
             </p>
+            {org.category && (
+              <span className="mt-0.5 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-tg-panelAlt dark:text-tg-textMuted">
+                {org.category.name}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
