@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { useLocale } from '@/components/LocaleProvider';
 import { getErrorMessage, superAdminApi } from '@/lib/api';
@@ -23,6 +23,29 @@ interface CreatedCredentials {
   organizationName: string;
   phone: string;
   password: string;
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-xl border border-gray-300 bg-white p-4 shadow-lg sm:p-5 dark:border-tg-border dark:bg-tg-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-tg-textMuted">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-gray-500 transition hover:bg-gray-100 dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function PlanSelect({
@@ -73,6 +96,108 @@ function StatusBadge({ status }: { status: SubscriptionStatus }) {
     >
       {active ? t('superAdmin.statusActive') : t('superAdmin.statusExpired')}
     </span>
+  );
+}
+
+function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
+  const { t } = useLocale();
+  const queryClient = useQueryClient();
+
+  const [organizationName, setOrganizationName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [planName, setPlanName] = useState<PlanName | ''>('');
+  const [created, setCreated] = useState<CreatedCredentials | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await superAdminApi.post('/organizations', {
+        organizationName,
+        phone,
+        password,
+        planName,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      setCreated({ organizationName, phone, password });
+      setOrganizationName('');
+      setPhone('');
+      setPassword('');
+      setPlanName('');
+      queryClient.invalidateQueries({ queryKey: ['super-admin', 'organizations'] });
+    },
+  });
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setCreated(null);
+    createMutation.mutate();
+  };
+
+  return (
+    <Modal title={t('superAdmin.createTitle')} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('superAdmin.organizationName')}</label>
+          <input
+            type="text"
+            required
+            value={organizationName}
+            onChange={(e) => setOrganizationName(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+            placeholder="Ayubxon Classic"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('common.phone')}</label>
+          <input
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+            placeholder="+998 90 123 45 67"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('superAdmin.password')}</label>
+          <input
+            type="text"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+            placeholder="••••••••"
+          />
+        </div>
+
+        <PlanSelect value={planName} onChange={setPlanName} label={t('superAdmin.planName')} />
+
+        {createMutation.isError && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            {getErrorMessage(createMutation.error)}
+          </p>
+        )}
+
+        {created && (
+          <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
+            {t('superAdmin.createSuccess')} <strong>{created.phone}</strong> / <strong>{created.password}</strong>
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={createMutation.isPending}
+          className="w-full rounded-lg bg-brand-600 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
+        >
+          {createMutation.isPending ? t('superAdmin.creating') : t('superAdmin.create')}
+        </button>
+      </form>
+    </Modal>
   );
 }
 
@@ -146,42 +271,85 @@ function SubscriptionEditor({ org, onClose }: { org: OrganizationListItem; onClo
   );
 }
 
+function OrganizationCard({
+  org,
+  isEditing,
+  onToggleEdit,
+  onDelete,
+  deletePending,
+}: {
+  org: OrganizationListItem;
+  isEditing: boolean;
+  onToggleEdit: () => void;
+  onDelete: () => void;
+  deletePending: boolean;
+}) {
+  const { t } = useLocale();
+  const connected = org.instagramAccounts.some((a) => a.isConnected);
+
+  return (
+    <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-medium dark:text-tg-text">{org.name}</p>
+          <p className="truncate text-xs text-gray-500 dark:text-tg-textFaint">
+            {org.admins.map((a) => a.phone).join(', ') || '—'}
+          </p>
+          <p className="mt-1 truncate text-xs text-gray-500 dark:text-tg-textFaint">
+            {t('superAdmin.plan')}: {planLabel(t, org.planName)}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onToggleEdit}
+            title={t('superAdmin.editSubscription')}
+            className="rounded-lg border border-gray-300 p-1.5 text-gray-600 transition hover:bg-gray-100 dark:border-tg-hover dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deletePending}
+            title={t('common.delete')}
+            className="rounded-lg border border-gray-300 p-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-tg-hover dark:text-red-400 dark:hover:bg-red-500/10"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+            connected
+              ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
+              : 'bg-gray-100 text-gray-600 dark:bg-tg-panelAlt dark:text-tg-textMuted'
+          }`}
+        >
+          {connected ? t('superAdmin.instagramConnected') : t('superAdmin.instagramNotConnected')}
+        </span>
+        <StatusBadge status={org.subscriptionStatus} />
+      </div>
+
+      {isEditing && <SubscriptionEditor org={org} onClose={onToggleEdit} />}
+    </div>
+  );
+}
+
 export default function SuperAdminDashboardPage() {
   const { t } = useLocale();
   const queryClient = useQueryClient();
 
-  const [organizationName, setOrganizationName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [planName, setPlanName] = useState<PlanName | ''>('');
-  const [created, setCreated] = useState<CreatedCredentials | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const organizationsQuery = useQuery({
     queryKey: ['super-admin', 'organizations'],
     queryFn: async () => {
       const { data } = await superAdminApi.get<{ organizations: OrganizationListItem[] }>('/organizations');
       return data.organizations;
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const { data } = await superAdminApi.post('/organizations', {
-        organizationName,
-        phone,
-        password,
-        planName,
-      });
-      return data;
-    },
-    onSuccess: () => {
-      setCreated({ organizationName, phone, password });
-      setOrganizationName('');
-      setPhone('');
-      setPassword('');
-      setPlanName('');
-      queryClient.invalidateQueries({ queryKey: ['super-admin', 'organizations'] });
     },
   });
 
@@ -194,12 +362,6 @@ export default function SuperAdminDashboardPage() {
     },
   });
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    setCreated(null);
-    createMutation.mutate();
-  };
-
   const handleDelete = (org: OrganizationListItem) => {
     if (window.confirm(`${org.name}\n\n${t('superAdmin.deleteConfirm')}`)) {
       deleteMutation.mutate(org.id);
@@ -208,140 +370,40 @@ export default function SuperAdminDashboardPage() {
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div>
+      <div className="mx-auto max-w-4xl space-y-4">
+        <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold dark:text-tg-text">{t('superAdmin.dashboardTitle')}</h1>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-tg-border dark:bg-tg-panel"
-        >
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-tg-textMuted">{t('superAdmin.createTitle')}</h2>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('superAdmin.organizationName')}</label>
-            <input
-              type="text"
-              required
-              value={organizationName}
-              onChange={(e) => setOrganizationName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              placeholder="Ayubxon Classic"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('common.phone')}</label>
-            <input
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              placeholder="+998 90 123 45 67"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('superAdmin.password')}</label>
-            <input
-              type="text"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <PlanSelect value={planName} onChange={setPlanName} label={t('superAdmin.planName')} />
-
-          {createMutation.isError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400">
-              {getErrorMessage(createMutation.error)}
-            </p>
-          )}
-
-          {created && (
-            <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-500/10 dark:text-green-400">
-              {t('superAdmin.createSuccess')} <strong>{created.phone}</strong> / <strong>{created.password}</strong>
-            </p>
-          )}
-
           <button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="w-full rounded-lg bg-brand-600 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
           >
-            {createMutation.isPending ? t('superAdmin.creating') : t('superAdmin.create')}
+            <Plus size={16} />
+            {t('superAdmin.createTitle')}
           </button>
-        </form>
-
-        <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-tg-border dark:bg-tg-panel">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700 dark:text-tg-textMuted">{t('superAdmin.listTitle')}</h2>
-
-          {organizationsQuery.isLoading ? (
-            <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('common.loading')}</p>
-          ) : !organizationsQuery.data?.length ? (
-            <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('superAdmin.listEmpty')}</p>
-          ) : (
-            <ul className="divide-y divide-gray-200 dark:divide-tg-border/70">
-              {organizationsQuery.data.map((org) => {
-                const connected = org.instagramAccounts.some((a) => a.isConnected);
-                const isEditing = editingId === org.id;
-                return (
-                  <li key={org.id} className="py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium dark:text-tg-text">{org.name}</p>
-                        <p className="truncate text-xs text-gray-500 dark:text-tg-textFaint">
-                          {org.admins.map((a) => a.phone).join(', ') || '—'}
-                        </p>
-                        <p className="mt-1 truncate text-xs text-gray-500 dark:text-tg-textFaint">
-                          {t('superAdmin.plan')}: {planLabel(t, org.planName)}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                            connected
-                              ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-600 dark:bg-tg-panelAlt dark:text-tg-textMuted'
-                          }`}
-                        >
-                          {connected ? t('superAdmin.instagramConnected') : t('superAdmin.instagramNotConnected')}
-                        </span>
-                        <StatusBadge status={org.subscriptionStatus} />
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(isEditing ? null : org.id)}
-                          title={t('superAdmin.editSubscription')}
-                          className="rounded-lg border border-gray-300 p-1.5 text-gray-600 transition hover:bg-gray-100 dark:border-tg-hover dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(org)}
-                          disabled={deleteMutation.isPending}
-                          title={t('common.delete')}
-                          className="rounded-lg border border-gray-300 p-1.5 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-tg-hover dark:text-red-400 dark:hover:bg-red-500/10"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {isEditing && <SubscriptionEditor org={org} onClose={() => setEditingId(null)} />}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </div>
+
+        {organizationsQuery.isLoading ? (
+          <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('common.loading')}</p>
+        ) : !organizationsQuery.data?.length ? (
+          <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('superAdmin.listEmpty')}</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {organizationsQuery.data.map((org) => (
+              <OrganizationCard
+                key={org.id}
+                org={org}
+                isEditing={editingId === org.id}
+                onToggleEdit={() => setEditingId((cur) => (cur === org.id ? null : org.id))}
+                onDelete={() => handleDelete(org)}
+                deletePending={deleteMutation.isPending}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {showCreateModal && <CreateOrganizationModal onClose={() => setShowCreateModal(false)} />}
     </div>
   );
 }

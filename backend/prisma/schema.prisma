@@ -17,6 +17,15 @@ model SuperAdmin {
   updatedAt    DateTime @updatedAt
 }
 
+// Butun platforma uchun bitta "singleton" qator (id har doim "singleton") — hozircha
+// faqat logotip. Super-admin panelda o'zgartiriladi, barcha login sahifalari va
+// sidebarlarda shu logo ko'rsatiladi.
+model PlatformSettings {
+  id        String   @id @default("singleton")
+  logoUrl   String?
+  updatedAt DateTime @updatedAt
+}
+
 enum SubscriptionStatus {
   ACTIVE
   EXPIRED

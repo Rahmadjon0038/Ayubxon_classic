@@ -1,10 +1,15 @@
+import crypto from 'crypto';
+import path from 'path';
 import bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import jwt, { SignOptions } from 'jsonwebtoken';
+import multer from 'multer';
 import { z } from 'zod';
 import { env, isProduction } from '../config/env';
+import { AppError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
+import { UPLOAD_DIR } from '../lib/uploads';
 import { requireSuperAuth, SuperAuthenticatedRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 
@@ -73,7 +78,7 @@ const subscriptionFields = {
 const createOrganizationSchema = z.object({
   organizationName: z.string().trim().min(2, "Kompaniya nomi kamida 2 belgidan iborat bolishi kerak"),
   phone: z.string().trim().min(7, 'Telefon raqam notogri'),
-  password: z.string().min(8, 'Parol kamida 8 belgidan iborat bolishi kerak'),
+  password: z.string().min(6, 'Parol kamida 6 belgidan iborat bolishi kerak'),
   ...subscriptionFields,
 });
 
@@ -248,6 +253,46 @@ router.get('/stats', requireSuperAuth, async (_req, res, next) => {
       },
       monthlyNewOrganizations,
     });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+const ALLOWED_LOGO_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']);
+
+const logoUpload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOAD_DIR,
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).slice(0, 10) || '';
+      cb(null, `${crypto.randomUUID()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_LOGO_MIME.has(file.mimetype)) return cb(null, true);
+    cb(new AppError('Faqat rasm (jpg/png/webp/svg) yuklash mumkin', 400));
+  },
+});
+
+// Butun platforma logotipini o'zgartiradi (galereyadan tanlangan rasm) — faqat
+// super-admin. Barcha login sahifalari va sidebarlarda shu logo ko'rsatiladi.
+router.post('/logo', requireSuperAuth, logoUpload.single('file'), async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) throw new AppError('Fayl yuborilmadi', 400);
+    if (!env.BACKEND_URL) {
+      throw new AppError('BACKEND_URL sozlanmagan — fayl yuklash uchun .env da korsating', 500);
+    }
+
+    const logoUrl = `${env.BACKEND_URL.replace(/\/$/, '')}/uploads/${file.filename}`;
+    await prisma.platformSettings.upsert({
+      where: { id: 'singleton' },
+      create: { id: 'singleton', logoUrl },
+      update: { logoUrl },
+    });
+
+    return res.status(201).json({ logoUrl });
   } catch (err) {
     return next(err);
   }

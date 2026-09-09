@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BarChart3, Building2, LogOut } from 'lucide-react';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { BarChart3, Building2, LogOut, Settings } from 'lucide-react';
 import LogoMark from '@/components/LogoMark';
 import { useLocale } from '@/components/LocaleProvider';
 import { clearSuperAdminToken, getSuperAdminToken } from '@/lib/api';
@@ -12,6 +11,7 @@ import { clearSuperAdminToken, getSuperAdminToken } from '@/lib/api';
 const navItems = [
   { href: '/super-admin', key: 'superAdmin.dashboardTitle', Icon: Building2 },
   { href: '/super-admin/stats', key: 'superAdmin.statsTitle', Icon: BarChart3 },
+  { href: '/super-admin/settings', key: 'superAdmin.settingsTitle', Icon: Settings },
 ] as const;
 
 export default function SuperAdminPanelLayout({ children }: { children: React.ReactNode }) {
@@ -65,10 +65,7 @@ export default function SuperAdminPanelLayout({ children }: { children: React.Re
             })}
           </nav>
 
-          <div className="space-y-1 p-2">
-            <div className="flex justify-center pb-1">
-              <LanguageSwitcher />
-            </div>
+          <div className="p-2">
             <button
               onClick={handleLogout}
               title={t('superAdmin.logout')}

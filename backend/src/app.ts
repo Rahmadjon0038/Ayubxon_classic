@@ -13,6 +13,7 @@ import conversationRoutes from './routes/conversations';
 import groupRoutes from './routes/groups';
 import instagramRoutes from './routes/instagram';
 import knowledgeImportRoutes from './routes/knowledgeImport';
+import platformSettingsRoutes from './routes/platformSettings';
 import statsRoutes from './routes/stats';
 import superAdminRoutes from './routes/superAdmin';
 import webhookRoutes from './routes/webhooks';
@@ -72,6 +73,7 @@ export function createApp() {
 
   app.use('/api/auth', authRoutes);
   app.use('/api/super-admin', superAdminRoutes);
+  app.use('/api/platform-settings', platformSettingsRoutes);
   app.use('/api/instagram', instagramRoutes);
   app.use('/api/webhooks', webhookRoutes);
   app.use('/api/ad-campaigns', adCampaignRoutes);

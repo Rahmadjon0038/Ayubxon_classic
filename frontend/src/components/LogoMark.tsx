@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePlatformLogo } from '@/lib/usePlatformLogo';
 
 interface Props {
   className?: string;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function LogoMark({ className = '', width = 120, height = 40, showLabel = false }: Props) {
   const [isDark, setIsDark] = useState(false);
+  const platformLogoQuery = usePlatformLogo();
 
   useEffect(() => {
     const updateTheme = () => setIsDark(document.documentElement.classList.contains('dark'));
@@ -22,7 +24,9 @@ export default function LogoMark({ className = '', width = 120, height = 40, sho
     return () => observer.disconnect();
   }, []);
 
-  const src = isDark ? '/inboxcrm-dark.svg' : '/inboxcrm-light.svg';
+  // Super-admin galereyadan tanlab qo'ygan rasm bo'lsa shu ustuvor — bo'lmasa
+  // (yoki hali yuklanmoqda) standart tema bo'yicha SVG logoga tushiladi.
+  const src = platformLogoQuery.data || (isDark ? '/inboxcrm-dark.svg' : '/inboxcrm-light.svg');
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
