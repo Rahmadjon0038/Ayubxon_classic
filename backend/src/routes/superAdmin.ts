@@ -217,13 +217,20 @@ function lastMonthKeys(count: number, end: Date): string[] {
   return keys;
 }
 
+const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
 // Platforma darajasidagi umumiy korsatkichlar — nechta kabinet, nechtasi faol/muddati
-// tugagan, nechtasi Instagram ulagan, va oylar boyicha yangi kabinetlar soni.
-router.get('/stats', requireSuperAuth, async (_req, res, next) => {
+// tugagan, nechtasi Instagram ulagan (hozirgi holat), va tanlangan oy bilan tugaydigan
+// oxirgi 12 oy boyicha yangi kabinetlar soni.
+router.get('/stats', requireSuperAuth, async (req, res, next) => {
   try {
-    const now = new Date();
-    const months = lastMonthKeys(STATS_MONTHS_BACK, now);
-    const trendWindowStart = new Date(now.getFullYear(), now.getMonth() - (STATS_MONTHS_BACK - 1), 1);
+    const rawMonth = typeof req.query.month === 'string' ? req.query.month : undefined;
+    const selectedMonth = rawMonth && MONTH_KEY_RE.test(rawMonth) ? rawMonth : monthKeyFromDate(new Date());
+    const [selYear, selMonthNum] = selectedMonth.split('-').map(Number);
+    const monthEnd = new Date(selYear, selMonthNum, 1);
+
+    const months = lastMonthKeys(STATS_MONTHS_BACK, new Date(selYear, selMonthNum - 1, 1));
+    const trendWindowStart = new Date(selYear, selMonthNum - 1 - (STATS_MONTHS_BACK - 1), 1);
 
     const [totalOrganizations, activeSubscriptions, expiredSubscriptions, organizationsWithConnectedAccount, orgDates] =
       await Promise.all([
@@ -232,7 +239,7 @@ router.get('/stats', requireSuperAuth, async (_req, res, next) => {
         prisma.organization.count({ where: { subscriptionStatus: 'EXPIRED' } }),
         prisma.organization.count({ where: { instagramAccounts: { some: { isConnected: true } } } }),
         prisma.organization.findMany({
-          where: { createdAt: { gte: trendWindowStart } },
+          where: { createdAt: { gte: trendWindowStart, lt: monthEnd } },
           select: { createdAt: true },
         }),
       ]);
@@ -245,6 +252,7 @@ router.get('/stats', requireSuperAuth, async (_req, res, next) => {
     const monthlyNewOrganizations = months.map((month) => ({ month, count: newOrgsByMonth.get(month) ?? 0 }));
 
     return res.json({
+      selectedMonth,
       totals: {
         totalOrganizations,
         activeSubscriptions,

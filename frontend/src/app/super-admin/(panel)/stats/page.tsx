@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Building2, Camera, CheckCircle2, XCircle } from 'lucide-react';
+import { Building2, Camera, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
 import MonthlyBarChart from '@/components/stats/MonthlyBarChart';
+import { currentMonthKey, monthFullLabel, shiftMonthKey } from '@/components/stats/chartUtils';
 import { useLocale } from '@/components/LocaleProvider';
 import { getMonthNames, getMonthShortNames } from '@/lib/i18n';
 import { superAdminApi } from '@/lib/api';
@@ -10,6 +12,7 @@ import { superAdminApi } from '@/lib/api';
 const COLOR_VIOLET = '#7c3aed';
 
 interface SuperAdminStatsResponse {
+  selectedMonth: string;
   totals: {
     totalOrganizations: number;
     activeSubscriptions: number;
@@ -42,15 +45,71 @@ function StatTile({ label, value, icon }: { label: string; value: string | numbe
   );
 }
 
+function MonthPicker({
+  selectedMonth,
+  onChange,
+  monthNames,
+  thisMonthLabel,
+  prevMonthLabel,
+  nextMonthLabel,
+}: {
+  selectedMonth: string;
+  onChange: (month: string) => void;
+  monthNames: string[];
+  thisMonthLabel: string;
+  prevMonthLabel: string;
+  nextMonthLabel: string;
+}) {
+  const isCurrentMonth = selectedMonth === currentMonthKey();
+
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-1 shadow-sm dark:border-tg-border dark:bg-tg-panel">
+      <button
+        type="button"
+        aria-label={prevMonthLabel}
+        onClick={() => onChange(shiftMonthKey(selectedMonth, -1))}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
+      >
+        <ChevronLeft size={16} />
+      </button>
+
+      <span className="min-w-[9rem] text-center text-sm font-medium capitalize text-gray-900 dark:text-tg-text">
+        {monthFullLabel(selectedMonth, monthNames)}
+      </span>
+
+      <button
+        type="button"
+        aria-label={nextMonthLabel}
+        onClick={() => onChange(shiftMonthKey(selectedMonth, 1))}
+        disabled={isCurrentMonth}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:text-tg-textMuted dark:hover:bg-tg-panelAlt"
+      >
+        <ChevronRight size={16} />
+      </button>
+
+      {!isCurrentMonth && (
+        <button
+          type="button"
+          onClick={() => onChange(currentMonthKey())}
+          className="ml-1 rounded-md px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
+        >
+          {thisMonthLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function SuperAdminStatsPage() {
   const { t, locale } = useLocale();
   const monthNames = getMonthNames(locale);
   const monthNamesShort = getMonthShortNames(locale);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
 
   const statsQuery = useQuery({
-    queryKey: ['super-admin', 'stats'],
+    queryKey: ['super-admin', 'stats', selectedMonth],
     queryFn: async () => {
-      const { data } = await superAdminApi.get<SuperAdminStatsResponse>('/stats');
+      const { data } = await superAdminApi.get<SuperAdminStatsResponse>('/stats', { params: { month: selectedMonth } });
       return data;
     },
   });
@@ -60,7 +119,17 @@ export default function SuperAdminStatsPage() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-lg font-semibold dark:text-tg-text">{t('superAdmin.statsTitle')}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-lg font-semibold dark:text-tg-text">{t('superAdmin.statsTitle')}</h1>
+          <MonthPicker
+            selectedMonth={selectedMonth}
+            onChange={setSelectedMonth}
+            monthNames={monthNames}
+            thisMonthLabel={t('stats.thisMonth')}
+            prevMonthLabel={t('stats.prevMonth')}
+            nextMonthLabel={t('stats.nextMonth')}
+          />
+        </div>
 
         {stats && (
           <>
@@ -100,6 +169,7 @@ export default function SuperAdminStatsPage() {
                 ]}
                 monthNames={monthNames}
                 monthNamesShort={monthNamesShort}
+                selectedMonth={selectedMonth}
                 emptyLabel={t('stats.noData')}
               />
             </Card>
