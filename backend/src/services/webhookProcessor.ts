@@ -23,8 +23,8 @@ import {
 } from './instagramApi';
 import {
   getAccessToken,
-  getConnectedAccount,
   getConnectedAccountByInstagramId,
+  getConnectedAccountByPageId,
 } from './accountService';
 import { fetchLeadDetails } from './metaLeadAds';
 import { emitMessageUpdated, emitNewMessage } from './socketService';
@@ -142,11 +142,11 @@ async function resolveWebhookAccount(
     if (account) return account;
   }
 
-  // MVP rejimida webhook ID'ni DB yozuvi bilan aniq moslashtira olmasak,
-  // bitta faol ulangan akkauntga qaytamiz. Bu connect paytida Meta qaytaradigan
-  // profil ID webhook entry.id bilan farqlanib qolgan holatlarda ham xabarlarni
-  // saqlab qoladi.
-  return getConnectedAccount();
+  // Multi-tenant: hech qanday ID mos kelmasa, global "istalgan ulangan akkaunt"ga
+  // FALLBACK QILINMAYDI — bir nechta workspace mavjud bo'lganda bu boshqa tenantning
+  // suhbatiga begona xabarni yopishtirib qo'yishi mumkin edi. Bunday event shunchaki
+  // e'tiborsiz qoldiriladi (caller tomonda log qilinadi).
+  return null;
 }
 
 interface ResolvedAttachment {
@@ -457,9 +457,17 @@ async function processMetaLeadChange(changeValue: LeadgenChangeValue, entryBusin
   const formId = changeValue.form_id?.trim() || null;
   const leadCreatedAt = toLeadDate(changeValue.created_time);
 
-  const account = await getConnectedAccount();
+  if (!pageId) {
+    console.warn('[webhook] Meta lead olindi, lekin page_id aniqlanmadi — qaysi workspace ekanini bilib bolmadi');
+    return;
+  }
+
+  // pageId orqali workspace'ni aniq topamiz — global "istalgan ulangan akkaunt"ga
+  // fallback qilinmaydi, aks holda bir nechta workspace mavjud bo'lganda lead boshqa
+  // tenantga yopishtirilib qo'yilishi mumkin edi.
+  const account = await getConnectedAccountByPageId(pageId);
   if (!account) {
-    console.warn('[webhook] Meta lead olindi, lekin ulangan akkaunt topilmadi');
+    console.warn(`[webhook] Meta lead olindi, lekin page_id=${pageId} ga mos ulangan akkaunt topilmadi`);
     return;
   }
 
@@ -647,9 +655,10 @@ async function processCommentEvent(value: CommentChangeValue, entryBusinessId?: 
   const fromId = value.from?.id?.trim();
   console.log(`[webhook] Komment eventi: comment=${commentId} from=${fromId ?? '-'} text="${text}"`);
 
-  const account =
-    (entryBusinessId ? await getConnectedAccountByInstagramId(entryBusinessId) : null) ??
-    (await getConnectedAccount());
+  // Multi-tenant: faqat entryBusinessId orqali aniq mos akkaunt topilsa ishlatiladi —
+  // global "istalgan ulangan akkaunt"ga fallback qilinmaydi (boshqa tenantga xato
+  // yopishtirib qo'yish xavfi).
+  const account = entryBusinessId ? await getConnectedAccountByInstagramId(entryBusinessId) : null;
   if (!account) {
     console.log(`[webhook] Komment otkazib yuborildi: mos ulangan akkaunt topilmadi (entryBusinessId=${entryBusinessId ?? '-'})`);
     return;

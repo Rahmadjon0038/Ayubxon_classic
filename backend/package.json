@@ -14,6 +14,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "create-admin": "tsx src/scripts/createAdmin.ts",
+    "create-super-admin": "tsx src/scripts/createSuperAdmin.ts",
     "backfill-avatars": "tsx src/scripts/backfillAvatars.ts"
   },
   "dependencies": {

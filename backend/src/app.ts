@@ -14,6 +14,7 @@ import groupRoutes from './routes/groups';
 import instagramRoutes from './routes/instagram';
 import knowledgeImportRoutes from './routes/knowledgeImport';
 import statsRoutes from './routes/stats';
+import superAdminRoutes from './routes/superAdmin';
 import webhookRoutes from './routes/webhooks';
 
 export function createApp() {
@@ -70,6 +71,7 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/super-admin', superAdminRoutes);
   app.use('/api/instagram', instagramRoutes);
   app.use('/api/webhooks', webhookRoutes);
   app.use('/api/ad-campaigns', adCampaignRoutes);

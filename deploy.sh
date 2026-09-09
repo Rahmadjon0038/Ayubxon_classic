@@ -86,15 +86,17 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-# ---------- 5. Admin yaratish (ixtiyoriy) ----------
+# ---------- 5. Super-admin yaratish (ixtiyoriy) ----------
+# Diqqat: bu endi workspace admin emas, PLATFORMA EGASI (super-admin) — yangi mijoz
+# kabinetlarini (workspace + login) shu super-admin /super-admin panel orqali o'zi yaratadi.
 ADMIN_EMAIL=$(grep -E "^ADMIN_EMAIL=" .env | cut -d= -f2- || true)
 ADMIN_PASSWORD=$(grep -E "^ADMIN_PASSWORD=" .env | cut -d= -f2- || true)
 if [ -n "${ADMIN_EMAIL}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
-  log "Admin yaratilmoqda: ${ADMIN_EMAIL}"
-  docker compose exec -T backend node dist/scripts/createAdmin.js "${ADMIN_EMAIL}" "${ADMIN_PASSWORD}"
+  log "Super-admin yaratilmoqda: ${ADMIN_EMAIL}"
+  docker compose exec -T backend node dist/scripts/createSuperAdmin.js "${ADMIN_EMAIL}" "${ADMIN_PASSWORD}"
 else
-  log "ADMIN_EMAIL/ADMIN_PASSWORD .env da berilmagan — adminni qolda yarating:"
-  log "  docker compose exec backend node dist/scripts/createAdmin.js admin@example.com Parol123"
+  log "ADMIN_EMAIL/ADMIN_PASSWORD .env da berilmagan — super-adminni qolda yarating:"
+  log "  docker compose exec backend node dist/scripts/createSuperAdmin.js admin@example.com Parol123"
 fi
 
 # ---------- Yakun ----------

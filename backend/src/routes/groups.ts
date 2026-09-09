@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AppError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
 import { downloadContactAvatar } from '../lib/avatar';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { getAccessToken, getAccount, getConnectedAccount } from '../services/accountService';
 import { fetchInstagramOEmbed } from '../services/instagramApi';
@@ -24,8 +24,8 @@ function normalizeOptionalText(value?: string | null): string | null {
   return text ? text : null;
 }
 
-async function resolveAccountId(): Promise<string> {
-  const account = await getAccount();
+async function resolveAccountId(organizationId: string): Promise<string> {
+  const account = await getAccount(organizationId);
   if (!account) {
     throw new AppError('Avval Instagram akkauntni ulang', 400);
   }
@@ -36,10 +36,10 @@ async function resolveAccountId(): Promise<string> {
 // uchun — adminga Instagram'ga chiqmasdan mahsulot videosini tanib olishga yordam beradi).
 // Token yo'q yoki oEmbed muvaffaqiyatsiz bo'lsa jim null qaytadi — mahsulotni saqlashga
 // to'sqinlik qilmaydi, faqat preview bo'lmaydi.
-async function resolveVideoThumbnail(videoUrl: string | null): Promise<string | null> {
+async function resolveVideoThumbnail(organizationId: string, videoUrl: string | null): Promise<string | null> {
   if (!videoUrl) return null;
 
-  const account = await getConnectedAccount();
+  const account = await getConnectedAccount(organizationId);
   if (!account) return null;
 
   const oembed = await fetchInstagramOEmbed(getAccessToken(account), videoUrl);
@@ -58,9 +58,9 @@ async function ensureBranch(branchId: string, instagramAccountId: string) {
   }
 }
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const items = await prisma.groupInfo.findMany({
       where: { instagramAccountId },
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
@@ -72,9 +72,9 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
-router.post('/', validateBody(groupSchema), async (req, res, next) => {
+router.post('/', validateBody(groupSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const body = req.body as z.infer<typeof groupSchema>;
     await ensureBranch(body.branchId, instagramAccountId);
 
@@ -84,7 +84,7 @@ router.post('/', validateBody(groupSchema), async (req, res, next) => {
         instagramAccountId,
         branchId: body.branchId,
         videoUrl,
-        videoThumbnailUrl: await resolveVideoThumbnail(videoUrl),
+        videoThumbnailUrl: await resolveVideoThumbnail(req.organizationId!, videoUrl),
         details: body.details,
         isActive: body.isActive,
       },
@@ -96,9 +96,9 @@ router.post('/', validateBody(groupSchema), async (req, res, next) => {
   }
 });
 
-router.put('/:id', validateBody(groupSchema), async (req, res, next) => {
+router.put('/:id', validateBody(groupSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const body = req.body as z.infer<typeof groupSchema>;
     const existing = await prisma.groupInfo.findFirst({
       where: { id: req.params.id, instagramAccountId },
@@ -117,7 +117,7 @@ router.put('/:id', validateBody(groupSchema), async (req, res, next) => {
       data: {
         branchId: body.branchId,
         videoUrl,
-        videoThumbnailUrl: await resolveVideoThumbnail(videoUrl),
+        videoThumbnailUrl: await resolveVideoThumbnail(req.organizationId!, videoUrl),
         details: body.details,
         isActive: body.isActive,
       },
@@ -129,9 +129,9 @@ router.put('/:id', validateBody(groupSchema), async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const existing = await prisma.groupInfo.findFirst({
       where: { id: req.params.id, instagramAccountId },
       select: { id: true },

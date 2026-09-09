@@ -64,8 +64,8 @@ const conversationSelect = {
   messages: { orderBy: { sentAt: 'desc' }, take: 1 },
 } as const;
 
-async function getCurrentConversationOrThrow(conversationId: string) {
-  const account = await getConnectedAccount();
+async function getCurrentConversationOrThrow(organizationId: string, conversationId: string) {
+  const account = await getConnectedAccount(organizationId);
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: { contact: true },
@@ -172,12 +172,12 @@ function respondIfSendBlocked(res: Response, err: unknown): boolean {
   return false;
 }
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req: AuthenticatedRequest, res, next) => {
   try {
     // Faqat hozir ULANGAN Instagram akkauntning suhbatlari korsatiladi — aks holda boshqa
     // (masalan avval ulangan, keyin almashtirilgan) akkauntning eski suhbatlari ham
     // royxatga aralashib qolardi.
-    const account = await getConnectedAccount();
+    const account = await getConnectedAccount(req.organizationId!);
     if (!account) {
       return res.json({ conversations: [] });
     }
@@ -210,9 +210,9 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getConnectedAccount();
+    const account = await getConnectedAccount(req.organizationId!);
     const conversation = await prisma.conversation.findUnique({
       where: { id: req.params.id },
       include: conversationSelect,
@@ -419,7 +419,7 @@ router.post('/:id/messages', validateBody(sendMessageSchema), async (req: Authen
     // o'qishdan OLDIN, chunki limitga tegilgan bo'lsa keraksiz so'rov qilinmaydi.
     if (await rejectIfRateLimited(res, 'dm')) return;
 
-    const { account, conversation } = await getCurrentConversationOrThrow(req.params.id);
+    const { account, conversation } = await getCurrentConversationOrThrow(req.organizationId!, req.params.id);
 
     // Admin shu suhbatga qo'lda yozayotgan bo'lsa, navbatda kutayotgan (hali yuborilmagan)
     // AI javobi bekor qilinadi — ikkalasi ustma-ust kelib ketmasligi uchun.
@@ -475,7 +475,7 @@ router.post('/:id/attachments', upload.single('file'), async (req: Authenticated
       return;
     }
 
-    const { account, conversation } = await getCurrentConversationOrThrow(req.params.id);
+    const { account, conversation } = await getCurrentConversationOrThrow(req.organizationId!, req.params.id);
 
     // Meta faylni shu URL orqali yuklab oladi — BACKEND_URL internetdan ochiq bolishi shart.
     if (!env.BACKEND_URL) {
@@ -524,7 +524,7 @@ const reactSchema = z.object({
 });
 
 // Kontakt xabariga ❤️ reaksiya qoyish/olib tashlash.
-router.post('/:id/messages/:messageId/react', validateBody(reactSchema), async (req, res, next) => {
+router.post('/:id/messages/:messageId/react', validateBody(reactSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { action } = req.body as z.infer<typeof reactSchema>;
 
@@ -542,7 +542,7 @@ router.post('/:id/messages/:messageId/react', validateBody(reactSchema), async (
       throw new AppError('Faqat mijoz xabariga reaksiya qoyish mumkin', 400);
     }
 
-    const account = await getConnectedAccount();
+    const account = await getConnectedAccount(req.organizationId!);
     if (!account) throw new AppError('Instagram akkaunt ulanmagan', 400);
     if (message.conversation.instagramAccountId !== account.id) {
       throw new AppError('Suhbat topilmadi', 404);
@@ -567,9 +567,9 @@ router.post('/:id/messages/:messageId/react', validateBody(reactSchema), async (
 });
 
 // Bitta xabarni platformadan ochirish (Instagramdan emas — faqat bizning ko'rinishimizdan).
-router.delete('/:id/messages/:messageId', async (req, res, next) => {
+router.delete('/:id/messages/:messageId', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const { conversation } = await getCurrentConversationOrThrow(req.params.id);
+    const { conversation } = await getCurrentConversationOrThrow(req.organizationId!, req.params.id);
 
     const message = await prisma.message.findUnique({ where: { id: req.params.messageId } });
     if (!message || message.conversationId !== conversation.id) {
@@ -603,9 +603,9 @@ router.delete('/:id/messages/:messageId', async (req, res, next) => {
   }
 });
 
-router.post('/:id/read', async (req, res, next) => {
+router.post('/:id/read', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const { conversation } = await getCurrentConversationOrThrow(req.params.id);
+    const { conversation } = await getCurrentConversationOrThrow(req.organizationId!, req.params.id);
 
     const updated = await prisma.conversation.update({
       where: { id: conversation.id },

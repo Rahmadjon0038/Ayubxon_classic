@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { AppError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { getAccount } from '../services/accountService';
 
@@ -40,9 +40,9 @@ function normalizeOptionalText(value?: string | null): string | null {
   return text ? text : null;
 }
 
-router.post('/', validateBody(importSchema), async (req, res, next) => {
+router.post('/', validateBody(importSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getAccount();
+    const account = await getAccount(req.organizationId!);
     if (!account) {
       throw new AppError('Avval Instagram akkauntni ulang', 400);
     }

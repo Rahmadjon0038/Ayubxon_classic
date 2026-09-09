@@ -7,7 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Admin {
+// Platforma egasi (siz) uchun — workspace'larga bog'lanmagan, alohida login.
+// Yangi mijoz kabinetlarini (Organization + Admin) shu orqali yaratasiz.
+model SuperAdmin {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
@@ -15,8 +17,35 @@ model Admin {
   updatedAt    DateTime @updatedAt
 }
 
+// Har bir ro'yxatdan o'tgan kompaniya/mijoz uchun alohida workspace. Barcha
+// ma'lumotlar (Instagram akkaunt(lar), suhbatlar, bilim bazasi) shu orqali
+// bir-biridan izolyatsiya qilinadi.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admins            Admin[]
+  instagramAccounts InstagramAccount[]
+}
+
+model Admin {
+  id             String   @id @default(cuid())
+  organizationId String
+  email          String   @unique
+  passwordHash   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
 model InstagramAccount {
   id                   String    @id @default(cuid())
+  organizationId       String
   instagramAccountId   String    @unique
   username             String
   name                 String?
@@ -31,6 +60,7 @@ model InstagramAccount {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   conversations   Conversation[]
   academySettings AcademySettings?
   knowledgeBaseItems KnowledgeBaseItem[]
@@ -39,6 +69,9 @@ model InstagramAccount {
   adCampaigns     AdCampaign[]
   adLeads         AdLead[]
   repliedComments RepliedComment[]
+
+  @@index([organizationId])
+  @@index([organizationId, isConnected])
 }
 
 // Har bir Instagram biznes akkaunti (o'quv markazi) uchun AI'ga o'rgatiladigan

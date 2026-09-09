@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { downloadContactAvatar } from '../lib/avatar';
 import { encryptToken } from '../lib/crypto';
 import { AppError } from '../lib/errors';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { fetchMe, subscribeToMessages } from '../services/instagramApi';
 import { getAccount, getAccessToken, toPublicAccount } from '../services/accountService';
@@ -21,8 +21,9 @@ const connectSchema = z.object({
 });
 
 // Tokenni Instagram API orqali tekshiradi va akkauntni ulaydi.
-router.post('/connect', validateBody(connectSchema), async (req, res, next) => {
+router.post('/connect', validateBody(connectSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
+    const organizationId = req.organizationId!;
     const body = req.body as z.infer<typeof connectSchema>;
 
     // Token haqiqiyligini Instagram API orqali tekshiramiz — API javobi asosiy manba.
@@ -44,6 +45,7 @@ router.post('/connect', validateBody(connectSchema), async (req, res, next) => {
       : null;
 
     const data = {
+      organizationId,
       instagramAccountId: profile.id,
       username: profile.username,
       name: profile.name ?? null,
@@ -63,11 +65,19 @@ router.post('/connect', validateBody(connectSchema), async (req, res, next) => {
       where: { instagramAccountId: profile.id },
     });
 
-    // Bir vaqtning ozida faqat bitta akkaunt "ulangan" bolishi kerak — boshqa (eski)
-    // akkaunt hozir ulangan bolsa, uni uzamiz. Uning suhbatlari OCHIRILMAYDI — faqat
-    // shu akkaunt qayta ulanmaguncha royxatda korinmay turadi.
+    // Bu Instagram akkaunt boshqa workspace tomonidan allaqachon ulangan bolsa, uni
+    // "ogirlab olishga" yol qoymaymiz — har bir Instagram akkaunt faqat bitta tenantga
+    // tegishli bolishi shart.
+    if (existingForThisAccount && existingForThisAccount.organizationId !== organizationId) {
+      throw new AppError('Bu Instagram akkaunt allaqachon boshqa workspace tomonidan ulangan', 409);
+    }
+
+    // Bir vaqtning ozida shu workspace ichida faqat bitta akkaunt "ulangan" bolishi
+    // kerak — boshqa (eski) akkaunt hozir ulangan bolsa, uni uzamiz. Bu boshqa
+    // workspace'larning akkauntlariga hech qanday ta'sir qilmaydi. Uzilgan akkauntning
+    // suhbatlari OCHIRILMAYDI — faqat shu akkaunt qayta ulanmaguncha royxatda korinmay turadi.
     await prisma.instagramAccount.updateMany({
-      where: { instagramAccountId: { not: profile.id }, isConnected: true },
+      where: { organizationId, instagramAccountId: { not: profile.id }, isConnected: true },
       data: { isConnected: false, encryptedAccessToken: null, tokenExpiresAt: null },
     });
 
@@ -84,9 +94,9 @@ router.post('/connect', validateBody(connectSchema), async (req, res, next) => {
   }
 });
 
-router.get('/account', async (_req, res, next) => {
+router.get('/account', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getAccount();
+    const account = await getAccount(req.organizationId!);
     return res.json({ account: account ? toPublicAccount(account) : null });
   } catch (err) {
     return next(err);
@@ -94,9 +104,9 @@ router.get('/account', async (_req, res, next) => {
 });
 
 // Saqlangan token bilan ulanishni qayta tekshiradi va profil malumotlarini yangilaydi.
-router.post('/test-connection', async (_req, res, next) => {
+router.post('/test-connection', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getAccount();
+    const account = await getAccount(req.organizationId!);
     if (!account || !account.encryptedAccessToken) {
       throw new AppError('Instagram akkaunt hali ulanmagan', 400);
     }
@@ -126,9 +136,9 @@ router.post('/test-connection', async (_req, res, next) => {
   }
 });
 
-router.post('/disconnect', async (_req, res, next) => {
+router.post('/disconnect', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getAccount();
+    const account = await getAccount(req.organizationId!);
     if (!account) {
       throw new AppError('Ulangan akkaunt topilmadi', 404);
     }

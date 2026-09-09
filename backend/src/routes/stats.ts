@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { getConnectedAccount } from '../services/accountService';
 
 const router = Router();
@@ -24,9 +24,9 @@ function lastMonthKeys(count: number, end: Date): string[] {
   return keys;
 }
 
-router.get('/', async (req, res, next) => {
+router.get('/', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getConnectedAccount();
+    const account = await getConnectedAccount(req.organizationId!);
 
     // ?month=YYYY-MM — sahifadagi oy filteri. Notogri/bosh bolsa joriy oyga tushadi.
     const rawMonth = typeof req.query.month === 'string' ? req.query.month : undefined;

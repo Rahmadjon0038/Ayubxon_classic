@@ -45,6 +45,50 @@ api.interceptors.response.use(
   },
 );
 
+// Super-admin — oddiy admin bilan bir xil brauzerda ham ishlashi mumkin bo'lishi uchun
+// butunlay alohida token kaliti va axios instansi ishlatiladi.
+const SUPER_ADMIN_TOKEN_KEY = 'super_admin_token';
+
+export function getSuperAdminToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(SUPER_ADMIN_TOKEN_KEY);
+}
+
+export function setSuperAdminToken(token: string) {
+  localStorage.setItem(SUPER_ADMIN_TOKEN_KEY, token);
+}
+
+export function clearSuperAdminToken() {
+  localStorage.removeItem(SUPER_ADMIN_TOKEN_KEY);
+}
+
+export const superAdminApi = axios.create({
+  baseURL: `${API_URL}/api/super-admin`,
+});
+
+superAdminApi.interceptors.request.use((config) => {
+  const token = getSuperAdminToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+superAdminApi.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (
+      error.response?.status === 401 &&
+      typeof window !== 'undefined' &&
+      window.location.pathname !== '/super-admin/login'
+    ) {
+      clearSuperAdminToken();
+      window.location.href = '/super-admin/login';
+    }
+    return Promise.reject(error);
+  },
+);
+
 export function getErrorMessage(err: unknown): string {
   const locale = getActiveLocale();
   if (axios.isAxiosError(err)) {

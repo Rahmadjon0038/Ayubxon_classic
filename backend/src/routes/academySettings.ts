@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/errors';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { getAccount } from '../services/accountService';
 
@@ -23,9 +23,9 @@ const toggleSchema = z.object({
 });
 
 // Joriy ulangan Instagram akkaunt uchun AI markaz sozlamalarini qaytaradi.
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getAccount();
+    const account = await getAccount(req.organizationId!);
     if (!account) {
       throw new AppError('Avval Instagram akkauntni ulang', 400);
     }
@@ -41,9 +41,9 @@ router.get('/', async (_req, res, next) => {
 });
 
 // Sozlamalarni yaratadi yoki yangilaydi (upsert).
-router.put('/', validateBody(settingsSchema), async (req, res, next) => {
+router.put('/', validateBody(settingsSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getAccount();
+    const account = await getAccount(req.organizationId!);
     if (!account) {
       throw new AppError('Avval Instagram akkauntni ulang', 400);
     }
@@ -78,9 +78,9 @@ router.put('/', validateBody(settingsSchema), async (req, res, next) => {
 
 // AI yoqish/ochirish holatini alohida, darhol saqlaydi — asosiy forma bilan bog'liq emas,
 // shuning uchun markaz ma'lumotlari hali to'ldirilmagan bo'lsa ham tumbler ishlaydi.
-router.patch('/ai-toggle', validateBody(toggleSchema), async (req, res, next) => {
+router.patch('/ai-toggle', validateBody(toggleSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const account = await getAccount();
+    const account = await getAccount(req.organizationId!);
     if (!account) {
       throw new AppError('Avval Instagram akkauntni ulang', 400);
     }

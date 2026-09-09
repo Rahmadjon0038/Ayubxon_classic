@@ -1,6 +1,13 @@
+export interface Organization {
+  id: string;
+  name: string;
+}
+
 export interface Admin {
   id: string;
   email: string;
+  organizationId?: string;
+  organization?: { name: string };
   createdAt?: string;
 }
 

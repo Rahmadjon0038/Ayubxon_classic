@@ -7,7 +7,7 @@ import { env } from '../config/env';
 import { AppError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
 import { UPLOAD_DIR } from '../lib/uploads';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { getAccount } from '../services/accountService';
 
@@ -51,8 +51,8 @@ function normalizeOptionalText(value?: string | null): string | null {
   return text ? text : null;
 }
 
-async function resolveAccountId(): Promise<string> {
-  const account = await getAccount();
+async function resolveAccountId(organizationId: string): Promise<string> {
+  const account = await getAccount(organizationId);
   if (!account) {
     throw new AppError('Avval Instagram akkauntni ulang', 400);
   }
@@ -77,9 +77,9 @@ router.post('/upload-photo', photoUpload.single('file'), async (req, res, next) 
   }
 });
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const items = await prisma.branchInfo.findMany({
       where: { instagramAccountId },
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
@@ -91,9 +91,9 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
-router.post('/', validateBody(branchSchema), async (req, res, next) => {
+router.post('/', validateBody(branchSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const body = req.body as z.infer<typeof branchSchema>;
     const item = await prisma.branchInfo.create({
       data: {
@@ -116,9 +116,9 @@ router.post('/', validateBody(branchSchema), async (req, res, next) => {
   }
 });
 
-router.put('/:id', validateBody(branchSchema), async (req, res, next) => {
+router.put('/:id', validateBody(branchSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const body = req.body as z.infer<typeof branchSchema>;
     const existing = await prisma.branchInfo.findFirst({
       where: { id: req.params.id, instagramAccountId },
@@ -150,9 +150,9 @@ router.put('/:id', validateBody(branchSchema), async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const existing = await prisma.branchInfo.findFirst({
       where: { id: req.params.id, instagramAccountId },
       select: { id: true },

@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { AppError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middleware/auth';
+import { AuthenticatedRequest, requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { getAccount, getConnectedAccount, getAccessToken } from '../services/accountService';
 import { subscribePageToLeadgen } from '../services/metaLeadAds';
@@ -27,14 +27,14 @@ function normalizeOptionalText(value: string | undefined | null): string | null 
   return trimmed ? trimmed : null;
 }
 
-async function resolveAccountId(): Promise<string> {
-  const account = await getAccount();
+async function resolveAccountId(organizationId: string): Promise<string> {
+  const account = await getAccount(organizationId);
   if (!account) throw new AppError('Avval Instagram akkauntni ulang', 400);
   return account.id;
 }
 
-async function resolveConnectedAccount() {
-  const account = await getConnectedAccount();
+async function resolveConnectedAccount(organizationId: string) {
+  const account = await getConnectedAccount(organizationId);
   if (!account) throw new AppError('Meta token topilmadi. Avval akkauntni ulang', 400);
   return account;
 }
@@ -89,9 +89,9 @@ function mapCampaign(campaign: {
 
 router.use(requireAuth);
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const items = await prisma.adCampaign.findMany({
       where: { instagramAccountId },
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
@@ -104,9 +104,9 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
-router.post('/', validateBody(campaignSchema), async (req, res, next) => {
+router.post('/', validateBody(campaignSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const body = req.body as CampaignInput;
     const title = body.title.trim();
     const metaPageId = normalizeOptionalText(body.metaPageId);
@@ -135,9 +135,9 @@ router.post('/', validateBody(campaignSchema), async (req, res, next) => {
   }
 });
 
-router.patch('/:id', validateBody(campaignSchema), async (req, res, next) => {
+router.patch('/:id', validateBody(campaignSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     await resolveCampaignOrThrow(req.params.id, instagramAccountId);
     const body = req.body as CampaignInput;
     const metaFormId = normalizeOptionalText(body.metaFormId);
@@ -163,9 +163,9 @@ router.patch('/:id', validateBody(campaignSchema), async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     await resolveCampaignOrThrow(req.params.id, instagramAccountId);
     await prisma.adCampaign.delete({ where: { id: req.params.id } });
     return res.status(204).send();
@@ -174,15 +174,15 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-router.post('/:id/subscribe', async (req, res, next) => {
+router.post('/:id/subscribe', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     const campaign = await resolveCampaignOrThrow(req.params.id, instagramAccountId);
     if (!campaign.metaPageId) {
       throw new AppError('Avval kampaniyaga Meta Page ID kiriting', 400);
     }
 
-    const account = await resolveConnectedAccount();
+    const account = await resolveConnectedAccount(req.organizationId!);
     const accessToken = getAccessToken(account);
     const subscribed = await subscribePageToLeadgen(accessToken, campaign.metaPageId);
 
@@ -196,9 +196,9 @@ router.post('/:id/subscribe', async (req, res, next) => {
   }
 });
 
-router.get('/:id/leads', async (req, res, next) => {
+router.get('/:id/leads', async (req: AuthenticatedRequest, res, next) => {
   try {
-    const instagramAccountId = await resolveAccountId();
+    const instagramAccountId = await resolveAccountId(req.organizationId!);
     await resolveCampaignOrThrow(req.params.id, instagramAccountId);
 
     const items = await prisma.adLead.findMany({

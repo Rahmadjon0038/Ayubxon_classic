@@ -6,16 +6,26 @@ import { fetchContactProfile } from '../services/instagramApi';
 // Instagram'ning profil rasm havolasi vaqtinchalik bolgani uchun, ilgari saqlangan
 // kontakt rasmlari muddati tugab, korinmay qolgan bolishi mumkin. Bu skript barcha
 // kontaktlarning rasmini qayta olib, ozimizga (/uploads) doimiy saqlaydi.
-// Ishlatish: npm run backfill-avatars
+// Ishlatish: npm run backfill-avatars -- <organizationId>
 async function main() {
-  const account = await getConnectedAccount();
+  const organizationId = process.argv[2];
+  if (!organizationId) {
+    console.error('Ishlatish: npm run backfill-avatars -- <organizationId>');
+    process.exit(1);
+  }
+
+  const account = await getConnectedAccount(organizationId);
   if (!account) {
     console.error("Ulangan Instagram akkaunt topilmadi — avval akkauntni ulang.");
     process.exit(1);
   }
   const accessToken = getAccessToken(account);
 
-  const contacts = await prisma.contact.findMany();
+  // Faqat shu workspace akkauntiga tegishli suhbatlardagi kontaktlar — boshqa
+  // workspace'larning kontaktlariga tegilmaydi.
+  const contacts = await prisma.contact.findMany({
+    where: { conversations: { some: { instagramAccountId: account.id } } },
+  });
   console.log(`${contacts.length} ta kontakt topildi.`);
 
   let updated = 0;
