@@ -13,6 +13,7 @@ import conversationRoutes from './routes/conversations';
 import groupRoutes from './routes/groups';
 import instagramRoutes from './routes/instagram';
 import knowledgeImportRoutes from './routes/knowledgeImport';
+import paymentRoutes from './routes/payments';
 import platformSettingsRoutes from './routes/platformSettings';
 import statsRoutes from './routes/stats';
 import superAdminRoutes from './routes/superAdmin';
@@ -83,6 +84,7 @@ export function createApp() {
   app.use('/api/knowledge-base/groups', groupRoutes);
   app.use('/api/knowledge-base/import', knowledgeImportRoutes);
   app.use('/api/stats', statsRoutes);
+  app.use('/api/payments', paymentRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

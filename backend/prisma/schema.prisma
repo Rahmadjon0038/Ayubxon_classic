@@ -49,6 +49,33 @@ model Organization {
 
   admins            Admin[]
   instagramAccounts InstagramAccount[]
+  payments          Payment[]
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
+
+// Workspace uchun oylik to'lov yozuvi — "To'lovlarim" sahifasida mijozning o'zi
+// ko'radi/to'laydi. Hozircha Click/Payme haqiqiy ulanmagan — "to'lash" tugmasi
+// bosilganda shu qator to'g'ridan-to'g'ri PAID qilib belgilanadi (mock).
+model Payment {
+  id             String        @id @default(cuid())
+  organizationId String
+  // "YYYY-MM" korinishida — bir oy uchun bir marta toladi.
+  month          String
+  amount         Int
+  status         PaymentStatus @default(UNPAID)
+  method         String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, month])
+  @@index([organizationId, month])
 }
 
 model Admin {
