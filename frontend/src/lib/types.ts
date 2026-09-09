@@ -110,6 +110,8 @@ export interface Message {
   createdAt: string;
 }
 
+export type CallStatus = 'NEW' | 'TALKED' | 'NOT_ANSWERED';
+
 export interface ConversationListItem {
   id: string;
   contact: Contact;
@@ -118,6 +120,9 @@ export interface ConversationListItem {
   leadTemperature: 'HOT' | 'WARM' | 'COLD';
   talkStatus: 'TALKED' | 'NOT_TALKED';
   courseDecision: 'WILL_WRITE' | 'WILL_NOT_WRITE';
+  // Qo'ng'iroqlar bo'limi uchun: telefon raqam qoldirgan lidga admin qo'ng'iroq
+  // qilganmi-yo'qmi holati (talkStatusdan farqli — bu aynan telefon orqali bog'lanish).
+  callStatus: CallStatus;
   // AI suhbatdan aniqlagan, mijoz qiziqish bildirgan mahsulot nomi.
   interestedCourse: string | null;
   // Handover Protocol: true bo'lsa, mijoz operator so'ragan (yoki admin qo'lda to'xtatgan) —
