@@ -6,13 +6,14 @@ import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import LogoMark from '@/components/LogoMark';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import PhoneInput from '@/components/PhoneInput';
 import { useLocale } from '@/components/LocaleProvider';
 import { api, getErrorMessage, getToken, setToken } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useLocale();
-  const [phone, setPhone] = useState('');
+  const [phoneDigits, setPhoneDigits] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -22,7 +23,7 @@ export default function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<{ token: string }>('/auth/login', { phone, password });
+      const { data } = await api.post<{ token: string }>('/auth/login', { phone: `+998${phoneDigits}`, password });
       return data;
     },
     onSuccess: (data) => {
@@ -58,16 +59,7 @@ export default function LoginPage() {
             <label htmlFor="phone" className="mb-2 block text-sm font-medium dark:text-tg-text">
               {t('common.phone')}
             </label>
-            <input
-              id="phone"
-              type="tel"
-              required
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-              placeholder="+998 90 123 45 67"
-            />
+            <PhoneInput id="phone" required value={phoneDigits} onChange={setPhoneDigits} />
           </div>
 
           <div>

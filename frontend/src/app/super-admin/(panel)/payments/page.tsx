@@ -3,9 +3,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocale } from '@/components/LocaleProvider';
 import { superAdminApi } from '@/lib/api';
+import { avatarColorClass, formatSum, getInitials, planLabelKey, PLAN_PRICES, PlanName } from '@/lib/plans';
 
 type SubscriptionStatus = 'ACTIVE' | 'EXPIRED';
-type PlanName = 'Standart' | 'Pro';
 
 interface OrganizationListItem {
   id: string;
@@ -13,17 +13,6 @@ interface OrganizationListItem {
   planName: PlanName | null;
   subscriptionStatus: SubscriptionStatus;
   admins: { id: string; phone: string }[];
-}
-
-// Tarif -> narx (so'mda). Hozircha qo'lda belgilangan — Click/Payme ulanganda bu
-// narxlar API orqali dinamik keladi, jadval strukturasi o'zgarmaydi.
-const PLAN_PRICES: Record<PlanName, number> = {
-  Standart: 300_000,
-  Pro: 500_000,
-};
-
-function formatSum(amount: number): string {
-  return `${amount.toLocaleString('uz-UZ')} so'm`;
 }
 
 function StatusBadge({ status }: { status: SubscriptionStatus }) {
@@ -54,9 +43,8 @@ export default function SuperAdminPaymentsPage() {
   });
 
   const orgs = organizationsQuery.data ?? [];
-  const monthlyTotal = orgs
-    .filter((o) => o.subscriptionStatus === 'ACTIVE' && o.planName)
-    .reduce((sum, o) => sum + (o.planName ? PLAN_PRICES[o.planName] : 0), 0);
+  const activePaid = orgs.filter((o) => o.subscriptionStatus === 'ACTIVE' && o.planName);
+  const monthlyTotal = activePaid.reduce((sum, o) => sum + (o.planName ? PLAN_PRICES[o.planName] : 0), 0);
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
@@ -68,7 +56,9 @@ export default function SuperAdminPaymentsPage() {
 
         <div className="rounded-xl border border-gray-300 bg-white p-3.5 shadow-sm dark:border-tg-border dark:bg-tg-panel">
           <p className="text-lg font-semibold text-gray-900 dark:text-tg-text">{formatSum(monthlyTotal)}</p>
-          <p className="text-xs text-gray-600 dark:text-tg-textMuted">{t('superAdmin.expectedMonthlyRevenue')}</p>
+          <p className="text-xs text-gray-600 dark:text-tg-textMuted">
+            {t('superAdmin.expectedMonthlyRevenue')} · {activePaid.length} {t('superAdmin.activeSubscriptionsCount')}
+          </p>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-gray-300 bg-white shadow-sm dark:border-tg-border dark:bg-tg-panel">
@@ -90,18 +80,23 @@ export default function SuperAdminPaymentsPage() {
               <tbody className="divide-y divide-gray-100 dark:divide-tg-border/50">
                 {orgs.map((org) => (
                   <tr key={org.id}>
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-tg-text">{org.name}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-tg-textMuted">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarColorClass(org.id)}`}
+                        >
+                          {getInitials(org.name)}
+                        </div>
+                        <span className="font-medium text-gray-900 dark:text-tg-text">{org.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-gray-600 dark:text-tg-textMuted">
                       {org.admins.map((a) => a.phone).join(', ') || '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-tg-textMuted">
-                      {org.planName === 'Standart'
-                        ? t('superAdmin.planStandart')
-                        : org.planName === 'Pro'
-                          ? t('superAdmin.planPro')
-                          : '—'}
+                      {org.planName ? t(planLabelKey(org.planName)) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-tg-textMuted">
+                    <td className="px-4 py-3 font-mono text-gray-600 dark:text-tg-textMuted">
                       {org.planName ? formatSum(PLAN_PRICES[org.planName]) : '—'}
                     </td>
                     <td className="px-4 py-3">

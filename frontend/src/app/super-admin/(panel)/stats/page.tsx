@@ -8,6 +8,7 @@ import { currentMonthKey, monthFullLabel, shiftMonthKey } from '@/components/sta
 import { useLocale } from '@/components/LocaleProvider';
 import { getMonthNames, getMonthShortNames } from '@/lib/i18n';
 import { superAdminApi } from '@/lib/api';
+import { planLabelKey, PlanName } from '@/lib/plans';
 
 const COLOR_VIOLET = '#7c3aed';
 
@@ -20,6 +21,34 @@ interface SuperAdminStatsResponse {
     connectedInstagramAccounts: number;
   };
   monthlyNewOrganizations: { month: string; count: number }[];
+  planBreakdown: { planName: string; count: number }[];
+}
+
+function PlanBreakdownList({ items }: { items: { planName: string; count: number }[] }) {
+  const { t } = useLocale();
+  const max = Math.max(1, ...items.map((i) => i.count));
+
+  if (!items.length) {
+    return <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('stats.noData')}</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div key={item.planName}>
+          <div className="mb-1 flex items-center justify-between text-sm">
+            <span className="font-medium text-gray-900 dark:text-tg-text">
+              {t(planLabelKey(item.planName as PlanName))}
+            </span>
+            <span className="text-gray-600 dark:text-tg-textMuted">{item.count}</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-tg-panelAlt">
+            <div className="h-full rounded-full bg-brand-500" style={{ width: `${(item.count / max) * 100}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
@@ -156,23 +185,29 @@ export default function SuperAdminStatsPage() {
               />
             </div>
 
-            <Card title={t('superAdmin.monthlyNewOrgsTitle')}>
-              <MonthlyBarChart
-                months={stats.monthlyNewOrganizations.map((m) => m.month)}
-                series={[
-                  {
-                    key: 'organizations',
-                    label: t('superAdmin.monthlyNewOrgsTitle'),
-                    color: COLOR_VIOLET,
-                    values: stats.monthlyNewOrganizations.map((m) => m.count),
-                  },
-                ]}
-                monthNames={monthNames}
-                monthNamesShort={monthNamesShort}
-                selectedMonth={selectedMonth}
-                emptyLabel={t('stats.noData')}
-              />
-            </Card>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <Card title={t('superAdmin.monthlyNewOrgsTitle')}>
+                <MonthlyBarChart
+                  months={stats.monthlyNewOrganizations.map((m) => m.month)}
+                  series={[
+                    {
+                      key: 'organizations',
+                      label: t('superAdmin.monthlyNewOrgsTitle'),
+                      color: COLOR_VIOLET,
+                      values: stats.monthlyNewOrganizations.map((m) => m.count),
+                    },
+                  ]}
+                  monthNames={monthNames}
+                  monthNamesShort={monthNamesShort}
+                  selectedMonth={selectedMonth}
+                  emptyLabel={t('stats.noData')}
+                />
+              </Card>
+
+              <Card title={t('superAdmin.planBreakdownTitle')}>
+                <PlanBreakdownList items={stats.planBreakdown} />
+              </Card>
+            </div>
           </>
         )}
       </div>

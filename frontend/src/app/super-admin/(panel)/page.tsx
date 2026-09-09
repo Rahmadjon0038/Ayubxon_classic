@@ -1,13 +1,15 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, X } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { Plus, Pencil, Search, Trash2, X } from 'lucide-react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useLocale } from '@/components/LocaleProvider';
+import PhoneInput from '@/components/PhoneInput';
 import { getErrorMessage, superAdminApi } from '@/lib/api';
+import { avatarColorClass, formatSum, getInitials, planLabelKey, PLAN_PRICES, PlanName } from '@/lib/plans';
 
 type SubscriptionStatus = 'ACTIVE' | 'EXPIRED';
-type PlanName = 'Standart' | 'Pro';
+type StatusFilter = 'ALL' | SubscriptionStatus;
 
 interface OrganizationListItem {
   id: string;
@@ -70,17 +72,12 @@ function PlanSelect({
         <option value="" disabled>
           —
         </option>
+        <option value="Basic">{t('superAdmin.planBasic')}</option>
         <option value="Standart">{t('superAdmin.planStandart')}</option>
         <option value="Pro">{t('superAdmin.planPro')}</option>
       </select>
     </div>
   );
-}
-
-function planLabel(t: (key: string) => string, plan: PlanName | null): string {
-  if (plan === 'Standart') return t('superAdmin.planStandart');
-  if (plan === 'Pro') return t('superAdmin.planPro');
-  return '—';
 }
 
 function StatusBadge({ status }: { status: SubscriptionStatus }) {
@@ -104,13 +101,14 @@ function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
 
   const [organizationName, setOrganizationName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phoneDigits, setPhoneDigits] = useState('');
   const [password, setPassword] = useState('');
   const [planName, setPlanName] = useState<PlanName | ''>('');
   const [created, setCreated] = useState<CreatedCredentials | null>(null);
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      const phone = `+998${phoneDigits}`;
       const { data } = await superAdminApi.post('/organizations', {
         organizationName,
         phone,
@@ -120,9 +118,9 @@ function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
       return data;
     },
     onSuccess: () => {
-      setCreated({ organizationName, phone, password });
+      setCreated({ organizationName, phone: `+998${phoneDigits}`, password });
       setOrganizationName('');
-      setPhone('');
+      setPhoneDigits('');
       setPassword('');
       setPlanName('');
       queryClient.invalidateQueries({ queryKey: ['super-admin', 'organizations'] });
@@ -152,14 +150,7 @@ function CreateOrganizationModal({ onClose }: { onClose: () => void }) {
 
         <div>
           <label className="mb-2 block text-sm font-medium dark:text-tg-text">{t('common.phone')}</label>
-          <input
-            type="tel"
-            required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
-            placeholder="+998 90 123 45 67"
-          />
+          <PhoneInput required value={phoneDigits} onChange={setPhoneDigits} dense />
         </div>
 
         <div>
@@ -290,14 +281,18 @@ function OrganizationCard({
   return (
     <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm dark:border-tg-border dark:bg-tg-panel">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-medium dark:text-tg-text">{org.name}</p>
-          <p className="truncate text-xs text-gray-500 dark:text-tg-textFaint">
-            {org.admins.map((a) => a.phone).join(', ') || '—'}
-          </p>
-          <p className="mt-1 truncate text-xs text-gray-500 dark:text-tg-textFaint">
-            {t('superAdmin.plan')}: {planLabel(t, org.planName)}
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${avatarColorClass(org.id)}`}
+          >
+            {getInitials(org.name)}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-medium dark:text-tg-text">{org.name}</p>
+            <p className="truncate text-xs text-gray-500 dark:text-tg-textFaint">
+              {org.admins.map((a) => a.phone).join(', ') || '—'}
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <button
@@ -320,7 +315,25 @@ function OrganizationCard({
         </div>
       </div>
 
+      {org.planName && (
+        <div className="mt-3 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-tg-panelAlt">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-tg-textFaint">
+              {t('superAdmin.plan')}
+            </p>
+            <p className="font-medium text-gray-900 dark:text-tg-text">{t(planLabelKey(org.planName))}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-tg-textFaint">
+              {t('superAdmin.monthly')}
+            </p>
+            <p className="font-mono font-medium text-gray-900 dark:text-tg-text">{formatSum(PLAN_PRICES[org.planName])}</p>
+          </div>
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        <StatusBadge status={org.subscriptionStatus} />
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-medium ${
             connected
@@ -330,7 +343,6 @@ function OrganizationCard({
         >
           {connected ? t('superAdmin.instagramConnected') : t('superAdmin.instagramNotConnected')}
         </span>
-        <StatusBadge status={org.subscriptionStatus} />
       </div>
 
       {isEditing && <SubscriptionEditor org={org} onClose={onToggleEdit} />}
@@ -344,6 +356,8 @@ export default function SuperAdminDashboardPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
   const organizationsQuery = useQuery({
     queryKey: ['super-admin', 'organizations'],
@@ -368,11 +382,31 @@ export default function SuperAdminDashboardPage() {
     }
   };
 
+  const filtered = useMemo(() => {
+    const orgs = organizationsQuery.data ?? [];
+    const query = search.trim().toLowerCase();
+    return orgs.filter((org) => {
+      if (statusFilter !== 'ALL' && org.subscriptionStatus !== statusFilter) return false;
+      if (!query) return true;
+      const haystack = `${org.name} ${org.admins.map((a) => a.phone).join(' ')}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [organizationsQuery.data, search, statusFilter]);
+
+  const filterTabs: { key: StatusFilter; label: string }[] = [
+    { key: 'ALL', label: t('superAdmin.filterAll') },
+    { key: 'ACTIVE', label: t('superAdmin.statusActive') },
+    { key: 'EXPIRED', label: t('superAdmin.statusExpired') },
+  ];
+
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-4xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold dark:text-tg-text">{t('superAdmin.dashboardTitle')}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold dark:text-tg-text">{t('superAdmin.dashboardTitle')}</h1>
+            <p className="mt-1 text-sm text-gray-600 dark:text-tg-textMuted">{t('superAdmin.dashboardSubtitle')}</p>
+          </div>
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
@@ -383,13 +417,42 @@ export default function SuperAdminDashboardPage() {
           </button>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[220px] flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-tg-textFaint" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('superAdmin.searchPlaceholder')}
+              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+            />
+          </div>
+          <div className="flex items-center gap-1 rounded-lg border border-gray-300 p-1 dark:border-tg-hover">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setStatusFilter(tab.key)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  statusFilter === tab.key
+                    ? 'bg-brand-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-tg-textMuted dark:hover:bg-tg-panelAlt'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {organizationsQuery.isLoading ? (
           <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('common.loading')}</p>
-        ) : !organizationsQuery.data?.length ? (
+        ) : !filtered.length ? (
           <p className="text-sm text-gray-500 dark:text-tg-textFaint">{t('superAdmin.listEmpty')}</p>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {organizationsQuery.data.map((org) => (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((org) => (
               <OrganizationCard
                 key={org.id}
                 org={org}

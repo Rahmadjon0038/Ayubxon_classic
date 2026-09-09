@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { BarChart3, Building2, CreditCard, LogOut, Settings } from 'lucide-react';
-import LogoMark from '@/components/LogoMark';
+import SuperAdminLogo from '@/components/SuperAdminLogo';
 import { useLocale } from '@/components/LocaleProvider';
 import { clearSuperAdminToken, getSuperAdminToken } from '@/lib/api';
 
@@ -41,7 +41,7 @@ export default function SuperAdminPanelLayout({ children }: { children: React.Re
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row md:gap-2 md:p-2 lg:gap-3 lg:p-3">
         <aside className="hidden w-[81px] shrink-0 flex-col rounded-2xl border border-gray-300 bg-white/80 shadow-sm backdrop-blur-xl backdrop-saturate-150 md:flex dark:border-tg-border/70 dark:bg-tg-sidebar">
           <div className="flex justify-center py-3">
-            <LogoMark width={40} height={40} rounded previewOnClick />
+            <SuperAdminLogo width={40} height={40} />
           </div>
 
           <nav className="flex-1 space-y-1 px-2 pt-3">

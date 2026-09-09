@@ -68,7 +68,7 @@ router.get('/me', requireSuperAuth, async (req: SuperAuthenticatedRequest, res, 
 
 // Tayyor tariflar — narx faqat frontendda ko'rsatiladi (hozircha mock, haqiqiy tolov
 // tizimi ulanmagan).
-const PLAN_NAMES = ['Standart', 'Pro'] as const;
+const PLAN_NAMES = ['Basic', 'Standart', 'Pro'] as const;
 
 const subscriptionFields = {
   planName: z.enum(PLAN_NAMES).optional(),
@@ -77,7 +77,7 @@ const subscriptionFields = {
 
 const createOrganizationSchema = z.object({
   organizationName: z.string().trim().min(2, "Kompaniya nomi kamida 2 belgidan iborat bolishi kerak"),
-  phone: z.string().trim().min(7, 'Telefon raqam notogri'),
+  phone: z.string().trim().regex(/^\+998\d{9}$/, "Telefon raqam +998XXXXXXXXX korinishida bolishi kerak"),
   password: z.string().min(6, 'Parol kamida 6 belgidan iborat bolishi kerak'),
   ...subscriptionFields,
 });
@@ -232,17 +232,24 @@ router.get('/stats', requireSuperAuth, async (req, res, next) => {
     const months = lastMonthKeys(STATS_MONTHS_BACK, new Date(selYear, selMonthNum - 1, 1));
     const trendWindowStart = new Date(selYear, selMonthNum - 1 - (STATS_MONTHS_BACK - 1), 1);
 
-    const [totalOrganizations, activeSubscriptions, expiredSubscriptions, organizationsWithConnectedAccount, orgDates] =
-      await Promise.all([
-        prisma.organization.count(),
-        prisma.organization.count({ where: { subscriptionStatus: 'ACTIVE' } }),
-        prisma.organization.count({ where: { subscriptionStatus: 'EXPIRED' } }),
-        prisma.organization.count({ where: { instagramAccounts: { some: { isConnected: true } } } }),
-        prisma.organization.findMany({
-          where: { createdAt: { gte: trendWindowStart, lt: monthEnd } },
-          select: { createdAt: true },
-        }),
-      ]);
+    const [
+      totalOrganizations,
+      activeSubscriptions,
+      expiredSubscriptions,
+      organizationsWithConnectedAccount,
+      orgDates,
+      planGroups,
+    ] = await Promise.all([
+      prisma.organization.count(),
+      prisma.organization.count({ where: { subscriptionStatus: 'ACTIVE' } }),
+      prisma.organization.count({ where: { subscriptionStatus: 'EXPIRED' } }),
+      prisma.organization.count({ where: { instagramAccounts: { some: { isConnected: true } } } }),
+      prisma.organization.findMany({
+        where: { createdAt: { gte: trendWindowStart, lt: monthEnd } },
+        select: { createdAt: true },
+      }),
+      prisma.organization.groupBy({ by: ['planName'], _count: { _all: true } }),
+    ]);
 
     const newOrgsByMonth = new Map<string, number>();
     for (const org of orgDates) {
@@ -250,6 +257,10 @@ router.get('/stats', requireSuperAuth, async (req, res, next) => {
       newOrgsByMonth.set(key, (newOrgsByMonth.get(key) ?? 0) + 1);
     }
     const monthlyNewOrganizations = months.map((month) => ({ month, count: newOrgsByMonth.get(month) ?? 0 }));
+
+    const planBreakdown = planGroups
+      .filter((g) => g.planName)
+      .map((g) => ({ planName: g.planName as string, count: g._count._all }));
 
     return res.json({
       selectedMonth,
@@ -260,6 +271,7 @@ router.get('/stats', requireSuperAuth, async (req, res, next) => {
         connectedInstagramAccounts: organizationsWithConnectedAccount,
       },
       monthlyNewOrganizations,
+      planBreakdown,
     });
   } catch (err) {
     return next(err);

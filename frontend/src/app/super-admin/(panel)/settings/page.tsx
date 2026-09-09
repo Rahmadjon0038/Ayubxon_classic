@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Upload } from 'lucide-react';
 import { ChangeEvent, useRef } from 'react';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import LogoMark from '@/components/LogoMark';
+import SuperAdminLogo from '@/components/SuperAdminLogo';
 import { useLocale } from '@/components/LocaleProvider';
 import ThemeToggle from '@/components/ThemeToggle';
 import { getErrorMessage, superAdminApi } from '@/lib/api';
@@ -46,7 +46,7 @@ function LogoUploadCard() {
       <h2 className="mb-4 text-sm font-semibold text-gray-700 dark:text-tg-textMuted">{t('superAdmin.platformLogo')}</h2>
       <div className="flex items-center gap-4">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-50 dark:border-tg-hover dark:bg-tg-panelAlt">
-          <LogoMark width={64} height={64} rounded previewOnClick />
+          <SuperAdminLogo width={64} height={64} />
         </div>
         <div className="min-w-0 flex-1">
           <input
