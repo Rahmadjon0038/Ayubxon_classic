@@ -230,7 +230,7 @@ export default function SuperAdminDashboardPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-gray-300 bg-white p-6 shadow-sm dark:border-tg-border/70 dark:bg-tg-panel"
+          className="space-y-4 rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-tg-border dark:bg-tg-panel"
         >
           <h2 className="text-sm font-semibold text-gray-700 dark:text-tg-textMuted">{t('superAdmin.createTitle')}</h2>
 
@@ -241,7 +241,7 @@ export default function SuperAdminDashboardPage() {
               required
               value={organizationName}
               onChange={(e) => setOrganizationName(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
               placeholder="Ayubxon Classic"
             />
           </div>
@@ -253,7 +253,7 @@ export default function SuperAdminDashboardPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
               placeholder="client@example.com"
             />
           </div>
@@ -266,7 +266,7 @@ export default function SuperAdminDashboardPage() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
               placeholder="••••••••"
             />
           </div>
@@ -279,7 +279,7 @@ export default function SuperAdminDashboardPage() {
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
                 placeholder={t('superAdmin.planNamePlaceholder')}
-                className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
               />
             </div>
             <div>
@@ -290,7 +290,7 @@ export default function SuperAdminDashboardPage() {
                 type="date"
                 value={subscriptionExpiresAt}
                 onChange={(e) => setSubscriptionExpiresAt(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
               />
             </div>
           </div>
@@ -310,13 +310,13 @@ export default function SuperAdminDashboardPage() {
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="w-full rounded-xl bg-brand-600 py-3 text-base font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
+            className="w-full rounded-lg bg-brand-600 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
             {createMutation.isPending ? t('superAdmin.creating') : t('superAdmin.create')}
           </button>
         </form>
 
-        <div className="rounded-2xl border border-gray-300 bg-white p-6 shadow-sm dark:border-tg-border/70 dark:bg-tg-panel">
+        <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm sm:p-5 dark:border-tg-border dark:bg-tg-panel">
           <h2 className="mb-4 text-sm font-semibold text-gray-700 dark:text-tg-textMuted">{t('superAdmin.listTitle')}</h2>
 
           {organizationsQuery.isLoading ? (
