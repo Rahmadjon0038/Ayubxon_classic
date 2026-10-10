@@ -172,6 +172,13 @@ function sanitizeAiReply(text: string): string {
     .trim();
 }
 
+// Kategoriya/workspace matnidagi shablon belgilari: "{{academyName}}" — haqiqiy biznes nomi
+// bilan almashadi (bitta namunaviy matn turli nomli kabinetlarda ishlashi uchun);
+// "{{data}}" — jonli ma'lumotlar bloki aynan shu joyga qo'yiladi. "{{data}}" yozilmasa,
+// blok matn oxiriga qo'shiladi.
+const ACADEMY_NAME_PLACEHOLDER = /\{\{\s*academyName\s*\}\}/gi;
+const DATA_PLACEHOLDER = /\{\{\s*data\s*\}\}/i;
+
 function buildSystemPrompt(params: {
   academyName: string;
   branches: BranchInfo[];
@@ -391,13 +398,10 @@ Faqat quyidagi eng oxirgi ma'lumotlar bazasiga tayanib javob bering. Ma'lumotlar
     ikkala alifboni aralashtirmang. Mijoz suhbat davomida alifbo almashtirsa, siz ham ENG
     OXIRGI xabaridagi alifboga darhol moslashing.`;
 
-  const introText = customInstructions?.trim() || defaultIntro;
-  const rulesText = customInstructions?.trim() ? '' : `\n${defaultRules}`;
-
-  return `
-${introText}
-
-${referencedProductBlock}${buildConversationMemoryBlock({ history, branches })}
+  // Jonli ma'lumotlar bloki (mijoz yozgan mahsulot, suhbat konteksti, do'kon va mahsulotlar
+  // bazasi) har doim kod orqali quriladi — kategoriya/workspace matni faqat qoidalar va
+  // uslubni belgilaydi.
+  const dataBlock = `${referencedProductBlock}${buildConversationMemoryBlock({ history, branches })}
 
 === AKTUAL MA'LUMOTLAR BAZASI ===
 DO'KON:
@@ -405,10 +409,17 @@ ${branchesBlock}
 
 MAHSULOTLAR:
 ${groupsBlock}
-=================================
+=================================`;
 
-${rulesText}
-`.trim();
+  const custom = customInstructions?.trim();
+  if (custom) {
+    // Almashtirish funksiya orqali qilinadi — nom/ma'lumot ichidagi "$&" kabi belgilar
+    // maxsus ketma-ketlik sifatida talqin qilinmasligi uchun.
+    const text = custom.replace(ACADEMY_NAME_PLACEHOLDER, () => academyName);
+    return (DATA_PLACEHOLDER.test(text) ? text.replace(DATA_PLACEHOLDER, () => dataBlock) : `${text}\n\n${dataBlock}`).trim();
+  }
+
+  return `${defaultIntro}\n\n${dataBlock}\n\n${defaultRules}`.trim();
 }
 
 // Do'kon va suhbat tarixi asosida AI javobini generatsiya qiladi. `fallbackName` — hech qanday

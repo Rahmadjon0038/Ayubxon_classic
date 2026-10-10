@@ -98,7 +98,7 @@ const en: Translations = {
     categoryNamePlaceholder: 'e.g. Retail store, Learning center',
     categoryBasePrompt: 'Sample system prompt',
     categoryBasePromptPlaceholder: 'Write how the AI should behave for businesses in this category...',
-    categoryBasePromptHint: "When a new workspace is created with this category, this text is copied into the client's AI System Prompt field u2014 the client can then edit it themselves.",
+    categoryBasePromptHint: "When a new workspace is created with this category, this text is copied into the client's AI System Prompt field — the client can then edit it themselves. Template tokens: {{academyName}} is replaced with the business name; {{data}} marks where the products and store data are inserted (appended at the end if omitted).",
     categoryUsageCount: 'workspaces',
     deleteCategoryConfirm: 'Delete this category? Existing workspaces using it are not affected.',
   },
@@ -148,7 +148,7 @@ const en: Translations = {
   },
   systemPrompt: {
     title: 'AI System Prompt',
-    subtitle: 'Write how the AI should talk to customers here. Leave empty to use the default rules.',
+    subtitle: 'Write how the AI should talk to customers here. Leave empty to use the default rules. {{academyName}} is the business name, {{data}} is where products and store data are inserted.',
     placeholder: 'e.g. You are a representative of {company}. Respond to customers in a ... way.',
     saved: 'Saved',
   },

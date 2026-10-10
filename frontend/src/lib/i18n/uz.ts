@@ -99,7 +99,7 @@ const uz = {
     categoryNamePlaceholder: "Masalan: Do'kon, O'quv markaz",
     categoryBasePrompt: 'Namunaviy system prompt',
     categoryBasePromptPlaceholder: 'Bu kategoriyadagi bizneslar uchun AI qanday muomala qilishi kerakligini yozing...',
-    categoryBasePromptHint: "Yangi kabinet shu kategoriya bilan yaratilganda, mijozning AI System Prompt maydoniga shu matn nusxalanadi u2014 keyin mijoz o'zi tahrirlashi mumkin.",
+    categoryBasePromptHint: "Yangi kabinet shu kategoriya bilan yaratilganda, mijozning AI System Prompt maydoniga shu matn nusxalanadi — keyin mijoz o'zi tahrirlashi mumkin. Shablon belgilari: {{academyName}} — biznes nomi bilan almashadi; {{data}} — mahsulot va do'konlar ma'lumoti qo'yiladigan joy (yozilmasa, matn oxiriga qo'shiladi).",
     categoryUsageCount: 'ta kabinet',
     deleteCategoryConfirm: "Bu kategoriyani o'chirmoqchimisiz? Shu kategoriyadagi mavjud kabinetlar ta'sirlanmaydi.",
   },
@@ -149,7 +149,7 @@ const uz = {
   },
   systemPrompt: {
     title: 'AI System Prompt',
-    subtitle: "AI mijozlar bilan qanday muomala qilishi kerakligini bu yerda o'zingiz yozib qo'yishingiz mumkin. Bo'sh qoldirsangiz, tizim standart qoidalardan foydalanadi.",
+    subtitle: "AI mijozlar bilan qanday muomala qilishi kerakligini bu yerda o'zingiz yozib qo'yishingiz mumkin. Bo'sh qoldirsangiz, tizim standart qoidalardan foydalanadi. {{academyName}} — biznes nomi, {{data}} — mahsulot va do'konlar ma'lumoti qo'yiladigan joy.",
     placeholder: "Masalan: Siz {kompaniya} nomli ... vakilisiz. Mijozlarga ... tarzda javob bering.",
     saved: 'Saqlandi',
   },

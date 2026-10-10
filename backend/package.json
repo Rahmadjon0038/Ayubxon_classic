@@ -15,7 +15,8 @@
     "prisma:push": "prisma db push",
     "create-admin": "tsx src/scripts/createAdmin.ts",
     "create-super-admin": "tsx src/scripts/createSuperAdmin.ts",
-    "backfill-avatars": "tsx src/scripts/backfillAvatars.ts"
+    "backfill-avatars": "tsx src/scripts/backfillAvatars.ts",
+    "seed-dokon-category": "tsx src/scripts/seedDokonCategory.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
