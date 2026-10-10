@@ -10,6 +10,10 @@ interface Props {
   autoFocus?: boolean;
   // Super-admin formalaridagi kabi kichikroq (rounded-lg, text-sm) ko'rinish uchun.
   dense?: boolean;
+  // Berilsa, maydonga harf yoki "@" kiritilganda (masalan brauzer saqlangan emailni
+  // avtomatik to'ldirganda) qiymat raqamlarga qirqib tashlanmaydi — shu xom qiymat bilan
+  // chaqiriladi. Faqat eski (email bilan yaratilgan) hisoblar kiradigan login formasida kerak.
+  onNonPhoneInput?: (raw: string) => void;
 }
 
 // "971234567" -> "97 123 45 67" (2-3-2-2 guruhlash — O'zbekiston uyali raqam formati).
@@ -19,10 +23,14 @@ function formatDigits(digits: string): string {
 }
 
 // +998 doim ko'rinib turadigan prefiks — foydalanuvchi faqat qolgan 9 ta raqamni kiritadi.
-export default function PhoneInput({ id, value, onChange, required, autoFocus, dense = false }: Props) {
+export default function PhoneInput({ id, value, onChange, required, autoFocus, dense = false, onNonPhoneInput }: Props) {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-    onChange(digits);
+    const raw = e.target.value;
+    if (onNonPhoneInput && /[A-Za-z@]/.test(raw)) {
+      onNonPhoneInput(raw);
+      return;
+    }
+    onChange(raw.replace(/\D/g, '').slice(0, 9));
   };
 
   const rounding = dense ? 'rounded-lg' : 'rounded-xl';

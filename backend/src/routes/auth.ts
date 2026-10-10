@@ -38,10 +38,15 @@ router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res, 
   try {
     const { phone, password } = req.body as z.infer<typeof loginSchema>;
 
-    const admin = await prisma.admin.findUnique({ where: { phone } });
+    // Telefon talab qilinishidan oldin email bilan yaratilgan hisoblarda login sifatida
+    // (kichik harfli) email saqlangan — "@" bor bo'lsa avvalgidek harf registriga bog'liq
+    // bo'lmasligi uchun kichik harfga o'tkazib qidiramiz.
+    const identifier = phone.includes('@') ? phone.toLowerCase() : phone;
+
+    const admin = await prisma.admin.findUnique({ where: { phone: identifier } });
     const passwordOk = admin ? await bcrypt.compare(password, admin.passwordHash) : false;
     if (!admin || !passwordOk) {
-      return res.status(401).json({ error: 'Telefon raqam yoki parol notogri' });
+      return res.status(401).json({ error: 'Login yoki parol notogri' });
     }
 
     const token = signToken(admin);

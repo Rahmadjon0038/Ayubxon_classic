@@ -40,6 +40,8 @@ const ru: Translations = {
     hidePassword: 'Скрыть пароль',
     submit: 'Войти',
     submitting: 'Вход...',
+    useEmail: 'Войти по email',
+    usePhone: 'Войти по номеру телефона',
   },
   superAdmin: {
     loginSubtitle: 'Вход в панель супер-админа',

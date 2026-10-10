@@ -10,10 +10,14 @@ import PhoneInput from '@/components/PhoneInput';
 import { useLocale } from '@/components/LocaleProvider';
 import { api, getErrorMessage, getToken, setToken } from '@/lib/api';
 
+type IdentifierMode = 'phone' | 'email';
+
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useLocale();
+  const [mode, setMode] = useState<IdentifierMode>('phone');
   const [phoneDigits, setPhoneDigits] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -23,7 +27,10 @@ export default function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<{ token: string }>('/auth/login', { phone: `+998${phoneDigits}`, password });
+      // Yangi kabinetlar telefon raqam bilan kiradi; telefon talab qilinishidan oldin email
+      // bilan yaratilgan eski hisoblarda esa login sifatida email saqlangan ("Email bilan kirish").
+      const identifier = mode === 'phone' ? `+998${phoneDigits}` : email.trim();
+      const { data } = await api.post<{ token: string }>('/auth/login', { phone: identifier, password });
       return data;
     },
     onSuccess: (data) => {
@@ -56,10 +63,40 @@ export default function LoginPage() {
           className="space-y-5 rounded-2xl border border-gray-300 bg-white p-8 shadow-sm backdrop-blur-xl backdrop-saturate-150 dark:border-tg-border/70 dark:bg-tg-panel/[0.94]"
         >
           <div>
-            <label htmlFor="phone" className="mb-2 block text-sm font-medium dark:text-tg-text">
-              {t('common.phone')}
+            <label htmlFor="identifier" className="mb-2 block text-sm font-medium dark:text-tg-text">
+              {mode === 'phone' ? t('common.phone') : t('common.email')}
             </label>
-            <PhoneInput id="phone" required value={phoneDigits} onChange={setPhoneDigits} />
+            {mode === 'phone' ? (
+              <PhoneInput
+                id="identifier"
+                required
+                value={phoneDigits}
+                onChange={setPhoneDigits}
+                onNonPhoneInput={(raw) => {
+                  setEmail(raw);
+                  setMode('email');
+                }}
+              />
+            ) : (
+              <input
+                id="identifier"
+                type="text"
+                required
+                autoFocus
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-tg-hover dark:bg-tg-panelAlt dark:text-tg-text dark:focus:ring-brand-500/20"
+                placeholder="admin@example.com"
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => setMode((current) => (current === 'phone' ? 'email' : 'phone'))}
+              className="mt-2 text-sm font-medium text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+            >
+              {mode === 'phone' ? t('login.useEmail') : t('login.usePhone')}
+            </button>
           </div>
 
           <div>

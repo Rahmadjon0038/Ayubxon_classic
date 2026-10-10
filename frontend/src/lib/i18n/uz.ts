@@ -41,6 +41,8 @@ const uz = {
     hidePassword: 'Parolni yashirish',
     submit: 'Kirish',
     submitting: 'Kirilmoqda...',
+    useEmail: 'Email bilan kirish',
+    usePhone: 'Telefon raqam bilan kirish',
   },
   superAdmin: {
     loginSubtitle: 'Super-admin panelga kirish',

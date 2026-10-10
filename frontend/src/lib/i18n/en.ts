@@ -40,6 +40,8 @@ const en: Translations = {
     hidePassword: 'Hide password',
     submit: 'Sign in',
     submitting: 'Signing in...',
+    useEmail: 'Sign in with email',
+    usePhone: 'Sign in with phone number',
   },
   superAdmin: {
     loginSubtitle: 'Sign in to the super-admin panel',
