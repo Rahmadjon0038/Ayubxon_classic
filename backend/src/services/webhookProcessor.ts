@@ -894,7 +894,11 @@ async function processMessagingEvent(
   // tushib qolish xavfini kamaytiradi.
   const account = await resolveWebhookAccount(event, entryBusinessId);
   if (!account) {
-    console.warn('[webhook] Mos Instagram akkaunti topilmadi, xabar saqlanmadi');
+    // Kelgan ID'larni logga yozamiz: ulangan akkauntning instagramAccountId'si shulardan
+    // biriga teng bo'lmasa xabar saqlanmaydi (akkauntni qayta ulash kerak).
+    console.warn(
+      `[webhook] Mos Instagram akkaunti topilmadi, xabar saqlanmadi (entry=${entryBusinessId ?? '-'} sender=${event.sender?.id ?? '-'} recipient=${event.recipient?.id ?? '-'})`,
+    );
     return;
   }
   const accessToken = getAccessToken(account);

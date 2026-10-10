@@ -44,13 +44,63 @@ function toInstagramError(err: unknown): InstagramApiError {
         );
       }
       const message = metaError.error_user_msg || metaError.message || 'Instagram API xatosi';
+      // 190 — token yaroqsiz (nusxalashda buzilgan, muddati tugagan yoki bekor qilingan).
+      // Meta'ning inglizcha xabari foydalanuvchiga ko'pincha tushunarsiz, shuning uchun yo'l-yo'riq qo'shamiz.
+      const hint =
+        metaError.code === 190
+          ? ". Tokenni Meta Dashboard'da (Instagram → API setup with Instagram login → Generate access tokens) qayta yarating va to'liq nusxalang"
+          : '';
       // 401 emas — bu adminning o'z sessiyasi emas, Metaning access token'ni rad etishi.
       // 401 qaytarilsa frontend uni "admin sessiyasi tugadi" deb tushunib logout qilib yuboradi.
-      return new InstagramApiError(`Instagram API: ${message}`, 502, metaError.code);
+      return new InstagramApiError(`Instagram API: ${message}${hint}`, 502, metaError.code);
     }
     return new InstagramApiError('Instagram API bilan boglanib bolmadi', 502);
   }
   return new InstagramApiError('Instagram API xatosi', 502);
+}
+
+// Instagram Login tokenlari (Meta Dashboard → Instagram → "API setup with Instagram login"da
+// yaratiladigan IGAA... / eski IGQV...) graph.instagram.com'da ishlaydi va "IG" bilan boshlanadi.
+// Boshqa tokenlar (EAA.../EAB... — Facebook Login for Business) graph.facebook.com orqali tekshiriladi.
+// Token noto'g'ri hostga yuborilsa Meta "Cannot parse access token" (code 190) xatosini qaytaradi.
+function isInstagramLoginToken(accessToken: string): boolean {
+  return accessToken.trim().startsWith('IG');
+}
+
+// Instagram Login tokeni uchun /me — to'g'ridan-to'g'ri Instagram professional akkauntning o'zi.
+// `id` — app-scoped ID bo'lishi mumkin, webhook `entry.id` esa professional akkaunt ID'si
+// (`user_id`) bilan keladi; akkaunt shu ID bilan topilgani uchun `user_id` ustuvor olinadi.
+async function fetchInstagramLoginProfile(accessToken: string): Promise<InstagramProfile> {
+  const profileFields = 'id,username,name,profile_picture_url,account_type';
+  const request = (fields: string) =>
+    axios.get(`${GRAPH_BASE}/${GRAPH_VERSION}/me`, {
+      params: { fields, access_token: accessToken },
+      timeout: 15_000,
+    });
+
+  let data: Record<string, unknown>;
+  try {
+    ({ data } = await request(`user_id,${profileFields}`));
+  } catch (err) {
+    // Meta code 100 — so'rovdagi maydon (user_id) shu API versiyasida yo'q: eski maydonlar bilan qayta urinamiz.
+    if (err instanceof AxiosError && err.response?.data?.error?.code === 100) {
+      ({ data } = await request(profileFields));
+    } else {
+      throw err;
+    }
+  }
+
+  const accountId = data?.user_id ?? data?.id;
+  if (!accountId || !data?.username) {
+    throw new InstagramApiError('Instagram API kutilgan malumotni qaytarmadi', 502);
+  }
+  return {
+    id: String(accountId),
+    username: String(data.username),
+    name: data.name ? String(data.name) : undefined,
+    profilePictureUrl: data.profile_picture_url ? String(data.profile_picture_url) : undefined,
+    accountType: data.account_type ? String(data.account_type) : undefined,
+  };
 }
 
 // Bu token Facebook Login for Business orqali olingan uzoq muddatli PAGE tokeni
@@ -81,6 +131,9 @@ async function resolveIgAccountId(accessToken: string): Promise<string> {
 // Access token orqali ulangan biznes akkaunt malumotlarini tekshiradi.
 export async function fetchMe(accessToken: string): Promise<InstagramProfile> {
   try {
+    if (isInstagramLoginToken(accessToken)) {
+      return await fetchInstagramLoginProfile(accessToken);
+    }
     const igAccountId = await resolveIgAccountId(accessToken);
     const { data } = await axios.get(`${FACEBOOK_GRAPH_BASE}/${GRAPH_VERSION}/${igAccountId}`, {
       params: {
@@ -136,9 +189,12 @@ export async function fetchContactProfile(
 // bo'lmasa, bu maydon bo'yicha eventlar kelsa ham javob yozish (replyToComment) xato beradi.
 export async function subscribeToMessages(accessToken: string): Promise<boolean> {
   try {
-    const igAccountId = await resolveIgAccountId(accessToken);
+    // Instagram Login tokeni: graph.instagram.com/me; Page tokeni: graph.facebook.com/{IG ID}.
+    const subscribeUrl = isInstagramLoginToken(accessToken)
+      ? `${GRAPH_BASE}/${GRAPH_VERSION}/me/subscribed_apps`
+      : `${FACEBOOK_GRAPH_BASE}/${GRAPH_VERSION}/${await resolveIgAccountId(accessToken)}/subscribed_apps`;
     const { data } = await axios.post(
-      `${FACEBOOK_GRAPH_BASE}/${GRAPH_VERSION}/${igAccountId}/subscribed_apps`,
+      subscribeUrl,
       null,
       {
         params: {
