@@ -1166,9 +1166,10 @@ async function getConversationHistory(conversationId: string, limit = 12): Promi
 // har bir xabarga alohida, soniyalar ichida bir nechta javob otib yubormaydi.
 const pendingAiTimers = new Map<string, NodeJS.Timeout>();
 
-// Odam yozgandek tabiiy kechikish: 4-5.5 soniya oralig'ida tasodifiy tanlanadi.
-const HUMAN_LIKE_DELAY_MIN_MS = 4000;
-const HUMAN_LIKE_DELAY_MAX_MS = 5500;
+// Javobdan oldingi kutish: 1.5-2.5 soniya oralig'ida tasodifiy tanlanadi. Bu ham "odam yozgandek"
+// tabiiylik, ham mijozning ketma-ket yozgan xabarlarini bitta javobga birlashtirish oynasi.
+const HUMAN_LIKE_DELAY_MIN_MS = 1500;
+const HUMAN_LIKE_DELAY_MAX_MS = 2500;
 
 // Operator so'ralgach, jonli operatorga javob berish uchun qisqa oyna beriladi (7 daqiqa).
 // Shu vaqt ichida admin qo'lda javob yozmasa, AI shu suhbatda avtomatik qayta yonadi — mijoz
@@ -1311,7 +1312,7 @@ async function handleIncomingContactMessage({
 // qilib, Instagram Send API orqali yuboradi va suhbatga admin xabari sifatida yozadi. Xato
 // yoki sozlama yoqligida jim otkazib yuboriladi — mijoz inson agentga qoladi.
 async function runAiTurn({ account, accessToken, contactIgsid, conversationId }: MaybeSendAiReplyParams): Promise<void> {
-  // Kutish davomida (4-5.5 soniya) suhbat holati o'zgargan bo'lishi mumkin (masalan admin
+  // Kutish davomida (1.5-2.5 soniya) suhbat holati o'zgargan bo'lishi mumkin (masalan admin
   // qo'lda javob yozdi yoki boshqa xabar handover'ni ishga tushirdi) — shuni oxirgi marta tekshiramiz.
   const current = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -1319,6 +1320,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
   });
   if (!current || current.aiPaused) return;
 
+  const aiStartedAt = Date.now();
   const history = await getConversationHistory(conversationId);
   const replyText = await generateAiReply(
     account.id,
@@ -1327,8 +1329,10 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
     current.referencedGroupId,
   );
   if (!replyText) return;
+  const aiMs = Date.now() - aiStartedAt;
 
   try {
+    const sendStartedAt = Date.now();
     const { messageId } = await enqueueDm({
       userId: contactIgsid,
       label: 'AI javobi',
@@ -1345,6 +1349,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
         return sendTextMessage(accessToken, contactIgsid, replyText);
       },
     });
+    const sendMs = Date.now() - sendStartedAt;
     const aiMessage = await prisma.message.create({
       data: {
         instagramMessageId: messageId,
@@ -1439,7 +1444,7 @@ async function runAiTurn({ account, accessToken, contactIgsid, conversationId }:
     });
 
     console.log(
-      `[webhook] AI javobi yuborildi (conversation=${conversationId})` +
+      `[webhook] AI javobi yuborildi (conversation=${conversationId}, openai=${aiMs}ms, navbat+yuborish=${sendMs}ms)` +
         (analysis
           ? ` — tahlil: temperatura=${analysis.leadTemperature}, gaplashish=${analysis.talkStatus}, kurs=${analysis.courseDecision}, handover=${analysis.handoverRequested}, telefon=${analysis.phoneNumber ?? '-'}`
           : ' — tahlil otkazib yuborildi'),

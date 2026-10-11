@@ -8,8 +8,12 @@ function randomBetween(minMs: number, maxMs: number): number {
   return Math.floor(minMs + Math.random() * (maxMs - minMs));
 }
 
-export const DM_DELAY_MIN_MS = 5_000;
-export const DM_DELAY_MAX_MS = 15_000;
+// DM: mijoz javobini sekinlashtirmaslik uchun qisqa. AI javobi uchun asosiy "odamga o'xshash"
+// kutish webhookProcessor'dagi scheduleAiTurn'da (1.5-2.5 s), bu yerdagi esa ketma-ket
+// yuborishlar orasidagi kichik tasodifiy oraliq. Spamdan haqiqiy himoya — rateLimiter'dagi
+// soatlik/kunlik limitlar va rate-limit xatosida navbatni pauza qilish.
+export const DM_DELAY_MIN_MS = 500;
+export const DM_DELAY_MAX_MS = 1_500;
 export const COMMENT_DELAY_MIN_MS = 8_000;
 export const COMMENT_DELAY_MAX_MS = 20_000;
 
